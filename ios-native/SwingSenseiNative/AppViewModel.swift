@@ -131,11 +131,7 @@ final class AppViewModel: ObservableObject {
 
     func retryAnalysis(swingID: String, baseURLString: String) async {
         guard let swing = swing(id: swingID) else { return }
-        guard let club = swing.club else {
-            trimSelection = SwingSelection(id: swingID)
-            appMessage = AppMessage(text: "Select a club before analyzing this swing.")
-            return
-        }
+        let club = swing.club ?? GolfClub.other.rawValue
         let durationMs = swing.durationMs ?? 0
         let startMs = swing.trimStartMs ?? 0
         let endMs = swing.trimEndMs ?? max(durationMs, 1)

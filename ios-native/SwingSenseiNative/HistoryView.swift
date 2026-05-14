@@ -84,7 +84,7 @@ private struct SwingHistoryCard: View {
                     .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                scoreBadge
+                pathBadge
                     .padding(8)
             }
 
@@ -108,22 +108,35 @@ private struct SwingHistoryCard: View {
     }
 
     @ViewBuilder
-    private var scoreBadge: some View {
-        if let score = swing.senseiScore {
-            Text(String(format: "%.1f", score))
+    private var pathBadge: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "point.3.connected.trianglepath.dotted")
+                .font(.caption2.weight(.black))
+
+            Text(pathBadgeTitle)
                 .font(.caption.weight(.black))
-                .foregroundStyle(.black)
-                .frame(minWidth: 42)
-                .frame(height: 30)
-                .background(Theme.primary, in: Capsule())
-        } else {
-            Text("--")
-                .font(.caption.weight(.black))
-                .foregroundStyle(Theme.muted)
-                .frame(minWidth: 42)
-                .frame(height: 30)
-                .background(.black.opacity(0.62), in: Capsule())
         }
+        .foregroundStyle(pathBadgeForeground)
+        .padding(.horizontal, 10)
+        .frame(height: 30)
+        .background(pathBadgeBackground, in: Capsule())
+    }
+
+    private var pathBadgeTitle: String {
+        guard let analysis = swing.analysis else {
+            return swing.status == .failed ? "Retry" : "Path"
+        }
+        return analysis.primaryClubPathSegment() == nil ? "No Path" : "Path"
+    }
+
+    private var pathBadgeForeground: Color {
+        guard swing.analysis != nil else { return Theme.muted }
+        return pathBadgeTitle == "No Path" ? Theme.accent : .black
+    }
+
+    private var pathBadgeBackground: Color {
+        guard swing.analysis != nil else { return .black.opacity(0.62) }
+        return pathBadgeTitle == "No Path" ? Theme.accent.opacity(0.16) : Theme.primary
     }
 
     private var statusColor: Color {

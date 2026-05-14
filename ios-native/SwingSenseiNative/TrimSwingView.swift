@@ -9,7 +9,6 @@ struct TrimSwingView: View {
 
     @StateObject private var viewModel: TrimSwingViewModel
     @State private var isAnalyzing = false
-    @State private var selectedClub: GolfClub?
 
     init(
         swing: SwingRecord,
@@ -20,7 +19,6 @@ struct TrimSwingView: View {
         self.onCancel = onCancel
         self.onAnalyze = onAnalyze
         _viewModel = StateObject(wrappedValue: TrimSwingViewModel(swing: swing))
-        _selectedClub = State(initialValue: GolfClub.canonical(swing.club))
     }
 
     var body: some View {
@@ -33,7 +31,6 @@ struct TrimSwingView: View {
                     playRow
                     timeline
                     editControls
-                    clubPicker
                     analyzeButton
                 }
                 .padding(.horizontal, 20)
@@ -178,70 +175,9 @@ struct TrimSwingView: View {
         .animation(.spring(response: 0.24, dampingFraction: 0.82), value: viewModel.videoEditState)
     }
 
-    private var clubPicker: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 10) {
-                Image(systemName: "figure.golf")
-                    .font(.headline.weight(.black))
-                    .foregroundStyle(Theme.primary)
-
-                Text("Club")
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(Theme.primary)
-                    .textCase(.uppercase)
-                    .tracking(1.2)
-
-                Spacer()
-
-                Text(selectedClub?.rawValue ?? "Required")
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(selectedClub == nil ? Theme.accent : .black)
-                    .padding(.horizontal, 12)
-                    .frame(height: 30)
-                    .background(selectedClub == nil ? Theme.accent.opacity(0.14) : Theme.primary, in: Capsule())
-                    .overlay(Capsule().stroke(selectedClub == nil ? Theme.accent.opacity(0.4) : Theme.primary))
-            }
-
-            ForEach(GolfClub.groups, id: \.title) { group in
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(group.title)
-                        .font(.callout.weight(.black))
-                        .foregroundStyle(.white)
-
-                    LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: 72), spacing: 10)],
-                        alignment: .leading,
-                        spacing: 10
-                    ) {
-                        ForEach(group.clubs) { club in
-                            ClubSelectionButton(
-                                title: club.rawValue,
-                                isSelected: selectedClub == club,
-                                isDisabled: isAnalyzing
-                            ) {
-                                selectedClub = club
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            }
-                        }
-                    }
-                }
-                .padding(14)
-                .background(Theme.elevated, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.line))
-            }
-        }
-        .padding(16)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(selectedClub == nil ? Theme.accent.opacity(0.55) : Theme.line, lineWidth: selectedClub == nil ? 1.5 : 1)
-        )
-    }
-
     private var analyzeButton: some View {
         Button {
             Task {
-                guard let selectedClub else { return }
                 isAnalyzing = true
                 viewModel.pause()
                 await onAnalyze(
@@ -249,7 +185,7 @@ struct TrimSwingView: View {
                     viewModel.trimEndMs,
                     viewModel.durationMs,
                     viewModel.videoEditState,
-                    selectedClub.rawValue
+                    GolfClub.other.rawValue
                 )
                 isAnalyzing = false
             }
@@ -259,11 +195,11 @@ struct TrimSwingView: View {
                     ProgressView()
                         .tint(.black)
                 } else {
-                    Image(systemName: "sparkles")
+                    Image(systemName: "point.3.connected.trianglepath.dotted")
                         .font(.headline.weight(.black))
                 }
 
-                Text(isAnalyzing ? "Analyzing" : "Analyze Swing")
+                Text(isAnalyzing ? "Analyzing" : "Analyze Club Path")
                     .font(.title3.weight(.black))
             }
             .foregroundStyle(.black)
@@ -275,38 +211,12 @@ struct TrimSwingView: View {
     }
 
     private var canAnalyze: Bool {
-        viewModel.canAnalyze && selectedClub != nil
+        viewModel.canAnalyze
     }
 
     private func formatClock(_ milliseconds: Int) -> String {
         let totalSeconds = max(0, milliseconds) / 1000
         return "\(String(format: "%02d", totalSeconds / 60)):\(String(format: "%02d", totalSeconds % 60))"
-    }
-}
-
-private struct ClubSelectionButton: View {
-    let title: String
-    let isSelected: Bool
-    let isDisabled: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.headline.weight(.black))
-                .foregroundStyle(isSelected ? .black : Theme.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-                .background(isSelected ? Theme.primary : Theme.surface, in: Capsule())
-                .overlay(Capsule().stroke(isSelected ? Theme.primary : Theme.line, lineWidth: isSelected ? 2 : 1.5))
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .disabled(isDisabled)
-        .accessibilityLabel("Club \(title)")
-        .accessibilityValue(isSelected ? "Selected" : "Not selected")
     }
 }
 
