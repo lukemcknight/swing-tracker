@@ -29,6 +29,7 @@ from swing_analyzer import (
     repair_club_head_points,
     repair_foot_keypoints,
     repair_occluded_arm_keypoints,
+    resolve_analysis_timeline,
     scale_frame_times,
     stabilize_club_head_points,
     timeline_scale_for,
@@ -866,6 +867,45 @@ class PositionDetectionTests(unittest.TestCase):
 
     def test_timeline_scale_stretches_to_longer_client_duration(self):
         self.assertAlmostEqual(timeline_scale_for(1293, 2600), 2.0108, places=4)
+
+    def test_resolve_analysis_timeline_uses_source_duration_without_client_duration(self):
+        timeline = resolve_analysis_timeline(source_fps=30, total_frames=90)
+
+        self.assertEqual(timeline["source_duration_ms"], 3000)
+        self.assertEqual(timeline["timeline_scale"], 1.0)
+        self.assertEqual(timeline["output_duration_ms"], 3000)
+        self.assertEqual(timeline["manual_start_ms"], 0)
+        self.assertEqual(timeline["manual_end_ms"], 3000)
+        self.assertEqual(timeline["source_trim_start_ms"], 0)
+        self.assertEqual(timeline["source_trim_end_ms"], 3000)
+
+    def test_resolve_analysis_timeline_clamps_trim_to_minimum_window(self):
+        timeline = resolve_analysis_timeline(
+            source_fps=30,
+            total_frames=90,
+            client_duration_ms=3000,
+            trim_start_ms=2600,
+            trim_end_ms=2700,
+        )
+
+        self.assertEqual(timeline["manual_start_ms"], 2200)
+        self.assertEqual(timeline["manual_end_ms"], 3000)
+        self.assertEqual(timeline["source_trim_start_ms"], 2200)
+        self.assertEqual(timeline["source_trim_end_ms"], 3000)
+
+    def test_resolve_analysis_timeline_maps_client_trim_to_source_time_when_stretched(self):
+        timeline = resolve_analysis_timeline(
+            source_fps=30,
+            total_frames=45,
+            client_duration_ms=3000,
+            trim_start_ms=1000,
+            trim_end_ms=2600,
+        )
+
+        self.assertEqual(timeline["source_duration_ms"], 1500)
+        self.assertEqual(timeline["timeline_scale"], 2.0)
+        self.assertEqual(timeline["source_trim_start_ms"], 500)
+        self.assertEqual(timeline["source_trim_end_ms"], 1300)
 
     def test_swing_thought_prioritizes_posture_loss(self):
         thought = build_swing_thought(

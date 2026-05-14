@@ -114,6 +114,16 @@ class CaptureProfile(TypedDict):
     warnings: list[str]
 
 
+class AnalysisTimeline(TypedDict):
+    source_duration_ms: int
+    timeline_scale: float
+    output_duration_ms: int
+    manual_start_ms: int
+    manual_end_ms: int
+    source_trim_start_ms: int
+    source_trim_end_ms: int
+
+
 def open_video_capture(video_path: Path) -> cv2.VideoCapture:
     capture = cv2.VideoCapture(str(video_path))
     if capture.isOpened():
@@ -171,20 +181,20 @@ def analyze_video(
     total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
     video_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
     video_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
-    source_duration_ms = int((total_frames / source_fps) * 1000) if total_frames else 0
-    timeline_scale = timeline_scale_for(source_duration_ms, client_duration_ms)
-    output_duration_ms = int(round(source_duration_ms * timeline_scale)) if source_duration_ms else int(client_duration_ms or 0)
-    manual_start_ms = max(0, int(trim_start_ms or 0))
-    manual_end_ms = int(trim_end_ms) if trim_end_ms is not None and trim_end_ms > 0 else output_duration_ms
-    if output_duration_ms:
-        manual_start_ms = min(manual_start_ms, max(0, output_duration_ms - 800))
-        manual_end_ms = min(output_duration_ms, max(manual_end_ms, manual_start_ms + 800))
-
-    if manual_end_ms and manual_end_ms <= manual_start_ms:
-        manual_end_ms = output_duration_ms or manual_start_ms + 800
-
-    source_trim_start_ms = client_time_to_source_time(manual_start_ms, timeline_scale)
-    source_trim_end_ms = client_time_to_source_time(manual_end_ms, timeline_scale) if manual_end_ms else 0
+    timeline = resolve_analysis_timeline(
+        source_fps=source_fps,
+        total_frames=total_frames,
+        client_duration_ms=client_duration_ms,
+        trim_start_ms=trim_start_ms,
+        trim_end_ms=trim_end_ms,
+    )
+    source_duration_ms = timeline["source_duration_ms"]
+    timeline_scale = timeline["timeline_scale"]
+    output_duration_ms = timeline["output_duration_ms"]
+    manual_start_ms = timeline["manual_start_ms"]
+    manual_end_ms = timeline["manual_end_ms"]
+    source_trim_start_ms = timeline["source_trim_start_ms"]
+    source_trim_end_ms = timeline["source_trim_end_ms"]
 
     sample_fps, sample_every = analysis_sample_cadence(source_fps)
 
@@ -351,6 +361,39 @@ def timeline_scale_for(source_duration_ms: int, client_duration_ms: int | None) 
         return float(ratio)
 
     return 1.0
+
+
+def resolve_analysis_timeline(
+    source_fps: float,
+    total_frames: int,
+    client_duration_ms: int | None = None,
+    trim_start_ms: int | None = None,
+    trim_end_ms: int | None = None,
+) -> AnalysisTimeline:
+    source_fps = max(1.0, float(source_fps or 30.0))
+    total_frames = max(0, int(total_frames or 0))
+    source_duration_ms = int((total_frames / source_fps) * 1000) if total_frames else 0
+    timeline_scale = timeline_scale_for(source_duration_ms, client_duration_ms)
+    output_duration_ms = int(round(source_duration_ms * timeline_scale)) if source_duration_ms else int(client_duration_ms or 0)
+
+    manual_start_ms = max(0, int(trim_start_ms or 0))
+    manual_end_ms = int(trim_end_ms) if trim_end_ms is not None and trim_end_ms > 0 else output_duration_ms
+    if output_duration_ms:
+        manual_start_ms = min(manual_start_ms, max(0, output_duration_ms - 800))
+        manual_end_ms = min(output_duration_ms, max(manual_end_ms, manual_start_ms + 800))
+
+    if manual_end_ms and manual_end_ms <= manual_start_ms:
+        manual_end_ms = output_duration_ms or manual_start_ms + 800
+
+    return {
+        "source_duration_ms": source_duration_ms,
+        "timeline_scale": timeline_scale,
+        "output_duration_ms": output_duration_ms,
+        "manual_start_ms": manual_start_ms,
+        "manual_end_ms": manual_end_ms,
+        "source_trim_start_ms": client_time_to_source_time(manual_start_ms, timeline_scale),
+        "source_trim_end_ms": client_time_to_source_time(manual_end_ms, timeline_scale) if manual_end_ms else 0,
+    }
 
 
 def analysis_sample_cadence(source_fps: float) -> tuple[float, int]:
