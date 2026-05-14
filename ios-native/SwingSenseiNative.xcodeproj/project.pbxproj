@@ -1,0 +1,438 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1AD337D25A98D75870B99CEF /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16C16474CA25653233EEE4CA /* AppViewModel.swift */; };
+		24DC4D3464C19A0F97474051 /* AnalysisURLNormalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = D57D4D0F3C593CAE6805036F /* AnalysisURLNormalization.swift */; };
+		30E57C2DBE8EC148BF4DC560 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 585A43CDE9FAB107D101A1C6 /* ContentView.swift */; };
+		370B08C5122AEC9A42E9D0E3 /* TrimSwingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C98FCB018B8080017A6DB9AC /* TrimSwingView.swift */; };
+		42F038DAD91E6B7CF0038008 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA697E6A88B90D537813DAA /* SettingsView.swift */; };
+		5FCEFD0CA19CCBCFCB0BC8D5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ADE31D10AE091D116370D65E /* Foundation.framework */; };
+		62268F927BB9B3FB9761ECA8 /* AnalysisAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03A2F690C232324089BF989D /* AnalysisAPIClient.swift */; };
+		7A040F0A2684CEE7345A5A09 /* PlayerLayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E754057030E31AFEB3350259 /* PlayerLayerView.swift */; };
+		7C3EFD7F4F4729AC670E15DD /* SwingRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D5D65B77EEFE5B6537B268 /* SwingRepository.swift */; };
+		81C76DC9CB993CCCC577A389 /* SwingSenseiNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 194E4AC9FEEE1C4EEA29F269 /* SwingSenseiNativeApp.swift */; };
+		988128A1C99F425AA51E11D3 /* MultipartFormDataBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */; };
+		A561F7CE0E7034CC82255D75 /* SwingAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */; };
+		BACFC4E578F60474DAF2C7B4 /* PickedVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F36941A716F4FE8E00725A /* PickedVideo.swift */; };
+		C38867BC657E14D4C1612CF5 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D349B6F95C82CCE3F713F89 /* Theme.swift */; };
+		D5A96753C10CF7C057720583 /* SwingAnalysisViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D9C8A4C28F5C4C9CBA4AED /* SwingAnalysisViewModel.swift */; };
+		D6A5B7A80267137D6813570C /* AnalysisViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5852357E411E11FA6888EE0 /* AnalysisViewer.swift */; };
+		E424FE8BE6147F3419750515 /* SwingRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = C513847C281C1ED12D71795E /* SwingRecord.swift */; };
+		E8E60E0CB1B635BB2251917D /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D175378668E1ACD8A2A3391 /* CameraCaptureView.swift */; };
+		F38B79CEA91F6ACC820E18C5 /* AnalysisDerivedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600D188BF8FFE90F2B0C734D /* AnalysisDerivedData.swift */; };
+		FC9D4BC763DE05D593DADB72 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCA9D55544AC5726202B940 /* CaptureView.swift */; };
+		FD2BA03D06A61657344B9DD1 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81617F3B35443EB114DCC54 /* HistoryView.swift */; };
+		FD9974438A4F52078413933D /* SkeletonOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A2F88E148DAEA19600C476 /* SkeletonOverlay.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		00EDA17AFF89C24BB88F454D /* SwingSenseiNative.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwingSenseiNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		03A2F690C232324089BF989D /* AnalysisAPIClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisAPIClient.swift; sourceTree = "<group>"; };
+		16C16474CA25653233EEE4CA /* AppViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppViewModel.swift; sourceTree = "<group>"; };
+		194E4AC9FEEE1C4EEA29F269 /* SwingSenseiNativeApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingSenseiNativeApp.swift; sourceTree = "<group>"; };
+		3BA697E6A88B90D537813DAA /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		556AB663D0CB0212CE3CD953 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		585A43CDE9FAB107D101A1C6 /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingAnalysis.swift; sourceTree = "<group>"; };
+		600D188BF8FFE90F2B0C734D /* AnalysisDerivedData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisDerivedData.swift; sourceTree = "<group>"; };
+		62D5D65B77EEFE5B6537B268 /* SwingRepository.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingRepository.swift; sourceTree = "<group>"; };
+		72A2F88E148DAEA19600C476 /* SkeletonOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkeletonOverlay.swift; sourceTree = "<group>"; };
+		8D175378668E1ACD8A2A3391 /* CameraCaptureView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
+		8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultipartFormDataBuilder.swift; sourceTree = "<group>"; };
+		8D349B6F95C82CCE3F713F89 /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		ADE31D10AE091D116370D65E /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		C513847C281C1ED12D71795E /* SwingRecord.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingRecord.swift; sourceTree = "<group>"; };
+		C98FCB018B8080017A6DB9AC /* TrimSwingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrimSwingView.swift; sourceTree = "<group>"; };
+		D57D4D0F3C593CAE6805036F /* AnalysisURLNormalization.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisURLNormalization.swift; sourceTree = "<group>"; };
+		D81617F3B35443EB114DCC54 /* HistoryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		D8F36941A716F4FE8E00725A /* PickedVideo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PickedVideo.swift; sourceTree = "<group>"; };
+		E754057030E31AFEB3350259 /* PlayerLayerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlayerLayerView.swift; sourceTree = "<group>"; };
+		F1D9C8A4C28F5C4C9CBA4AED /* SwingAnalysisViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingAnalysisViewModel.swift; sourceTree = "<group>"; };
+		F5852357E411E11FA6888EE0 /* AnalysisViewer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisViewer.swift; sourceTree = "<group>"; };
+		FBCA9D55544AC5726202B940 /* CaptureView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CaptureView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		30D9F8B15A88F12FA8C8CF07 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5FCEFD0CA19CCBCFCB0BC8D5 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3C0B6E0F2910E8A4696A64C2 /* SwingSenseiCore */ = {
+			isa = PBXGroup;
+			children = (
+				03A2F690C232324089BF989D /* AnalysisAPIClient.swift */,
+				600D188BF8FFE90F2B0C734D /* AnalysisDerivedData.swift */,
+				D57D4D0F3C593CAE6805036F /* AnalysisURLNormalization.swift */,
+				8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */,
+				5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */,
+				C513847C281C1ED12D71795E /* SwingRecord.swift */,
+				62D5D65B77EEFE5B6537B268 /* SwingRepository.swift */,
+			);
+			name = SwingSenseiCore;
+			path = Sources/SwingSenseiCore;
+			sourceTree = "<group>";
+		};
+		4025130F6E52B12D8BA447BC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F64BD7AD956DF0ED083103F6 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		740BC93245F134C4C67E7BFD /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				00EDA17AFF89C24BB88F454D /* SwingSenseiNative.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		ADB7DAF7F3195FEFB70EECA4 = {
+			isa = PBXGroup;
+			children = (
+				740BC93245F134C4C67E7BFD /* Products */,
+				4025130F6E52B12D8BA447BC /* Frameworks */,
+				D6E73616D2A8281316448A84 /* SwingSenseiNative */,
+				3C0B6E0F2910E8A4696A64C2 /* SwingSenseiCore */,
+			);
+			sourceTree = "<group>";
+		};
+		D6E73616D2A8281316448A84 /* SwingSenseiNative */ = {
+			isa = PBXGroup;
+			children = (
+				F5852357E411E11FA6888EE0 /* AnalysisViewer.swift */,
+				16C16474CA25653233EEE4CA /* AppViewModel.swift */,
+				8D175378668E1ACD8A2A3391 /* CameraCaptureView.swift */,
+				FBCA9D55544AC5726202B940 /* CaptureView.swift */,
+				585A43CDE9FAB107D101A1C6 /* ContentView.swift */,
+				D81617F3B35443EB114DCC54 /* HistoryView.swift */,
+				D8F36941A716F4FE8E00725A /* PickedVideo.swift */,
+				E754057030E31AFEB3350259 /* PlayerLayerView.swift */,
+				3BA697E6A88B90D537813DAA /* SettingsView.swift */,
+				72A2F88E148DAEA19600C476 /* SkeletonOverlay.swift */,
+				F1D9C8A4C28F5C4C9CBA4AED /* SwingAnalysisViewModel.swift */,
+				194E4AC9FEEE1C4EEA29F269 /* SwingSenseiNativeApp.swift */,
+				8D349B6F95C82CCE3F713F89 /* Theme.swift */,
+				C98FCB018B8080017A6DB9AC /* TrimSwingView.swift */,
+				556AB663D0CB0212CE3CD953 /* Info.plist */,
+			);
+			name = SwingSenseiNative;
+			path = SwingSenseiNative;
+			sourceTree = "<group>";
+		};
+		F64BD7AD956DF0ED083103F6 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				ADE31D10AE091D116370D65E /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		058AEE2583CAAE0D368B54AA /* SwingSenseiNative */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 352C7013E00C0920316DEA8B /* Build configuration list for PBXNativeTarget "SwingSenseiNative" */;
+			buildPhases = (
+				C00DC63258DD1B038BA32E05 /* Sources */,
+				30D9F8B15A88F12FA8C8CF07 /* Frameworks */,
+				D65A4009942C8D3A638B57B1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SwingSenseiNative;
+			productName = SwingSenseiNative;
+			productReference = 00EDA17AFF89C24BB88F454D /* SwingSenseiNative.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DBCD9976F5F7C72999303D95 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					058AEE2583CAAE0D368B54AA = {
+						DevelopmentTeam = 9974PM5L6M;
+					};
+				};
+			};
+			buildConfigurationList = E02EE54AC3005FA5A9709AFD /* Build configuration list for PBXProject "SwingSenseiNative" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = ADB7DAF7F3195FEFB70EECA4;
+			minimizedProjectReferenceProxies = 0;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 740BC93245F134C4C67E7BFD /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				058AEE2583CAAE0D368B54AA /* SwingSenseiNative */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D65A4009942C8D3A638B57B1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C00DC63258DD1B038BA32E05 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D6A5B7A80267137D6813570C /* AnalysisViewer.swift in Sources */,
+				1AD337D25A98D75870B99CEF /* AppViewModel.swift in Sources */,
+				E8E60E0CB1B635BB2251917D /* CameraCaptureView.swift in Sources */,
+				FC9D4BC763DE05D593DADB72 /* CaptureView.swift in Sources */,
+				30E57C2DBE8EC148BF4DC560 /* ContentView.swift in Sources */,
+				FD2BA03D06A61657344B9DD1 /* HistoryView.swift in Sources */,
+				BACFC4E578F60474DAF2C7B4 /* PickedVideo.swift in Sources */,
+				7A040F0A2684CEE7345A5A09 /* PlayerLayerView.swift in Sources */,
+				42F038DAD91E6B7CF0038008 /* SettingsView.swift in Sources */,
+				FD9974438A4F52078413933D /* SkeletonOverlay.swift in Sources */,
+				D5A96753C10CF7C057720583 /* SwingAnalysisViewModel.swift in Sources */,
+				81C76DC9CB993CCCC577A389 /* SwingSenseiNativeApp.swift in Sources */,
+				C38867BC657E14D4C1612CF5 /* Theme.swift in Sources */,
+				370B08C5122AEC9A42E9D0E3 /* TrimSwingView.swift in Sources */,
+				62268F927BB9B3FB9761ECA8 /* AnalysisAPIClient.swift in Sources */,
+				F38B79CEA91F6ACC820E18C5 /* AnalysisDerivedData.swift in Sources */,
+				24DC4D3464C19A0F97474051 /* AnalysisURLNormalization.swift in Sources */,
+				988128A1C99F425AA51E11D3 /* MultipartFormDataBuilder.swift in Sources */,
+				A561F7CE0E7034CC82255D75 /* SwingAnalysis.swift in Sources */,
+				E424FE8BE6147F3419750515 /* SwingRecord.swift in Sources */,
+				7C3EFD7F4F4729AC670E15DD /* SwingRepository.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		3A11CC2EA687B50BB8721D34 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		40BC35F0B0122972A694D907 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9974PM5L6M;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SwingSenseiNative/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.swingsensei.native;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D9B3006869622033FC149385 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		EC0B410A12DFF85053CA7FA2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9974PM5L6M;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SwingSenseiNative/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.swingsensei.native;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		352C7013E00C0920316DEA8B /* Build configuration list for PBXNativeTarget "SwingSenseiNative" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EC0B410A12DFF85053CA7FA2 /* Release */,
+				40BC35F0B0122972A694D907 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E02EE54AC3005FA5A9709AFD /* Build configuration list for PBXProject "SwingSenseiNative" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3A11CC2EA687B50BB8721D34 /* Debug */,
+				D9B3006869622033FC149385 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = DBCD9976F5F7C72999303D95 /* Project object */;
+}

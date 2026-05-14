@@ -1,0 +1,16 @@
+__pycache__
+.venv
+.venv312
+.env
+.mplconfig
+.cache
+.debug
+.derived
+.build
+.pytest_cache
+.claude/settings.local.json
+dist
+build
+coverage
+*.log
+.DS_Store
