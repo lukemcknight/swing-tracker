@@ -293,6 +293,12 @@ final class CameraRecorder: NSObject, ObservableObject {
                 else {
                     throw CameraRecorderError.configurationFailed
                 }
+                if
+                    self.configureHighFrameRateIfAvailable(on: videoDevice),
+                    self.session.canSetSessionPreset(.inputPriority)
+                {
+                    self.session.sessionPreset = .inputPriority
+                }
                 self.session.addInput(videoInput)
 
                 if
@@ -321,6 +327,37 @@ final class CameraRecorder: NSObject, ObservableObject {
                     self.authorizationState = .failed
                 }
             }
+        }
+    }
+
+    private func configureHighFrameRateIfAvailable(on device: AVCaptureDevice) -> Bool {
+        let candidates = device.formats.compactMap { format -> (format: AVCaptureDevice.Format, fps: Double, pixels: Int32)? in
+            let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+            let maxFrameRate = format.videoSupportedFrameRateRanges.map(\.maxFrameRate).max() ?? 0
+            guard maxFrameRate >= 120, dimensions.width >= 1280, dimensions.height >= 720 else {
+                return nil
+            }
+            return (format, min(maxFrameRate, 240), dimensions.width * dimensions.height)
+        }
+        .sorted {
+            if $0.fps == $1.fps {
+                return $0.pixels > $1.pixels
+            }
+            return $0.fps > $1.fps
+        }
+
+        guard let best = candidates.first else { return false }
+
+        do {
+            try device.lockForConfiguration()
+            device.activeFormat = best.format
+            let frameDuration = CMTime(value: 1, timescale: CMTimeScale(Int32(best.fps.rounded())))
+            device.activeVideoMinFrameDuration = frameDuration
+            device.activeVideoMaxFrameDuration = frameDuration
+            device.unlockForConfiguration()
+            return true
+        } catch {
+            return false
         }
     }
 

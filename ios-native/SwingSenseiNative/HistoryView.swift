@@ -48,7 +48,7 @@ struct HistoryView: View {
                 }
             }
             .background(Theme.background.ignoresSafeArea())
-            .navigationTitle("History")
+            .navigationTitle("Swings")
         }
     }
 

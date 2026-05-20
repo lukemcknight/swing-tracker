@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 from typing import TypedDict
@@ -9,7 +10,7 @@ import mediapipe as mp
 import numpy as np
 
 POSITION_NAMES = ["address", "takeaway", "top", "impact", "finish"]
-ANALYSIS_VERSION = 26
+ANALYSIS_VERSION = 27
 PHASE_CONFIDENCE_THRESHOLD = 0.55
 QUALITY_SCORE_CAPS = {"ok": 10.0, "warning": 8.0, "poor": 6.0}
 RELIABLE_KEYPOINT_SCORE = 0.35
@@ -24,6 +25,10 @@ CLUB_MIN_PATH_DISPLACEMENT = 0.035
 CLUB_MIN_PRIMARY_SCORE = 0.58
 CLUB_MIN_PRIMARY_PHASE_SCORE = 0.25
 CLUB_MIN_PRIMARY_THROUGH_IMPACT_RATIO = 0.35
+CLUB_PARTIAL_PRIMARY_SCORE = 0.34
+CLUB_PARTIAL_THROUGH_IMPACT_RATIO = 0.55
+CLUB_BOUNDARY_CONTINUITY_FACTOR = 0.5
+CLUB_FRAME_EDGE_MARGIN = 0.025
 CLUB_AMBIGUOUS_PRIMARY_SCORE_RATIO = 0.86
 CLUB_AMBIGUOUS_PHASE_SCORE_GAP = 0.25
 CLUB_MAX_FRAME_GAP = 1
@@ -32,6 +37,43 @@ CLUB_MAX_STEP_MAX = 0.34
 CLUB_MAX_STEP_BODY_HEIGHT_RATIO = 0.55
 CLUB_MIN_GRIP_DISTANCE_BODY_HEIGHT_RATIO = 0.045
 CLUB_MAX_GRIP_DISTANCE_BODY_HEIGHT_RATIO = 1.08
+CLUB_DIRECTION_ADDRESS_WINDOW = (-2, 5)
+CLUB_DIRECTION_ADDRESS_AXIS_MARGIN = 0.04
+CLUB_DIRECTION_CANDIDATE_AXIS_MARGIN = 0.02
+CLUB_DIRECTION_MIN_ADDRESS_SAMPLES = 2
+CLUB_DIRECTION_TAKEAWAY_RELAX_FRAMES = 3
+CLUB_IMPACT_WINDOW = 2
+CLUB_IMPACT_ANCHOR_STEP_FACTOR = 1.0
+CLUB_IMPACT_COVERAGE_WINDOW = 2
+CLUB_TRACKER_MAX_FRAMES = 60
+CLUB_TRACKER_BBOX_BODY_HEIGHT_RATIO = 0.18
+CLUB_TRACKER_STUCK_DISTANCE = 0.004
+SHOT_ESTIMATE_MIN_SOURCE_FPS = 29.0
+SHOT_ESTIMATE_COARSE_SOURCE_FPS = 45.0
+SHOT_ESTIMATE_BODY_HEIGHT_METERS = 1.75
+SHOT_ESTIMATE_MIN_BALL_FRAMES = 3
+SHOT_ESTIMATE_MAX_BALL_WINDOW_MS = 260
+SHOT_ESTIMATE_BALL_ROI_BODY_HEIGHT_RATIO = 0.58
+SHOT_ESTIMATE_MPS_TO_MPH = 2.2369362920544
+SHOT_ESTIMATE_CLUB_LENGTH_INCHES = {
+    "D": 45.5,
+    "3W": 43.0,
+    "5W": 42.0,
+    "3H": 40.5,
+    "4H": 40.0,
+    "5H": 39.5,
+    "3": 39.0,
+    "4": 38.5,
+    "5": 38.0,
+    "6": 37.5,
+    "7": 37.0,
+    "8": 36.5,
+    "9": 36.0,
+    "PW": 35.75,
+    "AW": 35.5,
+    "SW": 35.25,
+    "LW": 35.0,
+}
 FOOT_KEYPOINT_TYPES = ("heel", "foot_index")
 FOOT_AXIS_ALIGNMENT_THRESHOLD = 0.55
 BODY_QUALITY_KEYPOINTS = [
@@ -164,6 +206,7 @@ def apply_video_edit(
 def analyze_video(
     swing_id: str,
     video_path: Path,
+    club: str | None = None,
     client_duration_ms: int | None = None,
     debug_dir: Path | None = None,
     debug_url_path: str | None = None,
@@ -207,6 +250,7 @@ def analyze_video(
     )
 
     frames: list[Frame] = []
+    frame_grays: list[np.ndarray] = []
     frame_index = 0
     last_club_head: ClubHead | None = None
 
@@ -252,6 +296,7 @@ def analyze_video(
                     analysis_frame["clubHead"] = club_head
                     last_club_head = club_head
                 frames.append(analysis_frame)
+                frame_grays.append(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
 
         frame_index += 1
         if len(frames) >= 360:
@@ -274,15 +319,41 @@ def analyze_video(
     capture_profile = build_capture_profile(frames, selected_start, selected_end, video_width, video_height)
     local_positions = detect_positions(selected_frames, capture_profile)
     positions = {name: selected_start + index for name, index in local_positions.items()}
-    frames, club_path_uncertain = stabilize_club_head_points(frames, positions)
+    frames, club_path_status = stabilize_club_head_points(frames, positions)
+
+    tracker_provenance: dict[str, object] | None = None
+    if len(frame_grays) == len(frames):
+        tracker_provenance = propagate_clubhead_with_tracker(
+            frames=frames,
+            frame_grays=frame_grays,
+            positions=positions,
+        )
+        frames, club_path_status = stabilize_club_head_points(
+            frames, positions, tracker_provenance=tracker_provenance
+        )
+
     frames = repair_club_head_points(frames)
     frames = smooth_club_head_points(frames)
-    if club_path_uncertain:
+    if club_path_status == "uncertain":
         capture_profile["warnings"] = dedupe_warnings([*capture_profile["warnings"], "club_path_uncertain"])
+    elif club_path_status == "partial":
+        capture_profile["warnings"] = dedupe_warnings([*capture_profile["warnings"], "club_path_partial"])
     output_frames = scale_frame_times(frames, timeline_scale)
     metrics = compute_metrics(output_frames, positions)
     phase_confidence = build_phase_confidence(output_frames, positions, capture_profile)
     analysis_quality = finalize_analysis_quality(capture_profile, phase_confidence)
+    shot_estimate = build_shot_estimate(
+        video_path=video_path,
+        club=club,
+        frames=frames,
+        positions=positions,
+        source_fps=source_fps,
+        video_width=video_width,
+        video_height=video_height,
+        analysis_quality=analysis_quality,
+        rotation_degrees=rotation_degrees,
+        mirror_horizontal=mirror_horizontal,
+    )
     raw_feedback = build_feedback(metrics)
     feedback = gate_feedback(raw_feedback, phase_confidence)
     swing_thought = build_swing_thought(metrics, feedback, phase_confidence, analysis_quality)
@@ -319,6 +390,7 @@ def analyze_video(
             "clubHeadFrames": sum(1 for frame in output_frames if "clubHead" in frame),
             "analysisQuality": analysis_quality,
             "phaseConfidence": phase_confidence,
+            "shotEstimate": shot_estimate,
             "debug": debug_info,
         },
         flush=True,
@@ -341,6 +413,7 @@ def analyze_video(
         "swingThought": swing_thought,
         "analysisQuality": analysis_quality,
         "phaseConfidence": phase_confidence,
+        "shotEstimate": shot_estimate,
         "rawSenseiScore": raw_score,
         "senseiScore": score,
         "debug": debug_info,
@@ -493,6 +566,16 @@ def detect_club_head(
         if head_distance < min_head_distance or head_distance > max_head_distance:
             continue
 
+        edge_margin_x = frame_width * CLUB_FRAME_EDGE_MARGIN
+        edge_margin_y = frame_height * CLUB_FRAME_EDGE_MARGIN
+        if (
+            head_px[0] < edge_margin_x
+            or head_px[0] > frame_width - edge_margin_x
+            or head_px[1] < edge_margin_y
+            or head_px[1] > frame_height - edge_margin_y
+        ):
+            continue
+
         head: ClubHead = {
             "x": round(clamp_float(head_px[0] / frame_width), 4),
             "y": round(clamp_float(head_px[1] / frame_height), 4),
@@ -610,7 +693,8 @@ def repair_club_head_points(frames: list[Frame]) -> list[Frame]:
 def stabilize_club_head_points(
     frames: list[Frame],
     positions: dict[str, int] | None = None,
-) -> tuple[list[Frame], bool]:
+    tracker_provenance: dict[str, object] | None = None,
+) -> tuple[list[Frame], str | None]:
     stabilized: list[Frame] = []
     for frame in frames:
         copied: Frame = {**frame, "keypoints": [dict(point) for point in frame["keypoints"]]}
@@ -620,36 +704,322 @@ def stabilize_club_head_points(
 
     raw_indices = [index for index, frame in enumerate(stabilized) if "clubHead" in frame]
     if not raw_indices:
-        return stabilized, False
+        print("club path debug", {"stage": "raw_empty", "rawDetections": 0}, flush=True)
+        return stabilized, None
+
+    expected_direction_sign = address_club_direction_sign(stabilized, positions or {})
+    impact_index = (positions or {}).get("impact")
+    ball_anchor = address_ball_anchor(stabilized, positions or {})
+
+    def direction_for(index: int) -> int | None:
+        if expected_direction_sign is None:
+            return None
+        takeaway_index = (positions or {}).get("takeaway")
+        if takeaway_index is not None and index > takeaway_index + CLUB_DIRECTION_TAKEAWAY_RELAX_FRAMES:
+            return None
+        if impact_index is None:
+            return expected_direction_sign
+        return expected_direction_sign if index <= impact_index else None
+
+    def ball_constraint_for(index: int) -> tuple[tuple[float, float], float] | None:
+        if ball_anchor is None or impact_index is None:
+            return None
+        if abs(index - impact_index) > CLUB_IMPACT_WINDOW:
+            return None
+        step_limit = club_head_step_limit(stabilized[index], stabilized[index])
+        return ball_anchor, step_limit * CLUB_IMPACT_ANCHOR_STEP_FACTOR
 
     plausible_indices = [
         index
         for index in raw_indices
-        if is_plausible_club_head_point(stabilized[index])
+        if is_plausible_club_head_point(
+            stabilized[index],
+            expected_direction_sign=direction_for(index),
+            ball_anchor_constraint=ball_constraint_for(index),
+        )
     ]
+    plausible_pre_spike = list(plausible_indices)
     plausible_indices = remove_local_club_head_spikes(stabilized, plausible_indices)
-    primary_run = select_primary_club_path_run(stabilized, plausible_indices, positions or {})
+    primary_run, partial, segments, candidates = select_primary_club_path_run(
+        stabilized, plausible_indices, positions or {}
+    )
 
     if primary_run is None or len(primary_run) < CLUB_MIN_RENDERABLE_POINTS:
+        debug_summary = _summarize_club_path_failure(
+            stabilized,
+            raw_indices=raw_indices,
+            plausible_pre_spike=plausible_pre_spike,
+            plausible_indices=plausible_indices,
+            positions=positions or {},
+        )
+        _emit_club_path_debug("club_path_last_failure.json", debug_summary)
         for frame in stabilized:
             frame.pop("clubHead", None)
-        return stabilized, True
+        return stabilized, "uncertain"
 
     kept_indices = set(primary_run)
     for index, frame in enumerate(stabilized):
         if index not in kept_indices:
             frame.pop("clubHead", None)
 
-    return stabilized, False
+    status = "partial" if partial else "full"
+    success_summary = _summarize_club_path_success(
+        stabilized,
+        status=status,
+        kept_indices=primary_run,
+        segments=segments,
+        candidates=candidates,
+        raw_indices=raw_indices,
+        plausible_pre_spike=plausible_pre_spike,
+        plausible_indices=plausible_indices,
+        positions=positions or {},
+        tracker_provenance=tracker_provenance,
+    )
+    _emit_club_path_debug("club_path_last_success.json", success_summary)
+
+    return stabilized, "partial" if partial else None
+
+
+def _emit_club_path_debug(filename: str, payload: dict[str, object]) -> None:
+    print("club path debug", payload, flush=True)
+    try:
+        debug_path = Path(__file__).resolve().parent / ".debug" / filename
+        debug_path.parent.mkdir(exist_ok=True)
+        debug_path.write_text(json.dumps(payload, indent=2))
+    except Exception as error:
+        print("club path debug file failed", {"error": str(error)}, flush=True)
+
+
+def _summarize_club_path_failure(
+    frames: list[Frame],
+    raw_indices: list[int],
+    plausible_pre_spike: list[int],
+    plausible_indices: list[int],
+    positions: dict[str, int],
+) -> dict[str, object]:
+    expected_direction_sign = address_club_direction_sign(frames, positions or {})
+    impact_index = (positions or {}).get("impact")
+
+    plausibility_drops: dict[str, int] = {
+        "grip_close": 0,
+        "grip_far": 0,
+        "inside_body": 0,
+        "wrong_side": 0,
+    }
+    for index in raw_indices:
+        if index in plausible_pre_spike:
+            continue
+        frame = frames[index]
+        point = frame.get("clubHead")
+        if point is None:
+            continue
+        box = body_bbox(frame)
+        body_height = club_reference_body_height(frame)
+        grip = grip_point(frame)
+        grip_distance = normalized_point_distance(point, {"x": grip[0], "y": grip[1]})
+        min_grip = max(0.018, body_height * CLUB_MIN_GRIP_DISTANCE_BODY_HEIGHT_RATIO)
+        max_grip = min(0.86, max(0.24, body_height * CLUB_MAX_GRIP_DISTANCE_BODY_HEIGHT_RATIO))
+        if grip_distance < min_grip:
+            plausibility_drops["grip_close"] += 1
+        elif grip_distance > max_grip:
+            plausibility_drops["grip_far"] += 1
+        elif point_inside_body_box(point, box, padding=-0.02):
+            plausibility_drops["inside_body"] += 1
+        elif (
+            expected_direction_sign is not None
+            and (impact_index is None or index <= impact_index)
+            and abs(point["x"] - grip[0]) > CLUB_DIRECTION_CANDIDATE_AXIS_MARGIN
+            and (1 if point["x"] > grip[0] else -1) != expected_direction_sign
+        ):
+            plausibility_drops["wrong_side"] += 1
+
+    runs = stable_club_head_runs(
+        frames,
+        plausible_indices,
+        maximum_frame_gap=max(CLUB_MAX_FRAME_GAP, CLUB_REPAIR_GAP_FRAMES + 1),
+    )
+    run_summaries: list[dict[str, object]] = []
+    for run in runs:
+        displacement = club_path_displacement(frames, run)
+        scored = score_club_path_run(frames, run, positions or {})
+        run_summaries.append(
+            {
+                "length": len(run),
+                "start": run[0],
+                "end": run[-1],
+                "displacement": round(displacement, 4),
+                "score": round(float(scored["score"]), 3),
+                "phaseScore": round(float(scored["phaseScore"]), 3),
+                "throughImpact": round(float(scored["throughImpactScore"]), 3),
+            }
+        )
+
+    boundary_summaries: list[dict[str, object]] = []
+    for earlier, later in zip(runs, runs[1:]):
+        earlier_end = earlier[-1]
+        later_start = later[0]
+        gap = later_start - earlier_end
+        step_limit = club_head_step_limit(frames[earlier_end], frames[later_start])
+        distance = normalized_point_distance(
+            frames[earlier_end]["clubHead"], frames[later_start]["clubHead"]
+        )
+        threshold = step_limit * max(1.0, gap * CLUB_BOUNDARY_CONTINUITY_FACTOR)
+        boundary_summaries.append(
+            {
+                "from": earlier_end,
+                "to": later_start,
+                "gap": gap,
+                "distance": round(distance, 4),
+                "stepLimit": round(step_limit, 4),
+                "threshold": round(threshold, 4),
+                "continuous": distance <= threshold,
+            }
+        )
+
+    raw_points = [
+        {
+            "i": index,
+            "x": round(frames[index]["clubHead"]["x"], 4),
+            "y": round(frames[index]["clubHead"]["y"], 4),
+        }
+        for index in raw_indices
+    ]
+    return {
+        "stage": "uncertain",
+        "rawDetections": len(raw_indices),
+        "plausibleAfterPlausibility": len(plausible_pre_spike),
+        "plausibleAfterSpikeRemoval": len(plausible_indices),
+        "plausibilityDrops": plausibility_drops,
+        "stableRunCount": len(runs),
+        "minPrimaryScore": CLUB_MIN_PRIMARY_SCORE,
+        "minPartialScore": CLUB_PARTIAL_PRIMARY_SCORE,
+        "minStableRunPoints": CLUB_MIN_STABLE_RUN_POINTS,
+        "minPathDisplacement": CLUB_MIN_PATH_DISPLACEMENT,
+        "positions": positions,
+        "runs": run_summaries[:10],
+        "boundaries": boundary_summaries[:10],
+        "rawPoints": raw_points,
+    }
+
+
+def _summarize_club_path_success(
+    frames: list[Frame],
+    status: str,
+    kept_indices: list[int],
+    segments: list[list[int]],
+    candidates: list[dict[str, object]],
+    raw_indices: list[int],
+    plausible_pre_spike: list[int],
+    plausible_indices: list[int],
+    positions: dict[str, int],
+    tracker_provenance: dict[str, object] | None = None,
+) -> dict[str, object]:
+    segment_summaries: list[dict[str, object]] = []
+    for run in segments:
+        scored = score_club_path_run(frames, run, positions or {})
+        points = []
+        for frame_index in run:
+            frame = frames[frame_index]
+            club = frame.get("clubHead")
+            if club is None:
+                continue
+            grip = grip_point(frame)
+            body_height = club_reference_body_height(frame)
+            grip_distance = normalized_point_distance(club, {"x": grip[0], "y": grip[1]})
+            points.append(
+                {
+                    "i": frame_index,
+                    "x": round(float(club["x"]), 4),
+                    "y": round(float(club["y"]), 4),
+                    "gripX": round(float(grip[0]), 4),
+                    "gripY": round(float(grip[1]), 4),
+                    "gripDist": round(grip_distance, 4),
+                    "bodyHeight": round(body_height, 4),
+                }
+            )
+        segment_summaries.append(
+            {
+                "start": run[0],
+                "end": run[-1],
+                "length": len(run),
+                "displacement": round(club_path_displacement(frames, run), 4),
+                "score": round(float(scored["score"]), 3),
+                "phaseScore": round(float(scored["phaseScore"]), 3),
+                "throughImpact": round(float(scored["throughImpactScore"]), 3),
+                "points": points,
+            }
+        )
+
+    boundary_summaries: list[dict[str, object]] = []
+    for earlier, later in zip(segments, segments[1:]):
+        earlier_end = earlier[-1]
+        later_start = later[0]
+        gap = later_start - earlier_end
+        step_limit = club_head_step_limit(frames[earlier_end], frames[later_start])
+        distance = normalized_point_distance(
+            frames[earlier_end]["clubHead"], frames[later_start]["clubHead"]
+        )
+        threshold = step_limit * max(1.0, gap * CLUB_BOUNDARY_CONTINUITY_FACTOR)
+        boundary_summaries.append(
+            {
+                "from": earlier_end,
+                "to": later_start,
+                "gap": gap,
+                "distance": round(distance, 4),
+                "stepLimit": round(step_limit, 4),
+                "threshold": round(threshold, 4),
+                "continuous": distance <= threshold,
+            }
+        )
+
+    kept_index_set = {index for run in segments for index in run}
+    rejected_candidate_summaries: list[dict[str, object]] = []
+    for candidate in candidates:
+        run = candidate["run"]
+        if any(index in kept_index_set for index in run):
+            continue
+        rejected_candidate_summaries.append(
+            {
+                "start": run[0],
+                "end": run[-1],
+                "length": len(run),
+                "score": round(float(candidate["score"]), 3),
+                "phaseScore": round(float(candidate["phaseScore"]), 3),
+                "throughImpact": round(float(candidate["throughImpactScore"]), 3),
+            }
+        )
+
+    summary: dict[str, object] = {
+        "stage": "success",
+        "status": status,
+        "rawDetections": len(raw_indices),
+        "plausibleAfterPlausibility": len(plausible_pre_spike),
+        "plausibleAfterSpikeRemoval": len(plausible_indices),
+        "keptCount": len(kept_indices),
+        "keptIndices": list(kept_indices),
+        "segmentCount": len(segments),
+        "minPrimaryScore": CLUB_MIN_PRIMARY_SCORE,
+        "minPartialScore": CLUB_PARTIAL_PRIMARY_SCORE,
+        "addressDirectionSign": address_club_direction_sign(frames, positions or {}),
+        "positions": positions,
+        "segments": segment_summaries,
+        "boundaries": boundary_summaries,
+        "rejectedCandidates": rejected_candidate_summaries[:10],
+    }
+    if tracker_provenance is not None:
+        summary["trackerPropagatedFrames"] = tracker_provenance.get("propagatedFrames", [])
+        summary["trackerAnchorFrames"] = tracker_provenance.get("anchorFrames", [])
+        summary["trackerDroppedAt"] = tracker_provenance.get("droppedAt", [])
+    return summary
 
 
 def select_primary_club_path_run(
     frames: list[Frame],
     indices: list[int],
     positions: dict[str, int] | None = None,
-) -> list[int] | None:
+) -> tuple[list[int] | None, bool, list[list[int]], list[dict[str, object]]]:
     if not indices:
-        return None
+        return None, False, [], []
 
     stable_runs = stable_club_head_runs(
         frames,
@@ -662,31 +1032,116 @@ def select_primary_club_path_run(
         if len(run) >= CLUB_MIN_STABLE_RUN_POINTS and club_path_displacement(frames, run) >= CLUB_MIN_PATH_DISPLACEMENT
     ]
     if not candidates:
-        return None
+        return None, False, [], []
 
-    required_score = 0.34 if not positions else CLUB_MIN_PRIMARY_SCORE
-    candidates = [candidate for candidate in candidates if candidate["score"] >= required_score]
+    full_segments = _pick_club_path_segments(
+        frames,
+        candidates,
+        minimum_score=0.34 if not positions else CLUB_MIN_PRIMARY_SCORE,
+        minimum_phase_score=CLUB_MIN_PRIMARY_PHASE_SCORE if positions else None,
+        minimum_through_impact=CLUB_MIN_PRIMARY_THROUGH_IMPACT_RATIO if positions else None,
+    )
+    if full_segments:
+        merged = sorted({index for run in full_segments for index in run})
+        partial = len(full_segments) > 1 or not _segments_cover_impact(full_segments, positions)
+        return merged, partial, full_segments, candidates
+
     if positions:
-        candidates = [
-            candidate
-            for candidate in candidates
-            if candidate["phaseScore"] >= CLUB_MIN_PRIMARY_PHASE_SCORE
-            and candidate["throughImpactScore"] >= CLUB_MIN_PRIMARY_THROUGH_IMPACT_RATIO
-        ]
-    if not candidates:
+        partial_segments = _pick_club_path_segments(
+            frames,
+            candidates,
+            minimum_score=CLUB_PARTIAL_PRIMARY_SCORE,
+            minimum_phase_score=None,
+            minimum_through_impact=CLUB_PARTIAL_THROUGH_IMPACT_RATIO,
+        )
+        if partial_segments:
+            merged = sorted({index for run in partial_segments for index in run})
+            return merged, True, partial_segments, candidates
+
+    return None, False, [], candidates
+
+
+def _segments_cover_impact(
+    segments: list[list[int]],
+    positions: dict[str, int] | None,
+) -> bool:
+    if not positions:
+        return True
+    impact = positions.get("impact")
+    if impact is None:
+        return True
+    for run in segments:
+        for frame_index in run:
+            if abs(frame_index - impact) <= CLUB_IMPACT_COVERAGE_WINDOW:
+                return True
+    return False
+
+
+def _pick_club_path_segments(
+    frames: list[Frame],
+    candidates: list[dict[str, object]],
+    minimum_score: float,
+    minimum_phase_score: float | None,
+    minimum_through_impact: float | None,
+) -> list[list[int]] | None:
+    filtered = [candidate for candidate in candidates if candidate["score"] >= minimum_score]
+    if minimum_phase_score is not None:
+        filtered = [candidate for candidate in filtered if candidate["phaseScore"] >= minimum_phase_score]
+    if minimum_through_impact is not None:
+        filtered = [candidate for candidate in filtered if candidate["throughImpactScore"] >= minimum_through_impact]
+    if not filtered:
         return None
 
-    candidates.sort(key=lambda candidate: (candidate["score"], len(candidate["run"])), reverse=True)
-    best = candidates[0]
-    if len(candidates) > 1:
-        second = candidates[1]
-        if (
-            second["score"] >= best["score"] * CLUB_AMBIGUOUS_PRIMARY_SCORE_RATIO
-            and best["phaseScore"] - second["phaseScore"] < CLUB_AMBIGUOUS_PHASE_SCORE_GAP
+    filtered.sort(key=lambda candidate: (candidate["score"], len(candidate["run"])), reverse=True)
+
+    selected: list[dict[str, object]] = []
+    for candidate in filtered:
+        competitor = None
+        for existing in selected:
+            if _club_runs_spatially_continuous(frames, candidate["run"], existing["run"]):
+                continue
+            competitor = existing
+            break
+        if competitor is None:
+            selected.append(candidate)
+            continue
+        if _club_runs_temporally_overlap(candidate["run"], competitor["run"]) and (
+            candidate["score"] >= competitor["score"] * CLUB_AMBIGUOUS_PRIMARY_SCORE_RATIO
+            and abs(competitor["phaseScore"] - candidate["phaseScore"]) < CLUB_AMBIGUOUS_PHASE_SCORE_GAP
         ):
             return None
+        # Temporally disjoint conflict: silently skip this lower-scoring candidate.
 
-    return list(best["run"])
+    if not selected:
+        return None
+
+    return [list(candidate["run"]) for candidate in sorted(selected, key=lambda item: item["run"][0])]
+
+
+def _club_runs_temporally_overlap(run_a: list[int], run_b: list[int]) -> bool:
+    return max(run_a[0], run_b[0]) <= min(run_a[-1], run_b[-1])
+
+
+def _club_runs_spatially_continuous(
+    frames: list[Frame],
+    run_a: list[int],
+    run_b: list[int],
+) -> bool:
+    if run_a[0] < run_b[0]:
+        earlier, later = run_a, run_b
+    else:
+        earlier, later = run_b, run_a
+    earlier_end_idx = earlier[-1]
+    later_start_idx = later[0]
+    if later_start_idx <= earlier_end_idx:
+        return False
+    gap = later_start_idx - earlier_end_idx
+    earlier_point = frames[earlier_end_idx]["clubHead"]
+    later_point = frames[later_start_idx]["clubHead"]
+    step_limit = club_head_step_limit(frames[earlier_end_idx], frames[later_start_idx])
+    distance = normalized_point_distance(earlier_point, later_point)
+    threshold = step_limit * max(1.0, gap * CLUB_BOUNDARY_CONTINUITY_FACTOR)
+    return distance <= threshold
 
 
 def score_club_path_run(frames: list[Frame], run: list[int], positions: dict[str, int]) -> dict[str, object]:
@@ -788,7 +1243,11 @@ def smooth_club_head_points(frames: list[Frame]) -> list[Frame]:
     return smoothed_frames
 
 
-def is_plausible_club_head_point(frame: Frame) -> bool:
+def is_plausible_club_head_point(
+    frame: Frame,
+    expected_direction_sign: int | None = None,
+    ball_anchor_constraint: tuple[tuple[float, float], float] | None = None,
+) -> bool:
     point = frame.get("clubHead")
     if point is None:
         return False
@@ -806,7 +1265,240 @@ def is_plausible_club_head_point(frame: Frame) -> bool:
     if grip_distance < min_grip_distance or grip_distance > max_grip_distance:
         return False
 
+    if expected_direction_sign is not None:
+        candidate_dx = point["x"] - grip[0]
+        if abs(candidate_dx) > CLUB_DIRECTION_CANDIDATE_AXIS_MARGIN:
+            candidate_sign = 1 if candidate_dx > 0 else -1
+            if candidate_sign != expected_direction_sign:
+                return False
+
+    if ball_anchor_constraint is not None:
+        anchor, max_distance = ball_anchor_constraint
+        if math.hypot(point["x"] - anchor[0], point["y"] - anchor[1]) > max_distance:
+            return False
+
     return not point_inside_body_box(point, box, padding=-0.02)
+
+
+def address_ball_anchor(
+    frames: list[Frame],
+    positions: dict[str, int],
+) -> tuple[float, float] | None:
+    address = positions.get("address")
+    if address is None:
+        return None
+
+    window_start, window_end = CLUB_DIRECTION_ADDRESS_WINDOW
+    xs: list[float] = []
+    ys: list[float] = []
+    for offset in range(window_start, window_end + 1):
+        index = address + offset
+        if index < 0 or index >= len(frames):
+            continue
+        frame = frames[index]
+        club = frame.get("clubHead")
+        if club is None:
+            continue
+        xs.append(float(club["x"]))
+        ys.append(float(club["y"]))
+
+    if len(xs) < CLUB_DIRECTION_MIN_ADDRESS_SAMPLES:
+        return None
+    return (sum(xs) / len(xs), sum(ys) / len(ys))
+
+
+def address_club_direction_sign(
+    frames: list[Frame],
+    positions: dict[str, int],
+) -> int | None:
+    address = positions.get("address")
+    if address is None:
+        return None
+
+    window_start, window_end = CLUB_DIRECTION_ADDRESS_WINDOW
+    samples: list[int] = []
+    for offset in range(window_start, window_end + 1):
+        index = address + offset
+        if index < 0 or index >= len(frames):
+            continue
+        frame = frames[index]
+        club = frame.get("clubHead")
+        if club is None:
+            continue
+        grip = grip_point(frame)
+        dx = club["x"] - grip[0]
+        if abs(dx) < CLUB_DIRECTION_ADDRESS_AXIS_MARGIN:
+            continue
+        samples.append(1 if dx > 0 else -1)
+
+    if len(samples) < CLUB_DIRECTION_MIN_ADDRESS_SAMPLES:
+        return None
+
+    positive = sum(1 for sign in samples if sign > 0)
+    negative = len(samples) - positive
+    if positive >= 2 * max(1, negative):
+        return 1
+    if negative >= 2 * max(1, positive):
+        return -1
+    return None
+
+
+def propagate_clubhead_with_tracker(
+    frames: list[Frame],
+    frame_grays: list[np.ndarray],
+    positions: dict[str, int] | None = None,
+) -> dict[str, object]:
+    if len(frames) != len(frame_grays) or not frame_grays:
+        return {"propagatedFrames": [], "anchorFrames": [], "droppedAt": []}
+
+    anchor_runs: list[list[int]] = []
+    current_run: list[int] = []
+    for index, frame in enumerate(frames):
+        if "clubHead" in frame:
+            current_run.append(index)
+        elif current_run:
+            anchor_runs.append(current_run)
+            current_run = []
+    if current_run:
+        anchor_runs.append(current_run)
+
+    if not anchor_runs:
+        return {"propagatedFrames": [], "anchorFrames": [], "droppedAt": []}
+
+    swing_end = len(frames) - 1
+    if positions:
+        finish_index = positions.get("finish")
+        if finish_index is not None:
+            swing_end = min(swing_end, finish_index + CLUB_IMPACT_COVERAGE_WINDOW)
+    swing_start = 0
+    if positions:
+        address_index = positions.get("address")
+        if address_index is not None:
+            swing_start = max(swing_start, address_index - CLUB_IMPACT_COVERAGE_WINDOW)
+
+    propagated: list[int] = []
+    anchor_seeds: list[int] = []
+    dropped_reasons: list[dict[str, object]] = []
+
+    for run in anchor_runs:
+        forward = _propagate_tracker_direction(
+            frames=frames,
+            frame_grays=frame_grays,
+            start_index=run[-1],
+            step=1,
+            bound=swing_end,
+            propagated_log=propagated,
+        )
+        dropped_reasons.append({"direction": "forward", "anchor": run[-1], **forward})
+
+        backward = _propagate_tracker_direction(
+            frames=frames,
+            frame_grays=frame_grays,
+            start_index=run[0],
+            step=-1,
+            bound=swing_start,
+            propagated_log=propagated,
+        )
+        dropped_reasons.append({"direction": "backward", "anchor": run[0], **backward})
+
+        anchor_seeds.extend([run[0], run[-1]])
+
+    return {
+        "propagatedFrames": sorted(set(propagated)),
+        "anchorFrames": sorted(set(anchor_seeds)),
+        "droppedAt": dropped_reasons,
+    }
+
+
+def _propagate_tracker_direction(
+    frames: list[Frame],
+    frame_grays: list[np.ndarray],
+    start_index: int,
+    step: int,
+    bound: int,
+    propagated_log: list[int],
+) -> dict[str, object]:
+    anchor = frames[start_index].get("clubHead")
+    if anchor is None:
+        return {"steps": 0, "reason": "no_anchor", "endIndex": start_index}
+
+    start_gray = frame_grays[start_index]
+    height, width = start_gray.shape[:2]
+    if width <= 0 or height <= 0:
+        return {"steps": 0, "reason": "no_frame", "endIndex": start_index}
+
+    body_height = club_reference_body_height(frames[start_index])
+    bbox_side_px = max(24, int(round(body_height * CLUB_TRACKER_BBOX_BODY_HEIGHT_RATIO * max(width, height))))
+    half = bbox_side_px // 2
+    anchor_x_px = anchor["x"] * width
+    anchor_y_px = anchor["y"] * height
+    bbox_x = int(round(max(0, anchor_x_px - half)))
+    bbox_y = int(round(max(0, anchor_y_px - half)))
+    bbox_w = min(bbox_side_px, width - bbox_x)
+    bbox_h = min(bbox_side_px, height - bbox_y)
+    if bbox_w < 8 or bbox_h < 8:
+        return {"steps": 0, "reason": "bbox_too_small", "endIndex": start_index}
+
+    try:
+        tracker = cv2.TrackerCSRT_create()
+    except Exception as error:
+        return {"steps": 0, "reason": "tracker_unavailable", "endIndex": start_index, "error": str(error)}
+
+    try:
+        tracker.init(start_gray, (bbox_x, bbox_y, bbox_w, bbox_h))
+    except Exception as error:
+        return {"steps": 0, "reason": "tracker_init_failed", "endIndex": start_index, "error": str(error)}
+
+    prev_index = start_index
+    prev_nx = anchor["x"]
+    prev_ny = anchor["y"]
+    steps = 0
+    while True:
+        next_index = prev_index + step
+        if step > 0 and next_index > bound:
+            return {"steps": steps, "reason": "hit_window_end", "endIndex": prev_index}
+        if step < 0 and next_index < bound:
+            return {"steps": steps, "reason": "hit_window_end", "endIndex": prev_index}
+        if next_index < 0 or next_index >= len(frames):
+            return {"steps": steps, "reason": "out_of_range", "endIndex": prev_index}
+        if steps >= CLUB_TRACKER_MAX_FRAMES:
+            return {"steps": steps, "reason": "max_frames", "endIndex": prev_index}
+        if "clubHead" in frames[next_index]:
+            return {"steps": steps, "reason": "anchor_reached", "endIndex": next_index}
+
+        curr_gray = frame_grays[next_index]
+        if curr_gray.shape != start_gray.shape:
+            return {"steps": steps, "reason": "shape_mismatch", "endIndex": prev_index}
+
+        ok, bbox = tracker.update(curr_gray)
+        if not ok:
+            return {"steps": steps, "reason": "tracker_lost", "endIndex": prev_index}
+
+        cx_px = float(bbox[0]) + float(bbox[2]) / 2.0
+        cy_px = float(bbox[1]) + float(bbox[3]) / 2.0
+        nx = cx_px / width
+        ny = cy_px / height
+
+        if not (0.0 <= nx <= 1.0 and 0.0 <= ny <= 1.0):
+            return {"steps": steps, "reason": "out_of_frame", "endIndex": prev_index}
+        if (
+            nx < CLUB_FRAME_EDGE_MARGIN
+            or nx > 1.0 - CLUB_FRAME_EDGE_MARGIN
+            or ny < CLUB_FRAME_EDGE_MARGIN
+            or ny > 1.0 - CLUB_FRAME_EDGE_MARGIN
+        ):
+            return {"steps": steps, "reason": "edge_margin", "endIndex": prev_index}
+
+        if math.hypot(nx - prev_nx, ny - prev_ny) < CLUB_TRACKER_STUCK_DISTANCE:
+            return {"steps": steps, "reason": "stuck", "endIndex": prev_index}
+
+        frames[next_index]["clubHead"] = {"x": round(nx, 4), "y": round(ny, 4)}
+        propagated_log.append(next_index)
+
+        prev_index = next_index
+        prev_nx = nx
+        prev_ny = ny
+        steps += 1
 
 
 def remove_local_club_head_spikes(frames: list[Frame], indices: list[int]) -> list[int]:
@@ -2368,6 +3060,546 @@ def smooth_series(values: np.ndarray, window: int) -> np.ndarray:
     return np.convolve(padded_values, kernel, mode="valid")
 
 
+def build_shot_estimate(
+    video_path: Path | None,
+    club: str | None,
+    frames: list[Frame],
+    positions: dict[str, int],
+    source_fps: float,
+    video_width: int,
+    video_height: int,
+    analysis_quality: CaptureProfile | None,
+    rotation_degrees: int | None = None,
+    mirror_horizontal: bool = False,
+) -> dict:
+    limitations: list[str] = []
+    evidence: dict[str, object] = {
+        "sourceFps": round(float(source_fps or 0.0), 1),
+        "calibrationSource": "unavailable",
+        "detectedBallFlightFrames": 0,
+    }
+    warnings = set((analysis_quality or {}).get("warnings") or [])
+
+    club_length_inches = nominal_club_length_inches(club)
+    if club_length_inches is None:
+        limitations.append("Select a specific club to estimate speed.")
+
+    if source_fps < SHOT_ESTIMATE_MIN_SOURCE_FPS:
+        limitations.append("Record or upload a higher frame-rate clip for speed estimates.")
+    elif source_fps < SHOT_ESTIMATE_COARSE_SOURCE_FPS:
+        limitations.append("Speed ranges are coarse because this clip is about 30 fps.")
+
+    scale = estimate_club_scale(
+        frames=frames,
+        positions=positions,
+        video_width=video_width,
+        video_height=video_height,
+        club_length_inches=club_length_inches,
+    )
+    if scale is not None:
+        evidence["calibrationSource"] = scale["source"]
+    elif club_length_inches is not None:
+        limitations.append("The club length in the address frames was not stable enough to calibrate speed.")
+        scale = estimate_body_height_scale(
+            frames=frames,
+            positions=positions,
+            video_height=video_height,
+        )
+        if scale is not None:
+            evidence["calibrationSource"] = scale["source"]
+            limitations.append("Speed calibration used body height, so treat the range as a broad training estimate.")
+
+    club_uncertainty = shot_speed_uncertainty(
+        source_fps=source_fps,
+        calibration_source=str(evidence["calibrationSource"]),
+        partial_path="club_path_partial" in warnings,
+        base=0.24,
+    )
+    ball_uncertainty = shot_speed_uncertainty(
+        source_fps=source_fps,
+        calibration_source=str(evidence["calibrationSource"]),
+        partial_path=False,
+        base=0.32,
+    )
+
+    club_speed = None
+    if "club_path_uncertain" in warnings:
+        limitations.append("Clubhead tracking was uncertain, so club speed was not estimated.")
+    elif "club_path_partial" in warnings:
+        limitations.append("Clubhead tracking was partial, so the club speed range is broad.")
+    elif source_fps >= SHOT_ESTIMATE_MIN_SOURCE_FPS and scale is not None:
+        club_speed = estimate_club_speed_mph_range(
+            frames=frames,
+            positions=positions,
+            meters_per_pixel=float(scale["metersPerPixel"]),
+            video_width=video_width,
+            video_height=video_height,
+            uncertainty=club_uncertainty,
+        )
+        if club_speed is None:
+            limitations.append("Clubhead motion through impact was not clean enough for a speed range.")
+    if "club_path_partial" in warnings and source_fps >= SHOT_ESTIMATE_MIN_SOURCE_FPS and scale is not None:
+        club_speed = estimate_club_speed_mph_range(
+            frames=frames,
+            positions=positions,
+            meters_per_pixel=float(scale["metersPerPixel"]),
+            video_width=video_width,
+            video_height=video_height,
+            uncertainty=club_uncertainty,
+        )
+        if club_speed is None:
+            limitations.append("Clubhead motion through impact was not clean enough for a speed range.")
+
+    ball_points: list[dict[str, float]] = []
+    ball_anchor = address_ball_anchor(frames, positions)
+    impact_index = positions.get("impact")
+    if video_path is not None and ball_anchor is not None and impact_index is not None and 0 <= impact_index < len(frames):
+        ball_points = track_ball_flight_from_video(
+            video_path=video_path,
+            impact_time_ms=frames[impact_index]["t"],
+            source_fps=source_fps,
+            ball_anchor=ball_anchor,
+            anchor_frame=frames[impact_index],
+            rotation_degrees=rotation_degrees,
+            mirror_horizontal=mirror_horizontal,
+        )
+        evidence["detectedBallFlightFrames"] = len(ball_points)
+    elif ball_anchor is None:
+        limitations.append("The address ball position was not clear enough for ball-flight tracking.")
+
+    ball_speed = None
+    if len(ball_points) < SHOT_ESTIMATE_MIN_BALL_FRAMES:
+        limitations.append("Early ball flight was not detected clearly enough.")
+    elif source_fps >= SHOT_ESTIMATE_MIN_SOURCE_FPS and scale is not None:
+        ball_speed = estimate_ball_speed_mph_range(
+            ball_points=ball_points,
+            meters_per_pixel=float(scale["metersPerPixel"]),
+            video_width=video_width,
+            video_height=video_height,
+            uncertainty=ball_uncertainty,
+        )
+        if ball_speed is None:
+            limitations.append("Ball-flight motion was too noisy for a speed range.")
+
+    landing_zone = landing_zone_from_ball_points(ball_points)
+    confidence = shot_estimate_confidence(
+        club_speed=club_speed,
+        ball_speed=ball_speed,
+        landing_zone=landing_zone,
+        source_fps=source_fps,
+        calibration_source=str(evidence["calibrationSource"]),
+        ball_frame_count=len(ball_points),
+        analysis_quality=analysis_quality,
+    )
+
+    return {
+        "clubSpeedMphRange": club_speed,
+        "ballSpeedMphRange": ball_speed,
+        "landingZone": landing_zone,
+        "confidence": confidence,
+        "evidence": evidence,
+        "limitations": dedupe_warnings(limitations),
+    }
+
+
+def canonical_club_code(club: str | None) -> str | None:
+    if club is None:
+        return None
+    code = club.strip().upper().replace(" ", "")
+    aliases = {
+        "DRIVER": "D",
+        "1W": "D",
+        "3WOOD": "3W",
+        "5WOOD": "5W",
+        "P": "PW",
+        "PITCHINGWEDGE": "PW",
+        "GAPWEDGE": "AW",
+        "APPROACHWEDGE": "AW",
+        "SANDWEDGE": "SW",
+        "LOBWEDGE": "LW",
+        "OTHER": None,
+    }
+    return aliases.get(code, code)
+
+
+def nominal_club_length_inches(club: str | None) -> float | None:
+    code = canonical_club_code(club)
+    if code is None:
+        return None
+    return SHOT_ESTIMATE_CLUB_LENGTH_INCHES.get(code)
+
+
+def estimate_club_scale(
+    frames: list[Frame],
+    positions: dict[str, int],
+    video_width: int,
+    video_height: int,
+    club_length_inches: float | None,
+) -> dict[str, object] | None:
+    if club_length_inches is None or video_width <= 0 or video_height <= 0:
+        return None
+
+    address = positions.get("address")
+    if address is None:
+        return None
+
+    pixel_lengths: list[float] = []
+    for offset in range(CLUB_DIRECTION_ADDRESS_WINDOW[0], CLUB_DIRECTION_ADDRESS_WINDOW[1] + 1):
+        index = address + offset
+        if index < 0 or index >= len(frames):
+            continue
+        frame = frames[index]
+        club_head = frame.get("clubHead")
+        if club_head is None:
+            continue
+        if max(keypoint_score(frame, "left_wrist"), keypoint_score(frame, "right_wrist")) < RELIABLE_KEYPOINT_SCORE:
+            continue
+
+        grip = grip_point(frame)
+        length_px = pixel_distance(
+            grip[0],
+            grip[1],
+            float(club_head["x"]),
+            float(club_head["y"]),
+            video_width,
+            video_height,
+        )
+        if length_px >= 36:
+            pixel_lengths.append(length_px)
+
+    if len(pixel_lengths) < 2:
+        return None
+
+    median_px = float(np.median(pixel_lengths))
+    if median_px <= 0:
+        return None
+
+    spread = float(np.std(pixel_lengths))
+    if spread / median_px > 0.32:
+        return None
+
+    return {
+        "metersPerPixel": (club_length_inches * 0.0254) / median_px,
+        "source": "selected_club_address_length",
+        "samples": len(pixel_lengths),
+    }
+
+
+def estimate_body_height_scale(
+    frames: list[Frame],
+    positions: dict[str, int],
+    video_height: int,
+) -> dict[str, object] | None:
+    if video_height <= 0 or not frames:
+        return None
+
+    sample_indices = sorted(
+        {
+            clamp_index(index + offset, frames)
+            for index in positions.values()
+            for offset in (-1, 0, 1)
+            if isinstance(index, int)
+        }
+    )
+    pixel_heights: list[float] = []
+    for index in sample_indices:
+        frame = frames[index]
+        if golfer_frame_quality(frame) < 0.45:
+            continue
+        body_height_px = club_reference_body_height(frame) * video_height
+        if body_height_px >= 140:
+            pixel_heights.append(body_height_px)
+
+    if len(pixel_heights) < 3:
+        return None
+
+    median_px = float(np.median(pixel_heights))
+    if median_px <= 0:
+        return None
+
+    spread = float(np.std(pixel_heights))
+    if spread / median_px > 0.28:
+        return None
+
+    return {
+        "metersPerPixel": SHOT_ESTIMATE_BODY_HEIGHT_METERS / median_px,
+        "source": "body_height_pose_estimate",
+        "samples": len(pixel_heights),
+    }
+
+
+def shot_speed_uncertainty(
+    source_fps: float,
+    calibration_source: str,
+    partial_path: bool,
+    base: float,
+) -> float:
+    uncertainty = base
+    if source_fps < SHOT_ESTIMATE_COARSE_SOURCE_FPS:
+        uncertainty = max(uncertainty, 0.42)
+    if calibration_source == "body_height_pose_estimate":
+        uncertainty = max(uncertainty, 0.50)
+    if partial_path:
+        uncertainty = max(uncertainty, 0.46)
+    return uncertainty
+
+
+def estimate_club_speed_mph_range(
+    frames: list[Frame],
+    positions: dict[str, int],
+    meters_per_pixel: float,
+    video_width: int,
+    video_height: int,
+    uncertainty: float = 0.24,
+) -> dict[str, float | str] | None:
+    impact = positions.get("impact")
+    if impact is None or meters_per_pixel <= 0:
+        return None
+
+    speeds: list[float] = []
+    start = max(0, impact - 4)
+    end = min(len(frames) - 1, impact + 2)
+    samples = [
+        (index, frames[index])
+        for index in range(start, end + 1)
+        if "clubHead" in frames[index]
+    ]
+    if len(samples) < 2:
+        return None
+
+    for (_, first), (_, second) in zip(samples, samples[1:]):
+        first_point = first["clubHead"]
+        second_point = second["clubHead"]
+        dt = (second["t"] - first["t"]) / 1000
+        if dt <= 0:
+            continue
+        distance_px = pixel_distance(
+            float(first_point["x"]),
+            float(first_point["y"]),
+            float(second_point["x"]),
+            float(second_point["y"]),
+            video_width,
+            video_height,
+        )
+        speed_mph = distance_px * meters_per_pixel / dt * SHOT_ESTIMATE_MPS_TO_MPH
+        if 15 <= speed_mph <= 180:
+            speeds.append(speed_mph)
+
+    if not speeds:
+        return None
+
+    center = float(np.percentile(speeds, 75))
+    return speed_range(center, uncertainty=uncertainty, low=10, high=180)
+
+
+def track_ball_flight_from_video(
+    video_path: Path,
+    impact_time_ms: int,
+    source_fps: float,
+    ball_anchor: tuple[float, float],
+    anchor_frame: Frame,
+    rotation_degrees: int | None = None,
+    mirror_horizontal: bool = False,
+) -> list[dict[str, float]]:
+    if source_fps <= 0:
+        return []
+
+    capture = open_video_capture(video_path)
+    if not capture.isOpened():
+        return []
+
+    start_frame = max(0, int(round(impact_time_ms / 1000 * source_fps)))
+    max_frames = max(3, min(64, int(round(source_fps * SHOT_ESTIMATE_MAX_BALL_WINDOW_MS / 1000))))
+    capture.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+    native_frames: list[tuple[int, np.ndarray]] = []
+    frame_number = start_frame
+    for _ in range(max_frames):
+        success, frame = capture.read()
+        if not success:
+            break
+        edited = apply_video_edit(frame, rotation_degrees=rotation_degrees, mirror_horizontal=mirror_horizontal)
+        native_frames.append((frame_number, cv2.cvtColor(edited, cv2.COLOR_BGR2GRAY)))
+        frame_number += 1
+
+    capture.release()
+    return detect_ball_flight_points(
+        native_frames=native_frames,
+        source_fps=source_fps,
+        ball_anchor=ball_anchor,
+        anchor_frame=anchor_frame,
+    )
+
+
+def detect_ball_flight_points(
+    native_frames: list[tuple[int, np.ndarray]],
+    source_fps: float,
+    ball_anchor: tuple[float, float],
+    anchor_frame: Frame,
+) -> list[dict[str, float]]:
+    if len(native_frames) < 2 or source_fps <= 0:
+        return []
+
+    _, base_gray = native_frames[0]
+    frame_height, frame_width = base_gray.shape[:2]
+    anchor_px = (ball_anchor[0] * frame_width, ball_anchor[1] * frame_height)
+    body_height_px = max(80.0, club_reference_body_height(anchor_frame) * frame_height)
+    roi_radius = max(64.0, body_height_px * SHOT_ESTIMATE_BALL_ROI_BODY_HEIGHT_RATIO)
+    left = max(0, int(round(anchor_px[0] - roi_radius)))
+    right = min(frame_width, int(round(anchor_px[0] + roi_radius)))
+    top = max(0, int(round(anchor_px[1] - roi_radius)))
+    bottom = min(frame_height, int(round(anchor_px[1] + roi_radius)))
+    if right - left < 24 or bottom - top < 24:
+        return []
+
+    base_roi = cv2.GaussianBlur(base_gray[top:bottom, left:right], (5, 5), 0)
+    points: list[dict[str, float]] = []
+    last_distance = 0.0
+
+    for frame_number, gray in native_frames[1:]:
+        roi = cv2.GaussianBlur(gray[top:bottom, left:right], (5, 5), 0)
+        diff = cv2.absdiff(roi, base_roi)
+        _, mask = cv2.threshold(diff, 24, 255, cv2.THRESH_BINARY)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((2, 2), dtype=np.uint8))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        best: tuple[float, float, float] | None = None
+        for contour in contours:
+            area = float(cv2.contourArea(contour))
+            if area < 2.0 or area > max(220.0, body_height_px * 0.8):
+                continue
+            x, y, w, h = cv2.boundingRect(contour)
+            if w > body_height_px * 0.18 or h > body_height_px * 0.18:
+                continue
+            cx = left + x + w / 2
+            cy = top + y + h / 2
+            distance_from_anchor = math.hypot(cx - anchor_px[0], cy - anchor_px[1])
+            if distance_from_anchor < max(4.0, body_height_px * 0.018):
+                continue
+            if points and distance_from_anchor + body_height_px * 0.015 < last_distance:
+                continue
+            intensity = float(np.mean(diff[y : y + h, x : x + w]))
+            score = distance_from_anchor * 0.55 + intensity * 0.45 - area * 0.04
+            if best is None or score > best[0]:
+                best = (score, cx, cy)
+
+        if best is None:
+            continue
+
+        _, cx, cy = best
+        last_distance = math.hypot(cx - anchor_px[0], cy - anchor_px[1])
+        points.append(
+            {
+                "t": frame_number / source_fps * 1000,
+                "x": round(clamp_float(cx / frame_width), 4),
+                "y": round(clamp_float(cy / frame_height), 4),
+            }
+        )
+
+    return points
+
+
+def estimate_ball_speed_mph_range(
+    ball_points: list[dict[str, float]],
+    meters_per_pixel: float,
+    video_width: int,
+    video_height: int,
+    uncertainty: float = 0.32,
+) -> dict[str, float | str] | None:
+    if len(ball_points) < SHOT_ESTIMATE_MIN_BALL_FRAMES or meters_per_pixel <= 0:
+        return None
+
+    first = ball_points[0]
+    last = ball_points[min(len(ball_points) - 1, 4)]
+    dt = (float(last["t"]) - float(first["t"])) / 1000
+    if dt <= 0:
+        return None
+
+    distance_px = pixel_distance(
+        float(first["x"]),
+        float(first["y"]),
+        float(last["x"]),
+        float(last["y"]),
+        video_width,
+        video_height,
+    )
+    speed_mph = distance_px * meters_per_pixel / dt * SHOT_ESTIMATE_MPS_TO_MPH
+    if speed_mph < 20 or speed_mph > 240:
+        return None
+
+    return speed_range(speed_mph, uncertainty=uncertainty, low=10, high=240)
+
+
+def landing_zone_from_ball_points(ball_points: list[dict[str, float]]) -> str:
+    if len(ball_points) < SHOT_ESTIMATE_MIN_BALL_FRAMES:
+        return "unknown"
+
+    first_x = float(ball_points[0]["x"])
+    last_x = float(ball_points[min(len(ball_points) - 1, 4)]["x"])
+    dx = last_x - first_x
+    if dx > 0.035:
+        return "right"
+    if dx < -0.035:
+        return "left"
+    return "center"
+
+
+def shot_estimate_confidence(
+    club_speed: dict[str, float | str] | None,
+    ball_speed: dict[str, float | str] | None,
+    landing_zone: str,
+    source_fps: float,
+    calibration_source: str,
+    ball_frame_count: int,
+    analysis_quality: CaptureProfile | None,
+) -> str:
+    if club_speed is None and ball_speed is None and landing_zone == "unknown":
+        return "low"
+
+    status = (analysis_quality or {}).get("status", "poor")
+    if (
+        status == "ok"
+        and source_fps >= 100
+        and calibration_source != "unavailable"
+        and ball_frame_count >= 4
+        and club_speed is not None
+        and ball_speed is not None
+        and landing_zone != "unknown"
+    ):
+        return "high"
+
+    if calibration_source != "unavailable" and (club_speed is not None or ball_speed is not None or landing_zone != "unknown"):
+        return "medium"
+
+    return "low"
+
+
+def speed_range(
+    center_mph: float,
+    uncertainty: float,
+    low: float,
+    high: float,
+) -> dict[str, float | str]:
+    minimum = max(low, center_mph * (1.0 - uncertainty))
+    maximum = min(high, center_mph * (1.0 + uncertainty))
+    return {
+        "min": round(minimum, 1),
+        "max": round(maximum, 1),
+        "unit": "mph",
+    }
+
+
+def pixel_distance(
+    first_x: float,
+    first_y: float,
+    second_x: float,
+    second_y: float,
+    width: int,
+    height: int,
+) -> float:
+    return math.hypot((second_x - first_x) * width, (second_y - first_y) * height)
+
+
 def wrist_velocity(frames: list[Frame]) -> np.ndarray:
     xs, ys = hand_center_series(frames)
 
@@ -2501,6 +3733,8 @@ def finalize_analysis_quality(
     status = capture_status
     if capture_status != "ok" or phase_status == "poor":
         status = worst_quality_status(capture_status, phase_status)
+    if "club_path_partial" in capture_profile["warnings"]:
+        status = worst_quality_status(status, "warning")
     warnings = list(capture_profile["warnings"])
     low_phase_names = [name for name, confidence in phase_confidence.items() if confidence < PHASE_CONFIDENCE_THRESHOLD]
     if low_phase_names:

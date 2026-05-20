@@ -71,6 +71,7 @@ def build_gemini_prompt(swing_id: str, club: str, analysis: dict[str, Any]) -> s
         "analysisVersion": analysis.get("analysisVersion"),
         "phaseTimestampsMs": phase_timestamps(analysis),
         "metrics": analysis.get("metrics"),
+        "shotEstimate": analysis.get("shotEstimate"),
         "analysisQuality": analysis.get("analysisQuality"),
         "phaseConfidence": analysis.get("phaseConfidence"),
         "swingThought": analysis.get("swingThought"),

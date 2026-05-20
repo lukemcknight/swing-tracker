@@ -5,6 +5,10 @@ __pycache__
 .mplconfig
 .cache
 .debug
+backend/debug/
+data/
+swing-tracker-ml.mlproj/
+SESSION_CONTEXT.md
 .derived
 .build
 .pytest_cache

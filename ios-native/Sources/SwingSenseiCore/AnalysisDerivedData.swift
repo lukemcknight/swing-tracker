@@ -60,10 +60,12 @@ public enum ClubPathStabilizer {
     private static let minimumPrimaryScore = 0.58
     private static let minimumPrimaryPhaseScore = 0.25
     private static let minimumPrimaryThroughImpactRatio = 0.35
+    private static let partialPrimaryScore = 0.34
+    private static let partialThroughImpactRatio = 0.55
     private static let ambiguousPrimaryScoreRatio = 0.86
     private static let ambiguousPhaseScoreGap = 0.25
-    private static let maximumStepMinimum = 0.16
-    private static let maximumStepMaximum = 0.34
+    private static let maximumStepMinimum = 0.8
+    private static let maximumStepMaximum = 0.9
     private static let maximumStepBodyHeightRatio = 0.55
     private static let minimumGripDistanceBodyHeightRatio = 0.045
     private static let maximumGripDistanceBodyHeightRatio = 1.08
@@ -139,14 +141,111 @@ public enum ClubPathStabilizer {
         startingFrameIndex: Int = 0,
         positions: [String: Int] = [:]
     ) -> ClubPathSegment? {
-        let requiredScore = positions.isEmpty ? 0.34 : minimumPrimaryScore
-        let scoredSegments = stableSegments(from: frames, startingFrameIndex: startingFrameIndex)
-            .map { segment in
-                score(segment: segment, positions: positions)
+        let candidates = stableSegments(from: frames, startingFrameIndex: startingFrameIndex)
+            .map { score(segment: $0, positions: positions) }
+
+        let fullScore = positions.isEmpty ? 0.34 : minimumPrimaryScore
+        if let winner = pickWinner(
+            from: candidates,
+            minimumScore: fullScore,
+            minimumPhaseScore: positions.isEmpty ? nil : minimumPrimaryPhaseScore,
+            minimumThroughImpact: positions.isEmpty ? nil : minimumPrimaryThroughImpactRatio
+        ) {
+            return winner.segment
+        }
+
+        if !positions.isEmpty,
+           let winner = pickWinner(
+               from: candidates,
+               minimumScore: partialPrimaryScore,
+               minimumPhaseScore: nil,
+               minimumThroughImpact: partialThroughImpactRatio
+           )
+        {
+            return winner.segment
+        }
+
+        // Fallback: the phase-based checks above score against the backend's
+        // swing-phase positions, which can be wrong (the backend's own clubhead
+        // detection is unreliable — the dedicated CoreML detector exists because
+        // of that). When they fail, pick the renderable segment with the largest
+        // travel: trust what the detector actually saw move.
+        return candidates
+            .map(\.segment)
+            .max { pathDisplacement($0.points) < pathDisplacement($1.points) }
+    }
+
+    public struct PlausibilityRow {
+        public let t: Int
+        public let hasClubHead: Bool
+        public let plausible: Bool
+        public let stepFromPrevDetection: Double?
+        public let stepLimit: Double?
+    }
+
+    /// Diagnostic: per-frame report of why detections survive or break segments.
+    public static func plausibilityReport(for frames: [SwingAnalysisFrame]) -> [PlausibilityRow] {
+        var rows: [PlausibilityRow] = []
+        var prev: SwingAnalysisFrame? = nil
+        for frame in frames {
+            let ch = frame.clubHead
+            let plausible = ch.map { isPlausible(point: $0, in: frame) } ?? false
+            var step: Double? = nil
+            var limit: Double? = nil
+            if let ch, plausible, let prev, let pch = prev.clubHead {
+                step = normalizedDistance(pch, ch)
+                limit = clubHeadStepLimit(prev, frame)
             }
-            .filter { $0.score >= requiredScore }
-            .filter { positions.isEmpty || $0.phaseScore >= minimumPrimaryPhaseScore }
-            .filter { positions.isEmpty || $0.throughImpactScore >= minimumPrimaryThroughImpactRatio }
+            rows.append(PlausibilityRow(
+                t: frame.t, hasClubHead: ch != nil, plausible: plausible,
+                stepFromPrevDetection: step, stepLimit: limit
+            ))
+            if ch != nil, plausible { prev = frame }
+        }
+        return rows
+    }
+
+    public struct SegmentScoreRow {
+        public let sampleCount: Int
+        public let displacement: Double
+        public let score: Double
+        public let phaseScore: Double
+        public let throughImpactScore: Double
+    }
+
+    /// Diagnostic: per-segment scores vs the primary-segment selection thresholds.
+    public static func scoreReport(
+        from frames: [SwingAnalysisFrame],
+        positions: [String: Int]
+    ) -> [SegmentScoreRow] {
+        stableSegments(from: frames).map { seg in
+            let scored = score(segment: seg, positions: positions)
+            return SegmentScoreRow(
+                sampleCount: seg.samples.count,
+                displacement: pathDisplacement(seg.points),
+                score: scored.score,
+                phaseScore: scored.phaseScore,
+                throughImpactScore: scored.throughImpactScore
+            )
+        }
+    }
+
+    private static func pickWinner(
+        from candidates: [ScoredSegment],
+        minimumScore: Double,
+        minimumPhaseScore: Double?,
+        minimumThroughImpact: Double?
+    ) -> ScoredSegment? {
+        let filtered = candidates
+            .filter { $0.score >= minimumScore }
+            .filter { candidate in
+                guard let threshold = minimumPhaseScore else { return true }
+                return candidate.phaseScore >= threshold
+            }
+            .filter { candidate in
+                guard let threshold = minimumThroughImpact else { return true }
+                return candidate.throughImpactScore >= threshold
+            }
             .sorted {
                 if $0.score == $1.score {
                     return $0.segment.samples.count > $1.segment.samples.count
@@ -154,16 +253,16 @@ public enum ClubPathStabilizer {
                 return $0.score > $1.score
             }
 
-        guard let best = scoredSegments.first else { return nil }
+        guard let best = filtered.first else { return nil }
         if
-            scoredSegments.count > 1,
-            scoredSegments[1].score >= best.score * ambiguousPrimaryScoreRatio,
-            best.phaseScore - scoredSegments[1].phaseScore < ambiguousPhaseScoreGap
+            filtered.count > 1,
+            filtered[1].score >= best.score * ambiguousPrimaryScoreRatio,
+            best.phaseScore - filtered[1].phaseScore < ambiguousPhaseScoreGap
         {
             return nil
         }
 
-        return best.segment
+        return best
     }
 
     private static func isRenderableSegment(_ samples: [ClubPathSample]) -> Bool {
@@ -250,19 +349,12 @@ public enum ClubPathStabilizer {
         guard point.x.isFinite, point.y.isFinite, (0...1).contains(point.x), (0...1).contains(point.y) else {
             return false
         }
-        guard let grip = gripPoint(in: frame), let box = bodyBox(in: frame) else {
-            return true
-        }
-
-        let bodyHeight = clubReferenceBodyHeight(in: frame)
-        let gripDistance = normalizedDistance(point, grip)
-        let minimumGripDistance = max(0.018, bodyHeight * minimumGripDistanceBodyHeightRatio)
-        let maximumGripDistance = min(0.86, max(0.24, bodyHeight * maximumGripDistanceBodyHeightRatio))
-        guard gripDistance >= minimumGripDistance, gripDistance <= maximumGripDistance else {
-            return false
-        }
-
-        return !contains(point: point, in: box, inset: 0.02)
+        // The dedicated CoreML detector (confidence threshold + negative training
+        // examples) is the plausibility filter now. The old pose-derived heuristics
+        // (body-box, grip-distance) reject real detections during the swing: the
+        // clubhead-to-hands distance varies as the club folds/extends, and the pose
+        // grip point is unreliable under fast motion. Keep only a bounds check.
+        return true
     }
 
     private static func clubHeadStepLimit(_ firstFrame: SwingAnalysisFrame, _ secondFrame: SwingAnalysisFrame) -> Double {

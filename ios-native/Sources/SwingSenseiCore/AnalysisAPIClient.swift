@@ -40,6 +40,7 @@ public final class AnalysisAPIClient {
     public func analyzeSwing(
         videoURL: URL,
         swingID: String,
+        club: String? = nil,
         durationMs: Int?,
         trimStartMs: Int? = nil,
         trimEndMs: Int? = nil,
@@ -48,6 +49,7 @@ public final class AnalysisAPIClient {
         let videoData = try Data(contentsOf: videoURL)
         let request = try makeAnalyzeRequest(
             swingID: swingID,
+            club: club,
             durationMs: durationMs,
             trimStartMs: trimStartMs,
             trimEndMs: trimEndMs,
@@ -115,6 +117,7 @@ public final class AnalysisAPIClient {
 
     public func makeAnalyzeRequest(
         swingID: String,
+        club: String? = nil,
         durationMs: Int?,
         trimStartMs: Int?,
         trimEndMs: Int?,
@@ -125,6 +128,9 @@ public final class AnalysisAPIClient {
     ) throws -> URLRequest {
         let endpoint = baseURL.appendingPathComponent("analyze-swing")
         var fields = ["swing_id": swingID]
+        if let club, !club.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            fields["club"] = club
+        }
         if let durationMs, durationMs > 0 {
             fields["client_duration_ms"] = String(durationMs)
         }

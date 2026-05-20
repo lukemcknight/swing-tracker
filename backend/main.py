@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
@@ -37,6 +38,7 @@ def health() -> dict[str, str]:
 @app.post("/analyze-swing")
 async def analyze_swing(
     swing_id: str = Form(...),
+    club: str | None = Form(None),
     client_duration_ms: int | None = Form(None),
     trim_start_ms: int | None = Form(None),
     trim_end_ms: int | None = Form(None),
@@ -51,9 +53,10 @@ async def analyze_swing(
             temp_path = Path(temp_file.name)
             temp_file.write(await video.read())
 
-        return analyze_video(
+        result = analyze_video(
             swing_id=swing_id,
             video_path=temp_path,
+            club=club,
             client_duration_ms=client_duration_ms,
             debug_dir=DEBUG_DIR,
             debug_url_path="/debug",
@@ -62,6 +65,13 @@ async def analyze_swing(
             rotation_degrees=rotation_degrees,
             mirror_horizontal=mirror_horizontal,
         )
+        warnings = (result.get("analysisQuality") or {}).get("warnings") or []
+        if "club_path_uncertain" in warnings or "club_path_partial" in warnings:
+            safe_id = "".join(c if c.isalnum() or c in "-_" else "_" for c in swing_id)
+            saved = DEBUG_DIR / f"{safe_id}_source{suffix}"
+            shutil.copy(temp_path, saved)
+            print("club path debug video saved", {"path": str(saved)}, flush=True)
+        return result
     except RuntimeError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     finally:

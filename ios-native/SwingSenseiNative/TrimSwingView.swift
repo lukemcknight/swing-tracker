@@ -9,6 +9,7 @@ struct TrimSwingView: View {
 
     @StateObject private var viewModel: TrimSwingViewModel
     @State private var isAnalyzing = false
+    @State private var selectedClub: GolfClub
 
     init(
         swing: SwingRecord,
@@ -19,6 +20,7 @@ struct TrimSwingView: View {
         self.onCancel = onCancel
         self.onAnalyze = onAnalyze
         _viewModel = StateObject(wrappedValue: TrimSwingViewModel(swing: swing))
+        _selectedClub = State(initialValue: GolfClub.canonical(swing.club) ?? .sevenIron)
     }
 
     var body: some View {
@@ -31,6 +33,7 @@ struct TrimSwingView: View {
                     playRow
                     timeline
                     editControls
+                    clubPicker
                     analyzeButton
                 }
                 .padding(.horizontal, 20)
@@ -175,6 +178,64 @@ struct TrimSwingView: View {
         .animation(.spring(response: 0.24, dampingFraction: 0.82), value: viewModel.videoEditState)
     }
 
+    private var clubPicker: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "figure.golf")
+                .font(.title3.weight(.black))
+                .foregroundStyle(Theme.primary)
+                .frame(width: 42, height: 42)
+                .background(Theme.primary.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Club")
+                    .font(.caption.weight(.black))
+                    .foregroundStyle(Theme.primary)
+                    .textCase(.uppercase)
+                    .tracking(1.1)
+
+                Text("Selected club")
+                    .font(.callout)
+                    .foregroundStyle(Theme.muted)
+            }
+
+            Spacer()
+
+            Menu {
+                ForEach(GolfClub.groups, id: \.title) { group in
+                    Section(group.title) {
+                        ForEach(group.clubs) { club in
+                            Button {
+                                selectedClub = club
+                            } label: {
+                                if club == selectedClub {
+                                    Label(club.rawValue, systemImage: "checkmark")
+                                } else {
+                                    Text(club.rawValue)
+                                }
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Text(selectedClub.rawValue)
+                        .font(.headline.weight(.black))
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption.weight(.black))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .frame(height: 46)
+                .background(Theme.elevated, in: Capsule())
+                .overlay(Capsule().stroke(Theme.line))
+            }
+            .disabled(isAnalyzing)
+        }
+        .padding(16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.line))
+    }
+
     private var analyzeButton: some View {
         Button {
             Task {
@@ -185,7 +246,7 @@ struct TrimSwingView: View {
                     viewModel.trimEndMs,
                     viewModel.durationMs,
                     viewModel.videoEditState,
-                    GolfClub.other.rawValue
+                    selectedClub.rawValue
                 )
                 isAnalyzing = false
             }

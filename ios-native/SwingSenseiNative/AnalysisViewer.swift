@@ -2,6 +2,8 @@ import SwiftUI
 
 struct AnalysisViewer: View {
     private static let minimumClubPathAnalysisVersion = 25
+    private static let topBarHeight: CGFloat = 78
+    private static let minimumControlsHeight: CGFloat = 260
 
     @StateObject private var viewModel: SwingAnalysisViewModel
     let onClose: () -> Void
@@ -35,12 +37,19 @@ struct AnalysisViewer: View {
     }
 
     private var viewerStage: some View {
-        VStack(spacing: 0) {
-            viewerTopBar
-            videoSurface
-            analysisControlDeck
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                viewerTopBar
+
+                videoSurface
+                    .frame(maxWidth: .infinity)
+                    .frame(height: videoSurfaceHeight(for: geometry.size.height))
+
+                analysisControlDeck
+                    .frame(maxHeight: .infinity)
+            }
+            .background(.black)
         }
-        .background(.black)
     }
 
     private var viewerTopBar: some View {
@@ -65,7 +74,7 @@ struct AnalysisViewer: View {
             }
         }
         .padding(.horizontal, 18)
-        .frame(height: 86)
+        .frame(height: Self.topBarHeight)
         .background(.black)
     }
 
@@ -106,21 +115,38 @@ struct AnalysisViewer: View {
         }
     }
 
+    private func videoSurfaceHeight(for totalHeight: CGFloat) -> CGFloat {
+        let availableHeight = max(0, totalHeight - Self.topBarHeight)
+        let preferredHeight = max(300, min(430, availableHeight * 0.52))
+        let controlsAwareHeight = max(260, availableHeight - Self.minimumControlsHeight)
+        return min(preferredHeight, controlsAwareHeight)
+    }
+
     private var analysisControlDeck: some View {
         VStack(spacing: 0) {
-            if showsPathStatusBanner {
-                analysisQualityBanner
-                    .padding(.horizontal, 18)
-                    .padding(.top, 14)
-                    .padding(.bottom, 10)
-                    .background(Theme.surface)
-            }
+            ScrollView {
+                VStack(spacing: 0) {
+                    if showsPathStatusBanner {
+                        analysisQualityBanner
+                            .padding(.horizontal, 18)
+                            .padding(.top, 14)
+                            .padding(.bottom, 10)
+                    }
 
-            phaseChips
-                .padding(.horizontal, 18)
-                .padding(.top, 14)
-                .padding(.bottom, 10)
-                .background(Theme.surface)
+                    if let shotEstimate = viewModel.analysis.shotEstimate {
+                        shotEstimatePanel(shotEstimate)
+                            .padding(.horizontal, 18)
+                            .padding(.top, showsPathStatusBanner ? 4 : 14)
+                            .padding(.bottom, 10)
+                    }
+
+                    phaseChips
+                        .padding(.horizontal, 18)
+                        .padding(.top, 14)
+                        .padding(.bottom, 10)
+                }
+            }
+            .background(Theme.surface)
 
             HStack(spacing: 14) {
                 Button {
@@ -194,6 +220,81 @@ struct AnalysisViewer: View {
             .padding(.top, 18)
             .padding(.bottom, 24)
             .background(Theme.surface)
+        }
+    }
+
+    private func shotEstimatePanel(_ estimate: ShotEstimate) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Shot Estimate")
+                    .font(.callout.weight(.black))
+                    .foregroundStyle(.white)
+
+                Spacer()
+
+                Text(estimate.confidence.capitalized)
+                    .font(.caption.weight(.black))
+                    .foregroundStyle(shotEstimateConfidenceColor(estimate.confidence))
+                    .padding(.horizontal, 10)
+                    .frame(height: 26)
+                    .background(shotEstimateConfidenceColor(estimate.confidence).opacity(0.14), in: Capsule())
+            }
+
+            HStack(spacing: 10) {
+                ShotEstimateMetricView(
+                    title: "Club",
+                    value: speedRangeText(estimate.clubSpeedMphRange)
+                )
+
+                ShotEstimateMetricView(
+                    title: "Ball",
+                    value: speedRangeText(estimate.ballSpeedMphRange)
+                )
+
+                ShotEstimateMetricView(
+                    title: "Zone",
+                    value: landingZoneText(estimate.landingZone)
+                )
+            }
+
+            if !estimate.limitations.isEmpty {
+                Text(estimate.limitations.prefix(2).joined(separator: " "))
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(14)
+        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Theme.line))
+    }
+
+    private func speedRangeText(_ range: SpeedRange?) -> String {
+        guard let range else { return "--" }
+        return "\(Int(range.min.rounded()))-\(Int(range.max.rounded())) \(range.unit)"
+    }
+
+    private func landingZoneText(_ zone: String) -> String {
+        switch zone {
+        case "left":
+            "Left"
+        case "center":
+            "Center"
+        case "right":
+            "Right"
+        default:
+            "--"
+        }
+    }
+
+    private func shotEstimateConfidenceColor(_ confidence: String) -> Color {
+        switch confidence {
+        case "high":
+            Theme.primary
+        case "medium":
+            Theme.accent
+        default:
+            Theme.muted
         }
     }
 
@@ -324,6 +425,9 @@ struct AnalysisViewer: View {
 
     private func qualityWarningCopy(_ quality: AnalysisQuality) -> String {
         let warnings = Set(quality.warnings)
+        if warnings.contains("club_path_partial") {
+            return "Clubhead tracking was partial, so this shows the portion of the path we could follow reliably."
+        }
         if warnings.contains("club_path_uncertain") {
             return "Club tracking was unstable, so use this path as a rough visual check."
         }
@@ -361,6 +465,9 @@ struct AnalysisViewer: View {
 
     private var pathStatusTitle: String {
         guard clubHeadPointCount > 0 else { return "No Path" }
+        if viewModel.analysis.analysisQuality?.warnings.contains("club_path_partial") == true {
+            return "Partial"
+        }
         switch viewModel.analysis.analysisQuality?.status {
         case "poor":
             return "Poor"
@@ -373,6 +480,9 @@ struct AnalysisViewer: View {
 
     private var pathStatusColor: Color {
         guard clubHeadPointCount > 0 else { return .red.opacity(0.92) }
+        if viewModel.analysis.analysisQuality?.warnings.contains("club_path_partial") == true {
+            return Theme.accent
+        }
         switch viewModel.analysis.analysisQuality?.status {
         case "poor":
             return .red.opacity(0.92)
@@ -381,6 +491,27 @@ struct AnalysisViewer: View {
         default:
             return Theme.primary
         }
+    }
+}
+
+private struct ShotEstimateMetricView: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption2.weight(.black))
+                .foregroundStyle(Theme.muted)
+                .textCase(.uppercase)
+
+            Text(value)
+                .font(.callout.weight(.black))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

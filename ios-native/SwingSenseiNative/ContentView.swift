@@ -3,7 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = AppViewModel()
-    @AppStorage("analysisBaseURL") private var baseURLString = "http://127.0.0.1:8000"
+    @AppStorage("analysisBaseURL") private var baseURLString = AnalysisBaseURL.resolvedDefault
 
     var body: some View {
         ZStack {
@@ -15,7 +15,7 @@ struct ContentView: View {
 
                 HistoryView(viewModel: viewModel, baseURLString: $baseURLString)
                     .tabItem {
-                        Label("History", systemImage: "clock.fill")
+                        Label("Swings", systemImage: "list.bullet.rectangle.fill")
                     }
 
                 SettingsView(baseURLString: $baseURLString)
@@ -30,14 +30,14 @@ struct ContentView: View {
             }
         }
         .task {
-            viewModel.loadSwings()
+            viewModel.loadData()
         }
         .sheet(item: $viewModel.trimSelection) { selection in
             if let swing = viewModel.swing(id: selection.id) {
                 TrimSwingView(
                     swing: swing,
                     onCancel: {
-                        viewModel.trimSelection = nil
+                        viewModel.cancelTrimSelection()
                     },
                     onAnalyze: { startMs, endMs, durationMs, videoEditState, club in
                         await viewModel.saveTrimAndAnalyze(
@@ -60,25 +60,30 @@ struct ContentView: View {
                 let swing = viewModel.swing(id: selection.id),
                 let analysis = swing.analysis
             {
-                AnalysisViewer(
-                    swingID: swing.id,
-                    videoURL: swing.videoURL,
+                LaunchMonitorReadoutView(
+                    swing: swing,
                     analysis: analysis,
-                    club: swing.club,
-                    aiAnalysis: swing.aiAnalysis,
-                    videoEditState: swing.videoEditState ?? .identity,
-                    onClubChange: { club in
-                        viewModel.updateClub(swingID: swing.id, club: club)
-                    },
-                    onRequestAIFeedback: { club in
-                        try await viewModel.requestAIFeedback(
-                            swingID: swing.id,
-                            club: club,
-                            baseURLString: baseURLString
-                        )
-                    }
+                    onDismiss: { viewModel.viewerSelection = nil }
                 ) {
-                    viewModel.viewerSelection = nil
+                    AnalysisViewer(
+                        swingID: swing.id,
+                        videoURL: swing.videoURL,
+                        analysis: analysis,
+                        club: swing.club,
+                        aiAnalysis: swing.aiAnalysis,
+                        videoEditState: swing.videoEditState ?? .identity,
+                        onClubChange: { club in
+                            viewModel.updateClub(swingID: swing.id, club: club)
+                        },
+                        onRequestAIFeedback: { club in
+                            try await viewModel.requestAIFeedback(
+                                swingID: swing.id,
+                                club: club,
+                                baseURLString: baseURLString
+                            )
+                        },
+                        onClose: {}
+                    )
                 }
             } else {
                 MissingSwingView()

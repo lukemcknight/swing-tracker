@@ -14,6 +14,7 @@ from swing_analyzer import (
     apply_contact_frame_lead,
     build_capture_profile,
     build_feedback,
+    build_shot_estimate,
     build_phase_confidence,
     build_swing_thought,
     cap_score_for_quality,
@@ -25,6 +26,9 @@ from swing_analyzer import (
     fit_swing_plane,
     gate_feedback,
     hand_center_series,
+    landing_zone_from_ball_points,
+    nominal_club_length_inches,
+    propagate_clubhead_with_tracker,
     refine_impact,
     repair_club_head_points,
     repair_foot_keypoints,
@@ -132,6 +136,34 @@ def make_capture_sequence(**kwargs) -> list[dict]:
     return [make_capture_frame(index, **kwargs) for index in range(12)]
 
 
+def make_shot_estimate_sequence() -> tuple[list[dict], dict[str, int]]:
+    club_points = [
+        (0.50, 0.90),
+        (0.50, 0.90),
+        (0.50, 0.90),
+        (0.50, 0.90),
+        (0.50, 0.90),
+        (0.50, 0.90),
+        (0.58, 0.75),
+        (0.72, 0.64),
+        (0.88, 0.86),
+        (0.78, 0.70),
+    ]
+    frames = []
+    for index, point in enumerate(club_points):
+        frame = make_frame(index, 0.50, 0.70)
+        frame["clubHead"] = {"x": point[0], "y": point[1]}
+        frames.append(frame)
+
+    return frames, {
+        "address": 0,
+        "takeaway": 5,
+        "top": 6,
+        "impact": 8,
+        "finish": 9,
+    }
+
+
 def quality_profile(status: str = "ok") -> dict:
     confidence = {"ok": 0.9, "warning": 0.68, "poor": 0.42}[status]
     return {
@@ -181,6 +213,142 @@ class PositionDetectionTests(unittest.TestCase):
             edited[:, :, 0],
             np.array([[1, 4], [2, 5], [3, 6]], dtype=np.uint8),
         )
+
+    def test_nominal_club_length_lookup_uses_selected_club(self):
+        self.assertAlmostEqual(nominal_club_length_inches("7"), 37.0)
+        self.assertAlmostEqual(nominal_club_length_inches("driver"), 45.5)
+        self.assertIsNone(nominal_club_length_inches("Other"))
+
+    def test_shot_estimate_calibrates_from_known_club(self):
+        frames, positions = make_shot_estimate_sequence()
+
+        estimate = build_shot_estimate(
+            video_path=None,
+            club="7",
+            frames=frames,
+            positions=positions,
+            source_fps=120,
+            video_width=640,
+            video_height=640,
+            analysis_quality=quality_profile("ok"),
+        )
+
+        self.assertEqual(estimate["evidence"]["calibrationSource"], "selected_club_address_length")
+        self.assertIsNotNone(estimate["clubSpeedMphRange"])
+        self.assertIsNone(estimate["ballSpeedMphRange"])
+
+    def test_shot_estimate_accepts_thirty_fps_as_coarse_estimate(self):
+        frames, positions = make_shot_estimate_sequence()
+
+        estimate = build_shot_estimate(
+            video_path=None,
+            club="7",
+            frames=frames,
+            positions=positions,
+            source_fps=29.97,
+            video_width=640,
+            video_height=640,
+            analysis_quality=quality_profile("ok"),
+        )
+
+        self.assertIsNotNone(estimate["clubSpeedMphRange"])
+        self.assertIn("Speed ranges are coarse because this clip is about 30 fps.", estimate["limitations"])
+        self.assertNotIn("Record or upload a higher frame-rate clip for speed estimates.", estimate["limitations"])
+
+    def test_shot_estimate_suppresses_speed_for_other_club(self):
+        frames, positions = make_shot_estimate_sequence()
+
+        estimate = build_shot_estimate(
+            video_path=None,
+            club="Other",
+            frames=frames,
+            positions=positions,
+            source_fps=120,
+            video_width=640,
+            video_height=640,
+            analysis_quality=quality_profile("ok"),
+        )
+
+        self.assertIsNone(estimate["clubSpeedMphRange"])
+        self.assertIn("Select a specific club to estimate speed.", estimate["limitations"])
+
+    def test_shot_estimate_suppresses_speed_when_fps_is_low(self):
+        frames, positions = make_shot_estimate_sequence()
+
+        estimate = build_shot_estimate(
+            video_path=None,
+            club="7",
+            frames=frames,
+            positions=positions,
+            source_fps=24,
+            video_width=640,
+            video_height=640,
+            analysis_quality=quality_profile("ok"),
+        )
+
+        self.assertIsNone(estimate["clubSpeedMphRange"])
+        self.assertIsNone(estimate["ballSpeedMphRange"])
+        self.assertIn("Record or upload a higher frame-rate clip for speed estimates.", estimate["limitations"])
+
+    def test_shot_estimate_allows_broad_club_speed_for_partial_club_path(self):
+        frames, positions = make_shot_estimate_sequence()
+        profile = quality_profile("ok")
+        profile["warnings"] = ["club_path_partial"]
+
+        estimate = build_shot_estimate(
+            video_path=None,
+            club="7",
+            frames=frames,
+            positions=positions,
+            source_fps=120,
+            video_width=640,
+            video_height=640,
+            analysis_quality=profile,
+        )
+
+        self.assertIsNotNone(estimate["clubSpeedMphRange"])
+        self.assertIn("Clubhead tracking was partial, so the club speed range is broad.", estimate["limitations"])
+
+    def test_shot_estimate_uses_body_height_when_club_length_is_unstable(self):
+        frames, positions = make_shot_estimate_sequence()
+        for index in range(0, 6):
+            frames[index]["clubHead"] = {
+                "x": 0.50 + (0.08 if index % 2 == 0 else 0.44),
+                "y": 0.70,
+            }
+
+        estimate = build_shot_estimate(
+            video_path=None,
+            club="7",
+            frames=frames,
+            positions=positions,
+            source_fps=29.97,
+            video_width=640,
+            video_height=640,
+            analysis_quality=quality_profile("ok"),
+        )
+
+        self.assertEqual(estimate["evidence"]["calibrationSource"], "body_height_pose_estimate")
+        self.assertIsNotNone(estimate["clubSpeedMphRange"])
+        self.assertIn("Speed calibration used body height, so treat the range as a broad training estimate.", estimate["limitations"])
+
+    def test_landing_zone_classifies_early_ball_direction(self):
+        base = [
+            {"t": 0, "x": 0.50, "y": 0.50},
+            {"t": 8, "x": 0.53, "y": 0.48},
+            {"t": 16, "x": 0.57, "y": 0.46},
+        ]
+
+        self.assertEqual(landing_zone_from_ball_points(base), "right")
+        self.assertEqual(
+            landing_zone_from_ball_points([{**point, "x": 1.0 - point["x"]} for point in base]),
+            "left",
+        )
+        self.assertEqual(
+            landing_zone_from_ball_points([{**point, "x": 0.50 + index * 0.005} for index, point in enumerate(base)]),
+            "center",
+        )
+        self.assertEqual(landing_zone_from_ball_points(base[:2]), "unknown")
 
     def test_detect_club_head_finds_synthetic_shaft_endpoint(self):
         image = np.zeros((640, 360, 3), dtype=np.uint8)
@@ -246,9 +414,9 @@ class PositionDetectionTests(unittest.TestCase):
         for index, frame in enumerate(frames):
             frame["clubHead"] = {"x": 0.62 + index * 0.025, "y": 0.82 - index * 0.015}
 
-        stabilized, uncertain = stabilize_club_head_points(frames)
+        stabilized, status = stabilize_club_head_points(frames)
 
-        self.assertFalse(uncertain)
+        self.assertIsNone(status)
         self.assertEqual(sum(1 for frame in stabilized if "clubHead" in frame), 6)
 
     def test_stabilize_club_head_points_removes_single_frame_spike(self):
@@ -267,9 +435,9 @@ class PositionDetectionTests(unittest.TestCase):
         for frame, point in zip(frames, path):
             frame["clubHead"] = {"x": point[0], "y": point[1]}
 
-        stabilized, uncertain = stabilize_club_head_points(frames)
+        stabilized, status = stabilize_club_head_points(frames)
 
-        self.assertFalse(uncertain)
+        self.assertIsNone(status)
         self.assertNotIn("clubHead", stabilized[4])
         self.assertEqual(sum(1 for frame in stabilized if "clubHead" in frame), 8)
 
@@ -286,9 +454,9 @@ class PositionDetectionTests(unittest.TestCase):
         for frame, point in zip(frames, path):
             frame["clubHead"] = {"x": point[0], "y": point[1]}
 
-        stabilized, uncertain = stabilize_club_head_points(frames)
+        stabilized, status = stabilize_club_head_points(frames)
 
-        self.assertTrue(uncertain)
+        self.assertEqual(status, "uncertain")
         self.assertEqual(sum(1 for frame in stabilized if "clubHead" in frame), 0)
 
     def test_stabilize_club_head_points_keeps_short_repaired_gap_inside_stable_run(self):
@@ -299,9 +467,9 @@ class PositionDetectionTests(unittest.TestCase):
         frames[5]["clubHead"] = {"x": 0.72, "y": 0.77}
 
         repaired = repair_club_head_points(frames)
-        stabilized, uncertain = stabilize_club_head_points(repaired)
+        stabilized, status = stabilize_club_head_points(repaired)
 
-        self.assertFalse(uncertain)
+        self.assertIsNone(status)
         self.assertEqual(sum(1 for frame in stabilized if "clubHead" in frame), 6)
 
     def test_stabilize_club_head_points_keeps_three_point_range_track(self):
@@ -309,12 +477,12 @@ class PositionDetectionTests(unittest.TestCase):
         for index, point in enumerate([(0.62, 0.82), (0.65, 0.80), (0.69, 0.77)]):
             frames[index]["clubHead"] = {"x": point[0], "y": point[1]}
 
-        stabilized, uncertain = stabilize_club_head_points(
+        stabilized, status = stabilize_club_head_points(
             frames,
             {"address": 0, "takeaway": 1, "top": 2, "impact": 4, "finish": 4},
         )
 
-        self.assertFalse(uncertain)
+        self.assertIsNone(status)
         self.assertEqual([index for index, frame in enumerate(stabilized) if "clubHead" in frame], [0, 1, 2])
 
     def test_stabilize_club_head_points_keeps_phase_aligned_primary_run(self):
@@ -337,12 +505,12 @@ class PositionDetectionTests(unittest.TestCase):
         for offset, point in enumerate(primary_path, start=5):
             frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
 
-        stabilized, uncertain = stabilize_club_head_points(
+        stabilized, status = stabilize_club_head_points(
             frames,
             {"address": 5, "takeaway": 6, "top": 7, "impact": 9, "finish": 9},
         )
 
-        self.assertFalse(uncertain)
+        self.assertIsNone(status)
         self.assertEqual([index for index, frame in enumerate(stabilized) if "clubHead" in frame], [5, 6, 7, 8, 9])
 
     def test_stabilize_club_head_points_keeps_full_swing_with_long_followthrough(self):
@@ -354,38 +522,44 @@ class PositionDetectionTests(unittest.TestCase):
                 "y": round(0.82 - float(np.sin(amount * np.pi)) * 0.52, 4),
             }
 
-        stabilized, uncertain = stabilize_club_head_points(
+        stabilized, status = stabilize_club_head_points(
             frames,
-            {"address": 0, "takeaway": 5, "top": 10, "impact": 14, "finish": 60},
+            {"address": 0, "takeaway": 5, "top": 30, "impact": 60, "finish": 60},
         )
 
-        self.assertFalse(uncertain)
+        self.assertIsNone(status)
         self.assertEqual([index for index, frame in enumerate(stabilized) if "clubHead" in frame], list(range(61)))
 
-    def test_stabilize_club_head_points_rejects_ambiguous_competing_runs(self):
+    def test_stabilize_club_head_points_keeps_address_run_when_impact_lock_on_is_filtered(self):
+        """When the address detection is real but a same-side artifact lock-on lands
+        near the impact frame far from the ball, the ball-anchor check rejects the
+        artifact at plausibility, and the higher-scoring address run survives alone."""
         frames = [make_frame(index, 0.50, 0.70) for index in range(9)]
         path = [
-            (0.62, 0.82),
-            (0.64, 0.81),
-            (0.66, 0.80),
-            (0.68, 0.79),
+            (0.55, 0.82),
+            (0.57, 0.82),
+            (0.59, 0.82),
+            (0.61, 0.82),
             None,
-            (0.28, 0.72),
-            (0.30, 0.71),
-            (0.32, 0.70),
-            (0.34, 0.69),
+            (0.95, 0.82),
+            (0.93, 0.82),
+            (0.91, 0.82),
+            (0.89, 0.82),
         ]
         for frame, point in zip(frames, path):
             if point is not None:
                 frame["clubHead"] = {"x": point[0], "y": point[1]}
 
-        stabilized, uncertain = stabilize_club_head_points(
+        stabilized, status = stabilize_club_head_points(
             frames,
             {"address": 0, "takeaway": 1, "top": 4, "impact": 8, "finish": 8},
         )
 
-        self.assertTrue(uncertain)
-        self.assertEqual(sum(1 for frame in stabilized if "clubHead" in frame), 0)
+        self.assertEqual(status, "partial")
+        self.assertEqual(
+            [index for index, frame in enumerate(stabilized) if "clubHead" in frame],
+            [0, 1, 2, 3],
+        )
 
     def test_stabilize_club_head_points_rejects_run_outside_swing_window(self):
         frames = [make_frame(index, 0.50, 0.70) for index in range(11)]
@@ -400,12 +574,12 @@ class PositionDetectionTests(unittest.TestCase):
         for offset, point in enumerate(late_false_path, start=5):
             frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
 
-        stabilized, uncertain = stabilize_club_head_points(
+        stabilized, status = stabilize_club_head_points(
             frames,
             {"address": 0, "takeaway": 1, "top": 2, "impact": 3, "finish": 4},
         )
 
-        self.assertTrue(uncertain)
+        self.assertEqual(status, "uncertain")
         self.assertEqual(sum(1 for frame in stabilized if "clubHead" in frame), 0)
 
     def test_stabilize_club_head_points_rejects_post_impact_only_run(self):
@@ -420,12 +594,182 @@ class PositionDetectionTests(unittest.TestCase):
         for offset, point in enumerate(post_impact_path, start=7):
             frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
 
-        stabilized, uncertain = stabilize_club_head_points(
+        stabilized, status = stabilize_club_head_points(
             frames,
             {"address": 0, "takeaway": 2, "top": 4, "impact": 6, "finish": 11},
         )
 
-        self.assertTrue(uncertain)
+        self.assertEqual(status, "uncertain")
+        self.assertEqual(sum(1 for frame in stabilized if "clubHead" in frame), 0)
+
+    def test_stabilize_club_head_points_merges_non_overlapping_continuous_runs(self):
+        frames = [make_frame(index, 0.50, 0.70) for index in range(15)]
+        early_path = [
+            (0.62, 0.82),
+            (0.64, 0.81),
+            (0.66, 0.80),
+            (0.68, 0.79),
+        ]
+        late_path = [
+            (0.66, 0.80),
+            (0.64, 0.81),
+            (0.62, 0.82),
+            (0.60, 0.83),
+        ]
+        for offset, point in enumerate(early_path, start=0):
+            frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
+        for offset, point in enumerate(late_path, start=9):
+            frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
+
+        stabilized, status = stabilize_club_head_points(
+            frames,
+            {"address": 0, "takeaway": 2, "top": 5, "impact": 10, "finish": 14},
+        )
+
+        self.assertEqual(status, "partial")
+        self.assertEqual(
+            [index for index, frame in enumerate(stabilized) if "clubHead" in frame],
+            [0, 1, 2, 3, 9, 10, 11, 12],
+        )
+
+    def test_stabilize_club_head_points_keeps_partial_path_through_impact(self):
+        frames = [make_frame(index, 0.50, 0.70) for index in range(11)]
+        through_impact_path = [
+            (0.62, 0.65),
+            (0.635, 0.635),
+            (0.65, 0.62),
+        ]
+        for offset, point in enumerate(through_impact_path, start=1):
+            frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
+
+        stabilized, status = stabilize_club_head_points(
+            frames,
+            {"address": 2, "takeaway": 3, "top": 4, "impact": 6, "finish": 10},
+        )
+
+        self.assertEqual(status, "partial")
+        self.assertEqual(
+            [index for index, frame in enumerate(stabilized) if "clubHead" in frame],
+            [1, 2, 3],
+        )
+
+    def test_stabilize_club_head_points_rejects_disjoint_takeaway_artifact(self):
+        """IMG_4646 regression: after the address run, the detector found a separate
+        same-side cluster far from the address ball position covering the takeaway
+        frame. Because it's spatially discontinuous with the address run AND
+        temporally disjoint, the disjoint-conflict rule must silently skip it
+        rather than merge it into a misleading partial path."""
+        frames = [make_frame(index, 0.50, 0.70) for index in range(15)]
+        address_path = [
+            (0.85, 0.81),
+            (0.85, 0.81),
+            (0.85, 0.81),
+            (0.85, 0.81),
+            (0.84, 0.80),
+            (0.83, 0.78),
+            (0.82, 0.76),
+            (0.81, 0.75),
+        ]
+        takeaway_artifact = [
+            (0.97, 0.43),
+            (0.97, 0.45),
+            (0.97, 0.46),
+            (0.96, 0.45),
+            (0.95, 0.44),
+        ]
+        for offset, point in enumerate(address_path, start=0):
+            frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
+        for offset, point in enumerate(takeaway_artifact, start=8):
+            frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
+
+        stabilized, status = stabilize_club_head_points(
+            frames,
+            {"address": 0, "takeaway": 9, "top": 12, "impact": 14, "finish": 14},
+        )
+
+        kept = [index for index, frame in enumerate(stabilized) if "clubHead" in frame]
+        for index in range(8, 13):
+            self.assertNotIn(index, kept, "disjoint takeaway artifact must be skipped")
+        self.assertTrue(any(index <= 7 for index in kept), "address run must survive")
+
+    def test_stabilize_club_head_points_rejects_lead_arm_lockon_opposite_address(self):
+        """IMG_4646 regression: detector locks onto the lead arm across backswing/downswing,
+        producing a tight cluster on the opposite side of the grip from where the address
+        clubhead was. The address-anchored direction check must reject that cluster."""
+        frames = [make_frame(index, 0.50, 0.70) for index in range(11)]
+        address_path = [
+            (0.85, 0.81),
+            (0.85, 0.81),
+            (0.84, 0.80),
+        ]
+        lead_arm_lockon = [
+            (0.08, 0.12),
+            (0.06, 0.10),
+            (0.07, 0.11),
+            (0.05, 0.09),
+            (0.06, 0.10),
+        ]
+        for offset, point in enumerate(address_path, start=0):
+            frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
+        for offset, point in enumerate(lead_arm_lockon, start=4):
+            frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
+
+        stabilized, status = stabilize_club_head_points(
+            frames,
+            {"address": 0, "takeaway": 2, "top": 5, "impact": 8, "finish": 10},
+        )
+
+        kept = [index for index, frame in enumerate(stabilized) if "clubHead" in frame]
+        for index in (4, 5, 6, 7, 8):
+            self.assertNotIn(index, kept, "lead-arm lock-on frames must be rejected")
+        self.assertNotEqual(status, "partial", "must not surface lead-arm cluster as a partial path")
+
+    def test_stabilize_club_head_points_allows_post_takeaway_side_switch(self):
+        frames = [make_frame(index, 0.50, 0.70) for index in range(12)]
+        address_side_path = [
+            (0.62, 0.82),
+            (0.63, 0.78),
+            (0.64, 0.74),
+            (0.65, 0.70),
+        ]
+        crossed_over_path = [
+            (0.44, 0.58),
+            (0.42, 0.55),
+            (0.40, 0.52),
+            (0.38, 0.49),
+        ]
+        for offset, point in enumerate(address_side_path):
+            frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
+        for offset, point in enumerate(crossed_over_path, start=7):
+            frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
+
+        stabilized, status = stabilize_club_head_points(
+            frames,
+            {"address": 0, "takeaway": 3, "top": 9, "impact": 15, "finish": 15},
+        )
+
+        self.assertEqual(status, "partial")
+        self.assertEqual(
+            [index for index, frame in enumerate(stabilized) if "clubHead" in frame],
+            [0, 1, 2, 3, 7, 8, 9, 10],
+        )
+
+    def test_stabilize_club_head_points_rejects_partial_path_below_through_impact_threshold(self):
+        frames = [make_frame(index, 0.50, 0.70) for index in range(11)]
+        post_impact_path = [
+            (0.72, 0.66),
+            (0.74, 0.62),
+            (0.76, 0.58),
+        ]
+        for offset, point in enumerate(post_impact_path, start=7):
+            frames[offset]["clubHead"] = {"x": point[0], "y": point[1]}
+
+        stabilized, status = stabilize_club_head_points(
+            frames,
+            {"address": 0, "takeaway": 1, "top": 3, "impact": 6, "finish": 10},
+        )
+
+        self.assertEqual(status, "uncertain")
         self.assertEqual(sum(1 for frame in stabilized if "clubHead" in frame), 0)
 
     def test_primary_club_path_repair_only_bridges_selected_run(self):
@@ -437,13 +781,13 @@ class PositionDetectionTests(unittest.TestCase):
         frames[9]["clubHead"] = {"x": 0.70, "y": 0.78}
         frames[10]["clubHead"] = {"x": 0.72, "y": 0.77}
 
-        stabilized, uncertain = stabilize_club_head_points(
+        stabilized, status = stabilize_club_head_points(
             frames,
             {"address": 5, "takeaway": 6, "top": 8, "impact": 10, "finish": 10},
         )
         repaired = repair_club_head_points(stabilized)
 
-        self.assertFalse(uncertain)
+        self.assertIsNone(status)
         self.assertEqual([index for index, frame in enumerate(repaired) if "clubHead" in frame], [5, 6, 7, 8, 9, 10])
 
     def test_scale_frame_times_preserves_club_head(self):
@@ -1024,6 +1368,67 @@ class PositionDetectionTests(unittest.TestCase):
 
         self.assertLess(confidence["top"], 0.55)
         self.assertLess(confidence["impact"], 0.55)
+
+    def test_tracker_extends_anchor_run_when_object_is_trackable(self):
+        height, width = 540, 960
+        n_frames = 8
+        frames = []
+        frame_grays = []
+        for index in range(n_frames):
+            frame = make_frame(index, 0.50, 0.70)
+            frames.append(frame)
+            # Black background with a bright 30x30 square that moves diagonally.
+            gray = np.zeros((height, width), dtype=np.uint8)
+            cx = int(round((0.30 + 0.04 * index) * width))
+            cy = int(round((0.70 - 0.03 * index) * height))
+            gray[max(0, cy - 15) : cy + 15, max(0, cx - 15) : cx + 15] = 220
+            # Add a contrasting fixed marker elsewhere so CSRT has something to lock to.
+            gray[100:130, 100:130] = 80
+            frame_grays.append(gray)
+
+        # Only the first three frames have a "Hough" clubhead anchor on the bright square.
+        for index in range(3):
+            cx = 0.30 + 0.04 * index
+            cy = 0.70 - 0.03 * index
+            frames[index]["clubHead"] = {"x": cx, "y": cy}
+
+        provenance = propagate_clubhead_with_tracker(
+            frames=frames,
+            frame_grays=frame_grays,
+            positions={"address": 0, "takeaway": 2, "top": 4, "impact": 6, "finish": 7},
+        )
+
+        self.assertGreater(len(provenance["propagatedFrames"]), 0)
+        # CSRT should track at least one frame forward from the anchor.
+        self.assertIn(3, provenance["propagatedFrames"])
+
+    def test_tracker_stops_when_position_stuck(self):
+        height, width = 540, 960
+        n_frames = 8
+        frames = []
+        frame_grays = []
+        # All frames are identical so the tracker reports no motion.
+        identical_gray = np.zeros((height, width), dtype=np.uint8)
+        identical_gray[300:340, 400:440] = 200
+        identical_gray[100:130, 100:130] = 80
+        for index in range(n_frames):
+            frame = make_frame(index, 0.50, 0.70)
+            frames.append(frame)
+            frame_grays.append(identical_gray.copy())
+
+        # Anchor at the bright square's center.
+        for index in range(3):
+            frames[index]["clubHead"] = {"x": 420 / width, "y": 320 / height}
+
+        provenance = propagate_clubhead_with_tracker(
+            frames=frames,
+            frame_grays=frame_grays,
+            positions={"address": 0, "takeaway": 2, "top": 4, "impact": 6, "finish": 7},
+        )
+
+        reasons = [d["reason"] for d in provenance["droppedAt"] if d["direction"] == "forward"]
+        self.assertEqual(reasons, ["stuck"])
+        self.assertEqual(len(provenance["propagatedFrames"]), 0)
 
 
 if __name__ == "__main__":

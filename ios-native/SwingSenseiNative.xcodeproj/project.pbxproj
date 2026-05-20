@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 46;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -14,16 +14,25 @@
 		42F038DAD91E6B7CF0038008 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA697E6A88B90D537813DAA /* SettingsView.swift */; };
 		5FCEFD0CA19CCBCFCB0BC8D5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ADE31D10AE091D116370D65E /* Foundation.framework */; };
 		62268F927BB9B3FB9761ECA8 /* AnalysisAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03A2F690C232324089BF989D /* AnalysisAPIClient.swift */; };
+		6A83A4022A5C4F0C9E290001 /* ArcadeDebugLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A83A4022A5C4F0C9E290002 /* ArcadeDebugLabView.swift */; };
 		7A040F0A2684CEE7345A5A09 /* PlayerLayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E754057030E31AFEB3350259 /* PlayerLayerView.swift */; };
 		7C3EFD7F4F4729AC670E15DD /* SwingRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D5D65B77EEFE5B6537B268 /* SwingRepository.swift */; };
 		81C76DC9CB993CCCC577A389 /* SwingSenseiNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 194E4AC9FEEE1C4EEA29F269 /* SwingSenseiNativeApp.swift */; };
+		8B3C0D3C0D8E4D7AA7390001 /* ArcadeCourse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B3C0D3C0D8E4D7AA7390002 /* ArcadeCourse.swift */; };
+		8B3C0D3C0D8E4D7AA7390003 /* PlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B3C0D3C0D8E4D7AA7390004 /* PlayView.swift */; };
 		988128A1C99F425AA51E11D3 /* MultipartFormDataBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* AnalysisBaseURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* AnalysisBaseURL.swift */; };
 		A561F7CE0E7034CC82255D75 /* SwingAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */; };
+		B2C3D4E5F60718293A4B5C6D /* LaunchMonitorReadoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B5C6E /* LaunchMonitorReadoutView.swift */; };
 		BACFC4E578F60474DAF2C7B4 /* PickedVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F36941A716F4FE8E00725A /* PickedVideo.swift */; };
 		C38867BC657E14D4C1612CF5 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D349B6F95C82CCE3F713F89 /* Theme.swift */; };
 		D5A96753C10CF7C057720583 /* SwingAnalysisViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D9C8A4C28F5C4C9CBA4AED /* SwingAnalysisViewModel.swift */; };
 		D6A5B7A80267137D6813570C /* AnalysisViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5852357E411E11FA6888EE0 /* AnalysisViewer.swift */; };
 		E424FE8BE6147F3419750515 /* SwingRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = C513847C281C1ED12D71795E /* SwingRecord.swift */; };
+		E59D13E52FBD164800912934 /* ClubHeadDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = E59D13E42FBD164800912934 /* ClubHeadDetector.swift */; };
+		E59D13E82FBD1A5700912934 /* ClubHeadDetectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E59D13E62FBD1A5700912934 /* ClubHeadDetectionService.swift */; };
+		E59D13E92FBD1A5700912934 /* VideoFrameSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = E59D13E72FBD1A5700912934 /* VideoFrameSampler.swift */; };
+		E59D13F32FBE1FB200912934 /* ClubHeadModel.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = E59D13F22FBE1FB200912934 /* ClubHeadModel.mlmodel */; };
 		E8E60E0CB1B635BB2251917D /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D175378668E1ACD8A2A3391 /* CameraCaptureView.swift */; };
 		F38B79CEA91F6ACC820E18C5 /* AnalysisDerivedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600D188BF8FFE90F2B0C734D /* AnalysisDerivedData.swift */; };
 		FC9D4BC763DE05D593DADB72 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCA9D55544AC5726202B940 /* CaptureView.swift */; };
@@ -42,16 +51,25 @@
 		5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingAnalysis.swift; sourceTree = "<group>"; };
 		600D188BF8FFE90F2B0C734D /* AnalysisDerivedData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisDerivedData.swift; sourceTree = "<group>"; };
 		62D5D65B77EEFE5B6537B268 /* SwingRepository.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingRepository.swift; sourceTree = "<group>"; };
+		6A83A4022A5C4F0C9E290002 /* ArcadeDebugLabView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArcadeDebugLabView.swift; sourceTree = "<group>"; };
 		72A2F88E148DAEA19600C476 /* SkeletonOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkeletonOverlay.swift; sourceTree = "<group>"; };
+		8B3C0D3C0D8E4D7AA7390002 /* ArcadeCourse.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArcadeCourse.swift; sourceTree = "<group>"; };
+		8B3C0D3C0D8E4D7AA7390004 /* PlayView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlayView.swift; sourceTree = "<group>"; };
 		8D175378668E1ACD8A2A3391 /* CameraCaptureView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
 		8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultipartFormDataBuilder.swift; sourceTree = "<group>"; };
 		8D349B6F95C82CCE3F713F89 /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5D /* AnalysisBaseURL.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisBaseURL.swift; sourceTree = "<group>"; };
 		ADE31D10AE091D116370D65E /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		B2C3D4E5F60718293A4B5C6E /* LaunchMonitorReadoutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LaunchMonitorReadoutView.swift; sourceTree = "<group>"; };
 		C513847C281C1ED12D71795E /* SwingRecord.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingRecord.swift; sourceTree = "<group>"; };
 		C98FCB018B8080017A6DB9AC /* TrimSwingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrimSwingView.swift; sourceTree = "<group>"; };
 		D57D4D0F3C593CAE6805036F /* AnalysisURLNormalization.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisURLNormalization.swift; sourceTree = "<group>"; };
 		D81617F3B35443EB114DCC54 /* HistoryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		D8F36941A716F4FE8E00725A /* PickedVideo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PickedVideo.swift; sourceTree = "<group>"; };
+		E59D13E42FBD164800912934 /* ClubHeadDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClubHeadDetector.swift; sourceTree = "<group>"; };
+		E59D13E62FBD1A5700912934 /* ClubHeadDetectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClubHeadDetectionService.swift; sourceTree = "<group>"; };
+		E59D13E72FBD1A5700912934 /* VideoFrameSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFrameSampler.swift; sourceTree = "<group>"; };
+		E59D13F22FBE1FB200912934 /* ClubHeadModel.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = ClubHeadModel.mlmodel; sourceTree = "<group>"; };
 		E754057030E31AFEB3350259 /* PlayerLayerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlayerLayerView.swift; sourceTree = "<group>"; };
 		F1D9C8A4C28F5C4C9CBA4AED /* SwingAnalysisViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingAnalysisViewModel.swift; sourceTree = "<group>"; };
 		F5852357E411E11FA6888EE0 /* AnalysisViewer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisViewer.swift; sourceTree = "<group>"; };
@@ -76,6 +94,7 @@
 				03A2F690C232324089BF989D /* AnalysisAPIClient.swift */,
 				600D188BF8FFE90F2B0C734D /* AnalysisDerivedData.swift */,
 				D57D4D0F3C593CAE6805036F /* AnalysisURLNormalization.swift */,
+				8B3C0D3C0D8E4D7AA7390002 /* ArcadeCourse.swift */,
 				8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */,
 				5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */,
 				C513847C281C1ED12D71795E /* SwingRecord.swift */,
@@ -114,13 +133,18 @@
 		D6E73616D2A8281316448A84 /* SwingSenseiNative */ = {
 			isa = PBXGroup;
 			children = (
+				E59D13F22FBE1FB200912934 /* ClubHeadModel.mlmodel */,
+				6A83A4022A5C4F0C9E290002 /* ArcadeDebugLabView.swift */,
 				F5852357E411E11FA6888EE0 /* AnalysisViewer.swift */,
+				A1B2C3D4E5F60718293A4B5D /* AnalysisBaseURL.swift */,
 				16C16474CA25653233EEE4CA /* AppViewModel.swift */,
 				8D175378668E1ACD8A2A3391 /* CameraCaptureView.swift */,
 				FBCA9D55544AC5726202B940 /* CaptureView.swift */,
 				585A43CDE9FAB107D101A1C6 /* ContentView.swift */,
 				D81617F3B35443EB114DCC54 /* HistoryView.swift */,
+				B2C3D4E5F60718293A4B5C6E /* LaunchMonitorReadoutView.swift */,
 				D8F36941A716F4FE8E00725A /* PickedVideo.swift */,
+				8B3C0D3C0D8E4D7AA7390004 /* PlayView.swift */,
 				E754057030E31AFEB3350259 /* PlayerLayerView.swift */,
 				3BA697E6A88B90D537813DAA /* SettingsView.swift */,
 				72A2F88E148DAEA19600C476 /* SkeletonOverlay.swift */,
@@ -129,8 +153,10 @@
 				8D349B6F95C82CCE3F713F89 /* Theme.swift */,
 				C98FCB018B8080017A6DB9AC /* TrimSwingView.swift */,
 				556AB663D0CB0212CE3CD953 /* Info.plist */,
+				E59D13E42FBD164800912934 /* ClubHeadDetector.swift */,
+				E59D13E62FBD1A5700912934 /* ClubHeadDetectionService.swift */,
+				E59D13E72FBD1A5700912934 /* VideoFrameSampler.swift */,
 			);
-			name = SwingSenseiNative;
 			path = SwingSenseiNative;
 			sourceTree = "<group>";
 		};
@@ -173,6 +199,7 @@
 				TargetAttributes = {
 					058AEE2583CAAE0D368B54AA = {
 						DevelopmentTeam = 9974PM5L6M;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -185,8 +212,6 @@
 				Base,
 			);
 			mainGroup = ADB7DAF7F3195FEFB70EECA4;
-			minimizedProjectReferenceProxies = 0;
-			preferredProjectObjectVersion = 77;
 			productRefGroup = 740BC93245F134C4C67E7BFD /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -212,13 +237,20 @@
 			buildActionMask = 2147483647;
 			files = (
 				D6A5B7A80267137D6813570C /* AnalysisViewer.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* AnalysisBaseURL.swift in Sources */,
+				6A83A4022A5C4F0C9E290001 /* ArcadeDebugLabView.swift in Sources */,
 				1AD337D25A98D75870B99CEF /* AppViewModel.swift in Sources */,
+				E59D13E82FBD1A5700912934 /* ClubHeadDetectionService.swift in Sources */,
+				E59D13E92FBD1A5700912934 /* VideoFrameSampler.swift in Sources */,
 				E8E60E0CB1B635BB2251917D /* CameraCaptureView.swift in Sources */,
 				FC9D4BC763DE05D593DADB72 /* CaptureView.swift in Sources */,
 				30E57C2DBE8EC148BF4DC560 /* ContentView.swift in Sources */,
 				FD2BA03D06A61657344B9DD1 /* HistoryView.swift in Sources */,
+				B2C3D4E5F60718293A4B5C6D /* LaunchMonitorReadoutView.swift in Sources */,
 				BACFC4E578F60474DAF2C7B4 /* PickedVideo.swift in Sources */,
+				8B3C0D3C0D8E4D7AA7390003 /* PlayView.swift in Sources */,
 				7A040F0A2684CEE7345A5A09 /* PlayerLayerView.swift in Sources */,
+				E59D13F32FBE1FB200912934 /* ClubHeadModel.mlmodel in Sources */,
 				42F038DAD91E6B7CF0038008 /* SettingsView.swift in Sources */,
 				FD9974438A4F52078413933D /* SkeletonOverlay.swift in Sources */,
 				D5A96753C10CF7C057720583 /* SwingAnalysisViewModel.swift in Sources */,
@@ -228,6 +260,8 @@
 				62268F927BB9B3FB9761ECA8 /* AnalysisAPIClient.swift in Sources */,
 				F38B79CEA91F6ACC820E18C5 /* AnalysisDerivedData.swift in Sources */,
 				24DC4D3464C19A0F97474051 /* AnalysisURLNormalization.swift in Sources */,
+				8B3C0D3C0D8E4D7AA7390001 /* ArcadeCourse.swift in Sources */,
+				E59D13E52FBD164800912934 /* ClubHeadDetector.swift in Sources */,
 				988128A1C99F425AA51E11D3 /* MultipartFormDataBuilder.swift in Sources */,
 				A561F7CE0E7034CC82255D75 /* SwingAnalysis.swift in Sources */,
 				E424FE8BE6147F3419750515 /* SwingRecord.swift in Sources */,
@@ -314,10 +348,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SwingSenseiNative/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.swingsensei.native;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -377,8 +408,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -396,10 +426,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SwingSenseiNative/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.swingsensei.native;
 				PRODUCT_NAME = "$(TARGET_NAME)";

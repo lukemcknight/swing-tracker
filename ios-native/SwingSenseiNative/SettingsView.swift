@@ -13,7 +13,7 @@ struct SettingsView: View {
                         .keyboardType(.URL)
                         .font(.system(.body, design: .monospaced))
 
-                    Text("Use http://127.0.0.1:8000 for the iOS simulator. Use your Mac's LAN IP for a physical device.")
+                    Text("Point at the hosted backend before TestFlight. For local development, http://127.0.0.1:8000 works in the iOS simulator; use your Mac's LAN IP for a physical device on the same Wi-Fi.")
                         .font(.caption)
                         .foregroundStyle(Theme.muted)
                 }

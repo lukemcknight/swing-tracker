@@ -73,6 +73,55 @@ public struct SwingMetrics: Codable, Equatable {
     public let tempo: Double
 }
 
+public struct SpeedRange: Codable, Equatable {
+    public let min: Double
+    public let max: Double
+    public let unit: String
+
+    public init(min: Double, max: Double, unit: String = "mph") {
+        self.min = min
+        self.max = max
+        self.unit = unit
+    }
+}
+
+public struct ShotEstimateEvidence: Codable, Equatable {
+    public let sourceFps: Double
+    public let calibrationSource: String
+    public let detectedBallFlightFrames: Int
+
+    public init(sourceFps: Double, calibrationSource: String, detectedBallFlightFrames: Int) {
+        self.sourceFps = sourceFps
+        self.calibrationSource = calibrationSource
+        self.detectedBallFlightFrames = detectedBallFlightFrames
+    }
+}
+
+public struct ShotEstimate: Codable, Equatable {
+    public let clubSpeedMphRange: SpeedRange?
+    public let ballSpeedMphRange: SpeedRange?
+    public let landingZone: String
+    public let confidence: String
+    public let evidence: ShotEstimateEvidence
+    public let limitations: [String]
+
+    public init(
+        clubSpeedMphRange: SpeedRange? = nil,
+        ballSpeedMphRange: SpeedRange? = nil,
+        landingZone: String,
+        confidence: String,
+        evidence: ShotEstimateEvidence,
+        limitations: [String]
+    ) {
+        self.clubSpeedMphRange = clubSpeedMphRange
+        self.ballSpeedMphRange = ballSpeedMphRange
+        self.landingZone = landingZone
+        self.confidence = confidence
+        self.evidence = evidence
+        self.limitations = limitations
+    }
+}
+
 public enum FeedbackStatus: String, Codable {
     case good
     case warning
@@ -262,6 +311,7 @@ public struct SwingAnalysis: Codable, Equatable {
     public let swingThought: SwingThought?
     public let analysisQuality: AnalysisQuality?
     public let phaseConfidence: [String: Double]?
+    public let shotEstimate: ShotEstimate?
     public let rawSenseiScore: Double?
     public let senseiScore: Double
 

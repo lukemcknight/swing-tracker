@@ -35,6 +35,7 @@ public extension SwingAnalysis {
             swingThought: swingThought,
             analysisQuality: analysisQuality,
             phaseConfidence: phaseConfidence,
+            shotEstimate: shotEstimate,
             rawSenseiScore: rawSenseiScore,
             senseiScore: senseiScore
         )
