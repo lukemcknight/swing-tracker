@@ -17,7 +17,6 @@
 		7A040F0A2684CEE7345A5A09 /* PlayerLayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E754057030E31AFEB3350259 /* PlayerLayerView.swift */; };
 		7C3EFD7F4F4729AC670E15DD /* SwingRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D5D65B77EEFE5B6537B268 /* SwingRepository.swift */; };
 		81C76DC9CB993CCCC577A389 /* SwingSenseiNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 194E4AC9FEEE1C4EEA29F269 /* SwingSenseiNativeApp.swift */; };
-		8B3C0D3C0D8E4D7AA7390001 /* ArcadeCourse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B3C0D3C0D8E4D7AA7390002 /* ArcadeCourse.swift */; };
 		988128A1C99F425AA51E11D3 /* MultipartFormDataBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */; };
 		A1B2C3D4E5F60718293A4B5C /* AnalysisBaseURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* AnalysisBaseURL.swift */; };
 		A561F7CE0E7034CC82255D75 /* SwingAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */; };
@@ -49,7 +48,6 @@
 		600D188BF8FFE90F2B0C734D /* AnalysisDerivedData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisDerivedData.swift; sourceTree = "<group>"; };
 		62D5D65B77EEFE5B6537B268 /* SwingRepository.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingRepository.swift; sourceTree = "<group>"; };
 		72A2F88E148DAEA19600C476 /* SkeletonOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkeletonOverlay.swift; sourceTree = "<group>"; };
-		8B3C0D3C0D8E4D7AA7390002 /* ArcadeCourse.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArcadeCourse.swift; sourceTree = "<group>"; };
 		8D175378668E1ACD8A2A3391 /* CameraCaptureView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
 		8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultipartFormDataBuilder.swift; sourceTree = "<group>"; };
 		8D349B6F95C82CCE3F713F89 /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -88,7 +86,6 @@
 				03A2F690C232324089BF989D /* AnalysisAPIClient.swift */,
 				600D188BF8FFE90F2B0C734D /* AnalysisDerivedData.swift */,
 				D57D4D0F3C593CAE6805036F /* AnalysisURLNormalization.swift */,
-				8B3C0D3C0D8E4D7AA7390002 /* ArcadeCourse.swift */,
 				8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */,
 				5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */,
 				C513847C281C1ED12D71795E /* SwingRecord.swift */,
@@ -248,7 +245,6 @@
 				62268F927BB9B3FB9761ECA8 /* AnalysisAPIClient.swift in Sources */,
 				F38B79CEA91F6ACC820E18C5 /* AnalysisDerivedData.swift in Sources */,
 				24DC4D3464C19A0F97474051 /* AnalysisURLNormalization.swift in Sources */,
-				8B3C0D3C0D8E4D7AA7390001 /* ArcadeCourse.swift in Sources */,
 				E59D13E52FBD164800912934 /* ClubHeadDetector.swift in Sources */,
 				988128A1C99F425AA51E11D3 /* MultipartFormDataBuilder.swift in Sources */,
 				A561F7CE0E7034CC82255D75 /* SwingAnalysis.swift in Sources */,
