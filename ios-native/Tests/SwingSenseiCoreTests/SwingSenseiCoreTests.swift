@@ -19,6 +19,7 @@ final class SwingSenseiCoreTests: XCTestCase {
         XCTAssertEqual(analysis.shotEstimate?.evidence.detectedBallFlightFrames, 4)
         XCTAssertEqual(analysis.debug?.contactSheetUrl, "/debug/fixture_phases_v20.jpg")
         XCTAssertEqual(analysis.debug?.impactFilmstripUrl, "/debug/fixture_impact_v20.jpg")
+        XCTAssertNil(analysis.swingPathDiagnosis)
     }
 
     func testDecodesSwingAnalysisWithoutShotEstimate() throws {

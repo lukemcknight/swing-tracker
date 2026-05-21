@@ -37,7 +37,8 @@ public extension SwingAnalysis {
             phaseConfidence: phaseConfidence,
             shotEstimate: shotEstimate,
             rawSenseiScore: rawSenseiScore,
-            senseiScore: senseiScore
+            senseiScore: senseiScore,
+            swingPathDiagnosis: swingPathDiagnosis
         )
     }
 

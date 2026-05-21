@@ -314,6 +314,7 @@ public struct SwingAnalysis: Codable, Equatable {
     public let shotEstimate: ShotEstimate?
     public let rawSenseiScore: Double?
     public let senseiScore: Double
+    public let swingPathDiagnosis: SwingPathDiagnosis?
 
     public func frameIndex(for position: SwingPosition) -> Int? {
         guard let index = positions[position.rawValue], frames.indices.contains(index) else {
