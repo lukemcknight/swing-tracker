@@ -60,31 +60,25 @@ struct ContentView: View {
                 let swing = viewModel.swing(id: selection.id),
                 let analysis = swing.analysis
             {
-                LaunchMonitorReadoutView(
-                    swing: swing,
+                AnalysisViewer(
+                    swingID: swing.id,
+                    videoURL: swing.videoURL,
                     analysis: analysis,
-                    onDismiss: { viewModel.viewerSelection = nil }
-                ) {
-                    AnalysisViewer(
-                        swingID: swing.id,
-                        videoURL: swing.videoURL,
-                        analysis: analysis,
-                        club: swing.club,
-                        aiAnalysis: swing.aiAnalysis,
-                        videoEditState: swing.videoEditState ?? .identity,
-                        onClubChange: { club in
-                            viewModel.updateClub(swingID: swing.id, club: club)
-                        },
-                        onRequestAIFeedback: { club in
-                            try await viewModel.requestAIFeedback(
-                                swingID: swing.id,
-                                club: club,
-                                baseURLString: baseURLString
-                            )
-                        },
-                        onClose: {}
-                    )
-                }
+                    club: swing.club,
+                    aiAnalysis: swing.aiAnalysis,
+                    videoEditState: swing.videoEditState ?? .identity,
+                    onClubChange: { club in
+                        viewModel.updateClub(swingID: swing.id, club: club)
+                    },
+                    onRequestAIFeedback: { club in
+                        try await viewModel.requestAIFeedback(
+                            swingID: swing.id,
+                            club: club,
+                            baseURLString: baseURLString
+                        )
+                    },
+                    onClose: { viewModel.viewerSelection = nil }
+                )
             } else {
                 MissingSwingView()
             }

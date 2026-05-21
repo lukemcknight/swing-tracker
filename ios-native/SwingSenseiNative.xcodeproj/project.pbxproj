@@ -21,7 +21,6 @@
 		988128A1C99F425AA51E11D3 /* MultipartFormDataBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */; };
 		A1B2C3D4E5F60718293A4B5C /* AnalysisBaseURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* AnalysisBaseURL.swift */; };
 		A561F7CE0E7034CC82255D75 /* SwingAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */; };
-		B2C3D4E5F60718293A4B5C6D /* LaunchMonitorReadoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B5C6E /* LaunchMonitorReadoutView.swift */; };
 		BACFC4E578F60474DAF2C7B4 /* PickedVideo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F36941A716F4FE8E00725A /* PickedVideo.swift */; };
 		C38867BC657E14D4C1612CF5 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D349B6F95C82CCE3F713F89 /* Theme.swift */; };
 		D5A96753C10CF7C057720583 /* SwingAnalysisViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D9C8A4C28F5C4C9CBA4AED /* SwingAnalysisViewModel.swift */; };
@@ -56,7 +55,6 @@
 		8D349B6F95C82CCE3F713F89 /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5D /* AnalysisBaseURL.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisBaseURL.swift; sourceTree = "<group>"; };
 		ADE31D10AE091D116370D65E /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
-		B2C3D4E5F60718293A4B5C6E /* LaunchMonitorReadoutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LaunchMonitorReadoutView.swift; sourceTree = "<group>"; };
 		C513847C281C1ED12D71795E /* SwingRecord.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingRecord.swift; sourceTree = "<group>"; };
 		C98FCB018B8080017A6DB9AC /* TrimSwingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrimSwingView.swift; sourceTree = "<group>"; };
 		D57D4D0F3C593CAE6805036F /* AnalysisURLNormalization.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisURLNormalization.swift; sourceTree = "<group>"; };
@@ -137,7 +135,6 @@
 				FBCA9D55544AC5726202B940 /* CaptureView.swift */,
 				585A43CDE9FAB107D101A1C6 /* ContentView.swift */,
 				D81617F3B35443EB114DCC54 /* HistoryView.swift */,
-				B2C3D4E5F60718293A4B5C6E /* LaunchMonitorReadoutView.swift */,
 				D8F36941A716F4FE8E00725A /* PickedVideo.swift */,
 				E754057030E31AFEB3350259 /* PlayerLayerView.swift */,
 				3BA697E6A88B90D537813DAA /* SettingsView.swift */,
@@ -239,7 +236,6 @@
 				FC9D4BC763DE05D593DADB72 /* CaptureView.swift in Sources */,
 				30E57C2DBE8EC148BF4DC560 /* ContentView.swift in Sources */,
 				FD2BA03D06A61657344B9DD1 /* HistoryView.swift in Sources */,
-				B2C3D4E5F60718293A4B5C6D /* LaunchMonitorReadoutView.swift in Sources */,
 				BACFC4E578F60474DAF2C7B4 /* PickedVideo.swift in Sources */,
 				7A040F0A2684CEE7345A5A09 /* PlayerLayerView.swift in Sources */,
 				E59D13F32FBE1FB200912934 /* ClubHeadModel.mlmodel in Sources */,
