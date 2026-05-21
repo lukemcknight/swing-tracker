@@ -126,6 +126,8 @@ struct AnalysisViewer: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 0) {
+                    swingPathVerdictCard
+
                     if showsPathStatusBanner {
                         analysisQualityBanner
                             .padding(.horizontal, 18)
@@ -369,6 +371,46 @@ struct AnalysisViewer: View {
                 }
             }
             .padding(.vertical, 2)
+        }
+    }
+
+    @ViewBuilder
+    private var swingPathVerdictCard: some View {
+        if let diagnosis = viewModel.analysis.swingPathDiagnosis {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(diagnosis.verdict)
+                    .font(.callout.weight(.black))
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let cue = diagnosis.cue {
+                    Text(cue)
+                        .font(.callout)
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(
+                swingPathVerdictColor(diagnosis.direction).opacity(0.12),
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(swingPathVerdictColor(diagnosis.direction).opacity(0.34), lineWidth: 1)
+            )
+            .padding(.horizontal, 18)
+            .padding(.top, 14)
+        }
+    }
+
+    private func swingPathVerdictColor(_ direction: SwingPathDiagnosis.PathDirection) -> Color {
+        switch direction {
+        case .outToIn:
+            return Theme.accent
+        case .neutral, .inToOut:
+            return Theme.primary
         }
     }
 
