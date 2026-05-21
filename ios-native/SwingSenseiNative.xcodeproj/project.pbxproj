@@ -31,6 +31,7 @@
 		E59D13F32FBE1FB200912934 /* ClubHeadModel.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = E59D13F22FBE1FB200912934 /* ClubHeadModel.mlmodel */; };
 		E8E60E0CB1B635BB2251917D /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D175378668E1ACD8A2A3391 /* CameraCaptureView.swift */; };
 		F38B79CEA91F6ACC820E18C5 /* AnalysisDerivedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600D188BF8FFE90F2B0C734D /* AnalysisDerivedData.swift */; };
+		5DA17AFF89C24BB88F45E001 /* SwingPathDiagnoser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DA17AFF89C24BB88F45E002 /* SwingPathDiagnoser.swift */; };
 		FC9D4BC763DE05D593DADB72 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBCA9D55544AC5726202B940 /* CaptureView.swift */; };
 		FD2BA03D06A61657344B9DD1 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81617F3B35443EB114DCC54 /* HistoryView.swift */; };
 		FD9974438A4F52078413933D /* SkeletonOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A2F88E148DAEA19600C476 /* SkeletonOverlay.swift */; };
@@ -46,6 +47,7 @@
 		585A43CDE9FAB107D101A1C6 /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingAnalysis.swift; sourceTree = "<group>"; };
 		600D188BF8FFE90F2B0C734D /* AnalysisDerivedData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisDerivedData.swift; sourceTree = "<group>"; };
+		5DA17AFF89C24BB88F45E002 /* SwingPathDiagnoser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingPathDiagnoser.swift; sourceTree = "<group>"; };
 		62D5D65B77EEFE5B6537B268 /* SwingRepository.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwingRepository.swift; sourceTree = "<group>"; };
 		72A2F88E148DAEA19600C476 /* SkeletonOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkeletonOverlay.swift; sourceTree = "<group>"; };
 		8D175378668E1ACD8A2A3391 /* CameraCaptureView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
@@ -88,6 +90,7 @@
 				D57D4D0F3C593CAE6805036F /* AnalysisURLNormalization.swift */,
 				8D1B99B031F90B719667C586 /* MultipartFormDataBuilder.swift */,
 				5CCED2F6B60AA38570B89BC0 /* SwingAnalysis.swift */,
+				5DA17AFF89C24BB88F45E002 /* SwingPathDiagnoser.swift */,
 				C513847C281C1ED12D71795E /* SwingRecord.swift */,
 				62D5D65B77EEFE5B6537B268 /* SwingRepository.swift */,
 			);
@@ -248,6 +251,7 @@
 				E59D13E52FBD164800912934 /* ClubHeadDetector.swift in Sources */,
 				988128A1C99F425AA51E11D3 /* MultipartFormDataBuilder.swift in Sources */,
 				A561F7CE0E7034CC82255D75 /* SwingAnalysis.swift in Sources */,
+				5DA17AFF89C24BB88F45E001 /* SwingPathDiagnoser.swift in Sources */,
 				E424FE8BE6147F3419750515 /* SwingRecord.swift in Sources */,
 				7C3EFD7F4F4729AC670E15DD /* SwingRepository.swift in Sources */,
 			);
