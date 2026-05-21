@@ -116,6 +116,18 @@ final class ClubHeadDetectionService {
             print("[ClubHeadDetectionService]   seg #\(i): samples=\(s.sampleCount) disp=\(String(format: "%.3f", s.displacement)) score=\(String(format: "%.3f", s.score)) phase=\(String(format: "%.3f", s.phaseScore)) throughImpact=\(String(format: "%.3f", s.throughImpactScore))")
         }
 
+        let cleanedPath = newFrames.compactMap(\.clubHead)
+        let isDownTheLine = analysis.analysisQuality?.cameraAngle == "down_the_line"
+        let swingPathDiagnosis = SwingPathDiagnoser.diagnose(
+            path: cleanedPath,
+            isDownTheLine: isDownTheLine
+        )
+        if let swingPathDiagnosis {
+            print("[ClubHeadDetectionService] swing path diagnosis: \(swingPathDiagnosis.direction.rawValue) severity=\(String(format: "%.3f", swingPathDiagnosis.severity))")
+        } else {
+            print("[ClubHeadDetectionService] swing path diagnosis: nil (downTheLine=\(isDownTheLine) pathPoints=\(cleanedPath.count))")
+        }
+
         return SwingAnalysis(
             id: analysis.id,
             videoUri: analysis.videoUri,
@@ -136,7 +148,8 @@ final class ClubHeadDetectionService {
             phaseConfidence: analysis.phaseConfidence,
             shotEstimate: analysis.shotEstimate,
             rawSenseiScore: analysis.rawSenseiScore,
-            senseiScore: analysis.senseiScore
+            senseiScore: analysis.senseiScore,
+            swingPathDiagnosis: swingPathDiagnosis
         )
     }
 
