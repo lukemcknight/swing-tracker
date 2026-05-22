@@ -61,6 +61,8 @@ def collect_frames(root: Path) -> list[FrameSpec]:
     """Discover every image in the test set, paired with its label file."""
     specs: list[FrameSpec] = []
     images_root = root / "images"
+    if not images_root.is_dir():
+        return specs
     for source_dir in sorted(p for p in images_root.iterdir() if p.is_dir()):
         images = sorted(source_dir.glob("*.jpg"))
         for index, image_path in enumerate(images):
@@ -133,8 +135,11 @@ def compute_report(
         median_center_error=metrics.percentile(all_errors, 50) if all_errors else 0.0,
         p90_center_error=metrics.percentile(all_errors, 90) if all_errors else 0.0,
         phantom_rate=metrics.phantom_rate(all_pairs),
+        # Frame-weighted so an even mix of small and large sources is not
+        # biased toward whichever clips happen to be short.
         path_jitter=(
-            sum(s.path_jitter for s in per_source) / len(per_source)
+            sum(s.frames * s.path_jitter for s in per_source)
+            / sum(s.frames for s in per_source)
             if per_source else 0.0
         ),
         per_source=per_source,
@@ -183,6 +188,7 @@ def main(argv: list[str] | None = None) -> None:
     if not specs:
         raise SystemExit(f"no frames found under {args.test_set}/images")
 
+    # Assumes every test frame shares one aspect ratio (read from the first).
     with Image.open(specs[0].image_path) as first:
         aspect = first.width / first.height
 

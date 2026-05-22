@@ -1,3 +1,5 @@
+import math
+
 from chdet.detector import Detection
 from chdet.evaluate import (
     FrameResult, compute_report, render_markdown, collect_frames,
@@ -52,6 +54,26 @@ def test_render_markdown_contains_headline_numbers():
     assert "createml-v6" in md
     assert "Detection rate" in md
     assert "swingA" in md
+
+
+def test_compute_report_path_jitter_is_frame_weighted():
+    gt = Box(0.5, 0.5, 0.1, 0.1)
+    # swingA: 3 frames with a kink -> per-source jitter 20.0
+    kink = [_hit(0.5, 0.5), _hit(0.6, 0.5), _hit(0.5, 0.5)]
+    # swingB: 9 frames on a constant point -> per-source jitter 0.0
+    straight = [_hit(0.3, 0.5) for _ in range(9)]
+    results = (
+        [FrameResult("swingA", i, p, gt) for i, p in enumerate(kink)]
+        + [FrameResult("swingB", i, p, gt) for i, p in enumerate(straight)]
+    )
+    report = compute_report("fake", results, aspect=1.0)
+    # frame-weighted: (3*20 + 9*0) / 12 = 5.0  (an unweighted mean would be 10.0)
+    assert math.isclose(report.path_jitter, 5.0, abs_tol=1e-9)
+
+
+def test_collect_frames_missing_images_dir_returns_empty(tmp_path):
+    # A test-set root with no images/ subdir yields no frames, not a crash.
+    assert collect_frames(tmp_path) == []
 
 
 def test_collect_frames_pairs_images_with_labels(tmp_path):
