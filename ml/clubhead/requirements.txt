@@ -1,0 +1,4 @@
+coremltools>=8.1
+numpy>=1.26
+Pillow>=10.0
+pytest>=8.0
