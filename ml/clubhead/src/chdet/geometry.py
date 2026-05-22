@@ -67,8 +67,8 @@ def to_yolo_line(box: Box, class_id: int = 0) -> str:
 def unletterbox_box(
     box: Box,
     scale: float,
-    pad_x: int,
-    pad_y: int,
+    pad_x: float,
+    pad_y: float,
     target_w: int,
     target_h: int,
     orig_w: int,
