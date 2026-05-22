@@ -1,0 +1,35 @@
+{
+  "model_name": "swing-tracker-ml 6.mlmodel",
+  "total_frames": 196,
+  "detection_rate": 0.3036649214659686,
+  "median_center_error": 1.1013471005803754,
+  "p90_center_error": 79.92385971847068,
+  "phantom_rate": 0.8,
+  "path_jitter": 4.085351290401431,
+  "per_source": [
+    {
+      "source": "yt-test-5f5iA7JacYk",
+      "frames": 49,
+      "detection_rate": 0.5102040816326531,
+      "median_center_error": 1.091797427607895,
+      "p90_center_error": 81.11520190999066,
+      "path_jitter": 11.522959576992898
+    },
+    {
+      "source": "yt-test-DrPORihFauA",
+      "frames": 64,
+      "detection_rate": 0.1746031746031746,
+      "median_center_error": 0.4925107607730404,
+      "p90_center_error": 0.7532375186169078,
+      "path_jitter": 0.5242977127163466
+    },
+    {
+      "source": "yt-test-mNW6zLNfabI",
+      "frames": 83,
+      "detection_rate": 0.27848101265822783,
+      "median_center_error": 1.3760696039413185,
+      "p90_center_error": 2.0924345082386027,
+      "path_jitter": 2.4403467473756897
+    }
+  ]
+}
