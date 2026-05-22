@@ -74,7 +74,7 @@ def test_phantom_rate_no_negatives_is_zero():
 def test_path_jitter_zero_for_straight_constant_motion():
     # Constant velocity -> second difference is zero -> no jitter.
     centers = [(0.1, 0.5), (0.2, 0.5), (0.3, 0.5), (0.4, 0.5)]
-    assert path_jitter(centers, aspect=1.0) == 0.0
+    assert math.isclose(path_jitter(centers, aspect=1.0), 0.0, abs_tol=1e-9)
 
 
 def test_path_jitter_detects_a_kink():

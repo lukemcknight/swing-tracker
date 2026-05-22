@@ -66,7 +66,7 @@ def path_jitter(centers: list[tuple[float, float] | None], aspect: float) -> flo
         a, b, c = centers[i - 1], centers[i], centers[i + 1]
         if a is None or b is None or c is None:
             continue
-        ddx = round(a[0] - 2 * b[0] + c[0], 12)
-        ddy = round((a[1] - 2 * b[1] + c[1]) / aspect, 12)
+        ddx = a[0] - 2 * b[0] + c[0]
+        ddy = (a[1] - 2 * b[1] + c[1]) / aspect
         diffs.append(100.0 * math.hypot(ddx, ddy))
     return sum(diffs) / len(diffs) if diffs else 0.0
