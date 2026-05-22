@@ -22,6 +22,8 @@ def percentile(values: list[float], p: float) -> float:
     """Linear-interpolation percentile; `p` in [0, 100]."""
     if not values:
         raise ValueError("percentile of an empty sequence")
+    if not 0 <= p <= 100:
+        raise ValueError(f"p must be in [0, 100], got {p}")
     s = sorted(values)
     if len(s) == 1:
         return s[0]

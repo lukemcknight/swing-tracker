@@ -38,6 +38,17 @@ def test_percentile_empty_raises():
         percentile([], 50)
 
 
+def test_percentile_out_of_range_raises():
+    with pytest.raises(ValueError):
+        percentile([1.0, 2.0], 150)
+    with pytest.raises(ValueError):
+        percentile([1.0, 2.0], -1)
+
+
+def test_percentile_two_element_interpolation():
+    assert math.isclose(percentile([1.0, 3.0], 50), 2.0, abs_tol=1e-9)
+
+
 def test_detection_rate_counts_only_clubhead_present_frames():
     gt = Box(0.5, 0.5, 0.1, 0.1)
     hit = Box(0.5, 0.5, 0.1, 0.1)
