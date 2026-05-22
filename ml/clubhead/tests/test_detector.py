@@ -12,6 +12,14 @@ def test_decode_picks_highest_confidence_above_threshold():
     assert det == Detection(Box(0.2, 0.2, 0.05, 0.05), 0.90)
 
 
+def test_decode_multi_class_uses_max_across_columns():
+    coords = np.array([[0.5, 0.5, 0.1, 0.1]])
+    confidence = np.array([[0.20, 0.85]])  # max across C=2 columns is 0.85
+    det = decode_createml_outputs(coords, confidence, threshold=0.5)
+    assert det is not None
+    assert abs(det.confidence - 0.85) < 1e-9
+
+
 def test_decode_returns_none_when_all_below_threshold():
     coords = np.array([[0.5, 0.5, 0.1, 0.1]])
     confidence = np.array([[0.10]])

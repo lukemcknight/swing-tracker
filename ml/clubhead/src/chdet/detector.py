@@ -70,6 +70,11 @@ class CoreMLClubheadDetector:
         self.threshold = threshold
         self.model = ct.models.MLModel(str(model_path))
         image_input = self.model.get_spec().description.input[0]
+        if not image_input.type.HasField("imageType"):
+            raise ValueError(
+                "Expected an image input, got "
+                f"{image_input.type.WhichOneof('Type')}"
+            )
         self.input_name = image_input.name
         self.input_w = image_input.type.imageType.width
         self.input_h = image_input.type.imageType.height
