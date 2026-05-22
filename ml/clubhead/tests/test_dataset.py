@@ -34,6 +34,8 @@ def test_import_writes_images_and_labels_under_source(tmp_path):
     assert label.startswith("0 0.5")            # annotated frame
     negative = (dest / "labels" / "swingX" / "frame-0002.txt").read_text()
     assert negative == ""                       # negative frame -> empty label
+    # The negative frame must still have its image: the harness counts it.
+    assert (dest / "images" / "swingX" / "frame-0002.jpg").exists()
 
 
 def test_import_skips_export_entry_with_missing_image(tmp_path):

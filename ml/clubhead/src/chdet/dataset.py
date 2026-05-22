@@ -32,8 +32,12 @@ def import_label_studio_export(
         src = images_src_dir / filename
         if not src.exists():
             continue
-        shutil.copy2(src, images_dest / filename)
+        # Write the label before copying the image. collect_frames globs
+        # images, so a label with no image is invisible to the harness,
+        # whereas an image with no label would silently become a false
+        # negative if this loop is interrupted mid-frame.
         label_text = "" if box is None else to_yolo_line(box) + "\n"
         (labels_dest / f"{Path(filename).stem}.txt").write_text(label_text)
+        shutil.copy2(src, images_dest / filename)
         imported += 1
     return imported
