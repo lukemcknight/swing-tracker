@@ -27,8 +27,6 @@ class Box:
 
 def iou(a: Box, b: Box) -> float:
     """Intersection-over-union of two boxes."""
-    if a == b:
-        return 1.0
     ax1, ay1, ax2, ay2 = a.corners()
     bx1, by1, bx2, by2 = b.corners()
     ix1, iy1 = max(ax1, bx1), max(ay1, by1)

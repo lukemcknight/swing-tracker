@@ -12,7 +12,7 @@ def test_box_corners():
 
 def test_iou_identical_boxes_is_one():
     b = Box(0.5, 0.5, 0.2, 0.2)
-    assert iou(b, b) == 1.0
+    assert math.isclose(iou(b, b), 1.0, rel_tol=1e-9)
 
 
 def test_iou_disjoint_boxes_is_zero():
