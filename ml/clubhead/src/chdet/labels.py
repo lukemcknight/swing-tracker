@@ -23,9 +23,11 @@ def load_yolo_label(path: Path) -> Box | None:
 def load_label_studio_export(path: Path) -> dict[str, Box | None]:
     """Parse a Label Studio JSON export.
 
-    Returns {image_filename: Box or None}. A task with no annotation result
-    maps to None (a negative frame). Only the first result of the first
-    annotation is used — the clubhead is a single object per frame.
+    Returns {image_filename: Box or None}. A task with no rectangle annotation
+    maps to None (a negative frame). Only the first rectangle result of the
+    first annotation is used — the clubhead is a single object per frame.
+    Non-rectangle result items (e.g. a stray taxonomy or choice tag) are
+    skipped so they cannot crash the parse.
     """
     tasks = json.loads(path.read_text())
     out: dict[str, Box | None] = {}
@@ -33,5 +35,6 @@ def load_label_studio_export(path: Path) -> dict[str, Box | None]:
         name = Path(task["data"]["image"]).name
         annotations = task.get("annotations") or []
         results = annotations[0]["result"] if annotations else []
-        out[name] = geometry.from_label_studio(results[0]["value"]) if results else None
+        boxes = [r for r in results if "rectanglelabels" in r.get("value", {})]
+        out[name] = geometry.from_label_studio(boxes[0]["value"]) if boxes else None
     return out

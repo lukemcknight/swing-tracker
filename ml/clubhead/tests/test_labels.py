@@ -39,6 +39,25 @@ def test_load_label_studio_export_parses_annotated_task(tmp_path):
     assert math.isclose(box.cy, 0.5, abs_tol=1e-9)
 
 
+def test_load_label_studio_export_ignores_non_bbox_results(tmp_path):
+    # A stray non-rectangle result item must not crash the parse.
+    export = [
+        {
+            "data": {"image": "/data/local-files/?d=images/frame-0003.jpg"},
+            "annotations": [{"result": [
+                {"value": {"choices": ["good"]}},
+                {"value": {"x": 40.0, "y": 30.0, "width": 20.0,
+                           "height": 40.0, "rectanglelabels": ["clubhead"]}},
+            ]}],
+        }
+    ]
+    f = tmp_path / "export.json"
+    f.write_text(json.dumps(export))
+    box = load_label_studio_export(f)["frame-0003.jpg"]
+    assert box is not None
+    assert math.isclose(box.cx, 0.5, abs_tol=1e-9)
+
+
 def test_load_label_studio_export_task_with_no_annotation_is_negative(tmp_path):
     export = [
         {"data": {"image": "/data/local-files/?d=images/frame-0009.jpg"},
