@@ -402,6 +402,7 @@ struct AnalysisViewer: View {
             )
             .padding(.horizontal, 18)
             .padding(.top, 14)
+            .padding(.bottom, 10)
         }
     }
 
