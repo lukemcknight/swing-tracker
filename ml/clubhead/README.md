@@ -21,8 +21,12 @@ source ../.venv/bin/activate && pytest
 ## Phase 0: eval harness
 
 ```bash
+# Scratch run — output goes to gitignored eval/reports/
 python -m chdet.evaluate \
   --model "../../swing-tracker-ml.mlproj/Models/swing-tracker-ml 6.mlmodel" \
   --test-set dataset/test \
   --out eval/reports/createml-v6.md
 ```
+
+The committed baseline lives under the tracked `eval/baseline/` path (see Task 9
+of the Phase 0 plan), not the gitignored `eval/reports/` scratch path.
