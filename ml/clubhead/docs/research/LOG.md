@@ -336,3 +336,95 @@ underrepresented own-footage slice). Until then this should be treated as
 "licence-blocked, contact the authors before spending any implementation
 time," not as an actionable technique. Recorded so future runs don't
 re-discover the same repo and re-do this same licence check.
+
+---
+
+## 2026-08-13 — Channel-stacked multi-frame YOLO (Quan et al., ECMR 2025): same-family architecture fix for blur *and* camouflage
+
+**What it is.** "Lightweight Multi-Frame Integration for Robust YOLO Object
+Detection in Videos" (Quan, Kiefer, Messmer, Zell — ECMR 2025, also on arXiv
+as 2506.20550) modifies a standard YOLO detector to take `n` consecutive
+video frames stacked along the channel axis as input (Early Fusion: the
+first conv layer processes `3n` channels jointly, its weights initialized by
+repeating the pretrained single-frame weights `n` times), while supervising
+only the label for the single latest frame — i.e. no new label format and no
+added temporal module (no RNN/optical-flow/attention block). Reference
+implementation (built on YOLOv7/YOLOv7-tiny, training + test code, multiple
+pretrained checkpoints for n=3..9) is at
+`github.com/yitong-quan/yolov7-multi-frame`, fetched and inspected directly
+(root file listing, README, and LICENSE.md content all confirmed live, not
+just search-indexed).
+
+**URL.** https://github.com/yitong-quan/yolov7-multi-frame (paper: ECMR
+2025 / arXiv:2506.20550 / IEEE Xplore document 11162972 — all three of
+arxiv.org, ieeexplore.ieee.org, and the papers.cool arXiv mirror are blocked
+by this sandbox's egress proxy, same restriction noted in every prior run of
+this log, so the paper's quantitative results below are sourced from
+search-engine-indexed abstract text, not a direct PDF/HTML fetch; treat
+those specific numbers as one notch below full verification, per this log's
+established convention. The repo README and LICENSE.md **were** fetched
+directly and are fully verified.)
+
+**Licence (verbatim, from `LICENSE.md`, fetched directly).** GNU General
+Public License, Version 3, 29 June 2007 (full GPL-3.0 text, Free Software
+Foundation). **Commercial use of the code is NOT straightforwardly
+permitted** — GPL-3.0 is copyleft: distributing a binary that incorporates
+GPL-3.0 code (or code derived from it) obligates you to make the complete
+corresponding source available under GPL-3.0 too. This matters concretely
+here: this repo builds on the official YOLOv7 codebase, which is itself
+GPL-3.0, and the project's current detector is YOLO11n (Ultralytics), whose
+own licence is AGPL-3.0 unless the project holds a paid Ultralytics
+commercial licence — that is a separate, pre-existing question this entry
+does not resolve, but it means the project should already know its own
+answer to "can we ship a YOLO-family model commercially." **Do not import or
+adapt this repo's code into the shipping pipeline without legal review.**
+What is safely reusable regardless of licence: the *technique* itself
+(stack n frames on the channel axis, widen/re-init the first conv layer) is
+a well-known, generic architectural idea, not a copyrightable expression —
+it can be reimplemented from the paper's description directly against
+YOLO11n's own first-conv layer without touching this repo's GPL code at all.
+
+**Which failure mode.** Both, explicitly. The README states the goal in
+those terms: "improve robustness against blur and occlusion" via injecting
+"temporal cues at the pixel level." The (search-indexed) abstract text adds
+that motion blur, occlusions, and abrupt appearance changes "severely
+degrade single-frame detection performance" and that stacking frames
+"improves detection robustness, especially for lightweight models,
+effectively narrowing the gap between compact and heavy detection
+networks" on MOT20Det and BOAT360 (unverified numbers — see caveat above).
+
+**Why it helps this model specifically.** This is the most architecturally
+compatible temporal-method finding logged so far. TrackNetV4 (logged earlier
+today) is a heatmap-regression network over a fixed window — a different
+model family from the current single-shot YOLO11n/CoreML pipeline, with an
+unclear export/on-device story. This technique keeps the exact YOLO
+single-shot-detector shape; the only structural change is the first
+convolution's input channel count and its weight initialization. That means
+it plausibly retains CoreML exportability and on-device inference budgets in
+a way TrackNetV4 does not — a claim this entry cannot fully verify (no CoreML
+export was attempted here) but is a much smaller leap than a heatmap
+architecture swap. It targets camouflage the same way TrackNetV4 was logged
+as targeting it — motion is a signal a static frame lacks but the moving
+clubhead has — while also directly targeting motion blur, since a
+channel-stacked window gives the network genuine multi-frame temporal
+context around a blurred frame instead of asking a single blurred,
+near-square-boxed training example to teach the shape of a blur streak on
+its own, which is the root gap this log's first entry (frame-averaging,
+2026-08-12) also independently identified.
+
+**Effort vs. payoff.** Medium effort, good-if-verified payoff. Effort:
+reimplementing against YOLO11n means (a) writing a dataloader that yields
+n-frame stacks with a single target label (straightforward — Ultralytics'
+YOLO11 dataloader is built to be subclassed), (b) widening the first conv
+layer and re-initializing by repeating pretrained weights (a few lines, same
+trick this repo already demonstrates for YOLOv7), (c) re-running the CoreML
+export and checking the exported model still meets the app's inference
+latency budget on-device, which is the one real unknown and the item most
+worth spiking first. No GPL code needs to ship — only the idea. Payoff:
+if it works, this is a same-architecture, same-export-path improvement
+(unlike TrackNetV4), which meaningfully de-risks adoption versus every other
+temporal-method finding logged so far — but the actual accuracy delta is
+unverified (blocked from the paper itself), so the honest recommendation is
+a small experimental spike (train an n=3 channel-stacked YOLO11n variant on
+the existing training set, compare against the existing baseline on the
+held-out test set) before treating the payoff as real.
