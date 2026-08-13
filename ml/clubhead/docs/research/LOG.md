@@ -89,3 +89,100 @@ itself is unverified beyond the GitHub README + LICENSE (arXiv was
 unreachable), so treat the *paper's specific quantitative claims* as
 unverified even though the *code, its licence, and its stated purpose* are
 confirmed.
+
+---
+
+## 2026-08-13 — TrackNetV4 motion-attention fusion for small/fast sports-object tracking
+
+**What it is.** TrackNetV4 ("Enhancing Fast Sports Object Tracking with
+Motion Attention Maps," arXiv:2409.14543) extends the TrackNet family
+(originally built for tracking small, blurry, sometimes-invisible tennis
+balls in broadcast video) with a "Motion-Aware Fusion" mechanism: a
+frame-differencing map computed across a sliding window of 3 consecutive
+frames is passed through a learnable "motion prompt layer" to produce a
+motion-attention map, which is then fused (element-wise) with the network's
+normal visual features before the detection/heatmap head. The point of the
+mechanism is to give the model a *motion*-derived signal, independent of
+appearance, for exactly the situation where appearance alone is
+insufficient — which is a near-exact description of the camouflage failure
+mode in the failure-analysis brief (dark clubhead against dark clothing or
+foliage: zero candidate detections from the appearance-only detector even at
+confidence 0.05). Reference implementation (TensorFlow, training/eval/predict
+scripts, pretrained checkpoints, RESULT.md with numbers) is at
+`github.com/TrackNetV4/TrackNetV4`.
+
+**URL.** https://github.com/TrackNetV4/TrackNetV4 (paper:
+arXiv:2409.14543 — arxiv.org itself is unreachable from this sandbox's
+egress proxy, same as last run's finding, so the paper's claims here are
+sourced from the repo's README and `docs/RESULT.md`, fetched directly, not
+the PDF).
+
+**Licence (verbatim, from the repo's `LICENSE` file, fetched directly).**
+MIT License. "Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including without
+limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software... subject to the following
+conditions: The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software." **Commercial
+use: permitted.** No dataset is bundled in a way that would impose a
+separate licence on model weights trained from scratch on this project's own
+data; the repo's own tennis/badminton training sets are for reference only
+and are not proposed for reuse here.
+
+**Verified results (from `docs/RESULT.md`, on the repo's "new tennis
+dataset," TrackNetV4-TypeB vs. baseline TrackNetV2).** Accuracy 79.91% vs.
+77.46% (+2.45pp), Precision 93.88% vs. 91.20% (+2.68pp), Recall 83.04% vs.
+82.32% (+0.72pp), F1 88.13% vs. 86.53% (+1.60pp). These are ball-tracking
+numbers on broadcast tennis, not golf — cited only to confirm the motion-
+attention mechanism measurably beats an appearance-only baseline in a
+directly analogous small/fast/low-contrast-object setting, not as an
+expected uplift for this model.
+
+**Which failure mode.** Camouflage (primary) — this is the first log entry
+to address it. Secondarily useful for motion blur too, since a moving-but-
+blurred clubhead still produces a frame-difference signal even when its
+static appearance is ambiguous.
+
+**Why it helps this model specifically.** The failure-analysis brief's
+camouflage cases are described as visually sharp frames with zero
+detections — i.e., the appearance-only YOLO11n detector has nothing to
+latch onto because the clubhead genuinely resembles its background in a
+single frame. Motion is the one signal a single static frame cannot carry
+but a golf swing has in abundance (the clubhead is one of the fastest-moving
+things in the frame by design). A frame-differencing / motion-attention
+input is therefore structurally suited to exactly this gap, unlike more
+data or better single-frame augmentation, which cannot fix a detector that
+has no appearance cue to exploit in the first place.
+
+**Important caveat — this is not a drop-in.** TrackNetV4 is architecturally
+a different animal from the current YOLO11n pipeline: it's a heatmap-
+regression network over a fixed 3-frame window, not a single-shot bounding-
+box detector, and it isn't validated for CoreML export or on-device inference
+budgets (the README doesn't discuss mobile deployment). Two more caveats
+specific to this app: (1) TrackNet-family models assume a largely static or
+broadcast-stabilized camera — frame differencing on a handheld phone video
+(the actual capture condition here) will pick up camera motion as well as
+club motion unless the frames are first stabilized/registered, which the
+current pipeline doesn't yet do; (2) the output is a point heatmap, not a
+box, so it would need adaptation (or use purely as a candidate-region
+proposal / confidence-boost signal ahead of the existing YOLO box regressor)
+to fit the current label/eval format.
+
+**Effort vs. payoff.** High effort, uncertain-but-real payoff. Effort: not
+reusable as a drop-in replacement — realistically only the *architectural
+idea* (fuse a frame-difference-derived motion-attention map into the
+detector's features) transfers, and building it means either (a) adding a
+motion-attention branch/input channel to the existing YOLO11n architecture
+and retraining, which is a nontrivial model-surgery task and would need
+re-validation of the CoreML export path, or (b) running a lightweight
+frame-differencing pre-filter as a separate signal that boosts confidence
+on low-confidence YOLO candidates in the camouflage regime, which is far
+cheaper but a much weaker version of the idea and still needs camera-motion
+compensation to be reliable on handheld footage. Payoff: this is the first
+verified idea in the log that attacks camouflage specifically, and it's the
+right *kind* of fix (motion-derived, not appearance-derived) for a failure
+mode that is by definition an appearance failure — but the camera-motion
+caveat above is real and unaddressed by the source work, so this should be
+scoped as a research spike (does simple frame-differencing survive typical
+phone-swing camera shake?) before any model-surgery investment.
