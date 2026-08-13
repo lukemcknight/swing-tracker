@@ -186,3 +186,64 @@ mode that is by definition an appearance failure — but the camera-motion
 caveat above is real and unaddressed by the source work, so this should be
 scoped as a research spike (does simple frame-differencing survive typical
 phone-swing camera shake?) before any model-surgery investment.
+
+---
+
+## 2026-08-13 — GolfDB checked and ruled out (dataset area, negative result)
+
+**What it is.** GolfDB ("A Video Database for Golf Swing Sequencing,"
+McNally & Vats, CVPR Workshops 2019) is the best-known public golf-swing
+video dataset and the obvious first hit for anyone searching "golf swing
+dataset." It compiles 580 YouTube videos (1,400 trimmed clips, ~390k
+frames) of PGA/LPGA/Champions Tour professionals. This run checked it
+specifically to see whether it (or its curation approach) could plug either
+the indoor/low-light gap or the motion-blur gap. It cannot, for three
+independent, verified reasons below — logging this so no future run
+re-spends effort chasing it.
+
+**URL.** https://github.com/wmcnally/golfdb (paper via search-indexed
+excerpt only — both arxiv.org/pdf/1903.06528 and
+openaccess.thecvf.com are blocked by this sandbox's egress proxy, same
+restriction noted in prior runs).
+
+**Licence (verbatim, fetched directly from the repo README).** "The code in
+this repository is licensed under a Creative Commons Attribution-
+NonCommercial 4.0 International License." **Commercial use: NOT permitted.**
+No separate, more-permissive licence is stated for the video data/labels
+themselves (they are distributed as YouTube URLs + annotation files under
+the same repo).
+
+**Which failure mode.** Neither, in practice — checked against both.
+
+**Why it doesn't help this model, specifically (three independent
+dealbreakers, not just the licence).**
+1. **Licence.** CC BY-NC-4.0 forecloses commercial use outright, matching
+   this project's hard licence requirement.
+2. **Annotation format doesn't match what's needed.** Verified directly from
+   the README: GolfDB's labels are *temporal event frames* (8 swing-phase
+   markers — address, top, impact, etc.) plus per-video metadata, not
+   spatial clubhead bounding boxes. Even under a permissive licence, it
+   would require fully re-labelling every frame from scratch to be usable
+   for this detector — it contributes zero ready-made box labels.
+3. **It was explicitly curated to exclude motion blur.** A direct quote
+   surfaced via search indexing of the paper text: "to alleviate
+   obscurities caused by motion blur, only high quality videos were
+   considered." (Sourced from a search-engine excerpt of the paper, not a
+   direct PDF fetch — treat this one specific quote as one notch below full
+   verification, consistent with how arXiv-sourced claims have been flagged
+   in prior entries.) This is the opposite of what this project needs: the
+   gap is a shortage of genuinely blurred, correctly-boxed examples, and
+   GolfDB's own selection criteria filtered blur *out*. It is broadcast
+   footage of tour pros in good light, not indoor/simulator/overcast/older-
+   phone footage either — so it doesn't touch the camouflage-adjacent
+   indoor gap the brief flags as unmeasured.
+
+**Effort vs. payoff.** Low effort (one search-and-verify pass), zero
+payoff — that is the finding. Recorded as a negative result per the run
+brief's instruction to log "nothing new" honestly rather than pad the log;
+in this case there *was* something to check (a specific, verifiable, named
+dataset), it just came up empty on inspection. Future runs searching the
+"golf datasets" area should treat GolfDB as checked and move to less
+obvious sources — e.g. searching for simulator-vendor or swing-app training
+data licensing, or golf-adjacent (not golf-specific) blurred-fast-object
+sport datasets, rather than re-discovering GolfDB.
