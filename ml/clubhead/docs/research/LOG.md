@@ -247,3 +247,92 @@ dataset), it just came up empty on inspection. Future runs searching the
 obvious sources — e.g. searching for simulator-vendor or swing-app training
 data licensing, or golf-adjacent (not golf-specific) blurred-fast-object
 sport datasets, rather than re-discovering GolfDB.
+
+---
+
+## 2026-08-13 — GolfPose (ICPR 2024): golf-specific club-keypoint model, checked and blocked on licensing (golf pose/tracking area, negative-with-caveats result)
+
+**What it is.** GolfPose (Lee et al., "GolfPose: From Regular Posture to
+Golf Swing Posture," ICPR 2024) is, as far as this run could find, the only
+public, code-released project that treats the golf **club** itself as a
+pose-estimation target with explicit club keypoints, rather than just
+inferring club position from body pose. The official repo
+(`github.com/MingHanLee/GolfPose`) ships MMDetection/MMPose configs and
+pretrained checkpoints for several model variants, including club-only
+(`GolfPose-2D(C)`) and combined golfer+club (`GolfPose-2D(GC)`,
+`GolfPose-3D(GC)`) pose estimators, fine-tuned from HRNet/ViTPose/DEKR/MixSTE
+backbones on a purpose-built "GolfSwing" dataset (17 golfer keypoints + up to
+5 club keypoints, with 3D ground truth from a motion-capture rig
+synchronized to normal RGB cameras). Reported club-model accuracy in the
+README: HRNet-w48 0.857 AP, ViTPose-H 0.870 AP, DEKR 0.858 AP (AP, not MPJPE
+— no per-joint pixel-error number is given for the club variants).
+
+I also checked two derivative/independent repos that cite this same
+line of work — `mamoonik/golf-swing` (claims a from-scratch reimplementation
+achieving "34% improvement on club keypoints" via a club-detection refinement
+step, but is really citing the earlier Jiang et al. 2022 ICMEW "GolfPose"
+paper, a different work with the same name) and `ryanboscobanze/GolfPosePro`
+(MIT-licensed, but explicitly does not track the club head — wrist-only).
+Neither is a substitute for the ICPR 2024 GolfPose code/dataset.
+
+**URL.** https://github.com/MingHanLee/GolfPose (paper:
+ICPR 2024, DOI 10.1007/978-3-031-78305-0_25, paywalled at
+link.springer.com/dl.acm.org — not fetchable from this sandbox's egress
+proxy, so claims here are sourced from the repo's README, fetched directly,
+not the PDF).
+
+**Licence — VERIFIED ABSENT. Commercial use: NOT confirmed permitted; treat
+as forbidden by default.** Checked directly:
+`raw.githubusercontent.com/MingHanLee/GolfPose/main/LICENSE` and
+`.../master/LICENSE` both return HTTP 404 — there is no LICENSE file in the
+repo, and the README contains no licence badge or licence text anywhere.
+Under GitHub's own terms of service, code with no explicit licence is "all
+rights reserved" by default: it is visible for reading, but nobody else
+(including for commercial use) has any grant to use, copy, modify, or
+distribute it. The dataset is separately gated — the README states "Please
+email mhlee.cs09@nycu.edu.tw to authorize the dataset download" — with no
+stated terms of use surfaced anywhere in the README once authorized; gated
+academic-contact datasets of this kind are conventionally research/
+non-commercial, but that is an inference, not a confirmed fact, since no
+terms text was found to quote. **Both the code and the dataset are therefore
+logged as blocked pending an explicit licence grant from the authors** — do
+not use either without first emailing the authors and getting written terms
+that permit commercial use.
+
+**Which failure mode.** Neither directly — this is a model-architecture/
+dataset-methodology finding, not a camouflage or motion-blur fix per se.
+Closest fit is camouflage-adjacent: a model trained to regress explicit club
+keypoints (not just detect a box) has to learn a location prior and
+part-relationship structure for the club that a box-only detector like the
+current YOLO11n never gets, which is one documented way small/occluded/
+low-contrast object recall improves in pose literature (the model has more
+to condition on than raw appearance-in-a-crop). It does not touch motion
+blur — the GolfSwing dataset's capture setup (mocap-synced RGB) is not
+described as including blurred frames.
+
+**Why it (would) help this model specifically, if unblocked.** This is the
+first thing found in three runs of this log that is golf-specific and
+club-specific rather than a generic small-object or motion technique
+adapted from another sport — it is directly on-target for "does anyone
+already solve golf club localization." If the licence question resolved
+favorably, the natural use would not be swapping in a pose model wholesale
+(architecture mismatch with the on-device YOLO11n/CoreML pipeline is as real
+here as it was for TrackNetV4, logged 2026-08-13) but using the released
+club-keypoint checkpoints as an **auto-labelling assist**: run GolfPose-2D(C)
+over the project's own unlabelled phone footage to propose club keypoints,
+convert to a box via a small dilation, and route through human review before
+accepting into the training set. That would directly attack the stated
+54%-Roboflow/29%-own-footage data-mix imbalance by cutting the cost of
+turning more of the app's own footage into labelled training data — but only
+if the authors' terms permit that kind of derivative use, which is unverified.
+
+**Effort vs. payoff.** Low effort to find, currently near-zero payoff
+because of the licence block — this is the finding. If a future run (or the
+project owner directly) gets written commercial-use terms from
+mhlee.cs09@nycu.edu.tw, effort would jump to medium (stand up MMDetection/
+MMPose, run inference on a footage sample, build the box-derivation +
+review-queue step) with genuinely good payoff (cheaper labelling of the
+underrepresented own-footage slice). Until then this should be treated as
+"licence-blocked, contact the authors before spending any implementation
+time," not as an actionable technique. Recorded so future runs don't
+re-discover the same repo and re-do this same licence check.
