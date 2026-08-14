@@ -675,3 +675,81 @@ with TrackNetV4, this should not be treated as a second, independent thing
 to build — it's evidence to weight the existing TrackNetV4-style research
 spike (does a motion-direction/frame-difference signal survive handheld
 camera shake?) higher, not a separate line of work.
+
+---
+
+## 2026-08-14 — dj_masters checked and ruled out (golf pose/club-tracking area, negative result: unimplemented accuracy claim + broken licence claim + tainted training pipeline)
+
+**What it is.** `matiarj/dj_masters` ("DJ Masters," GitHub) is a personal
+golf-swing-analysis project combining MediaPipe/YOLOv8 body-pose estimation
+with a "custom-trained YOLO model" for golf club detection, plus a
+"Motion-consistent Tracking" component described as using Kalman filtering
+to smooth the club's trajectory across frames. It surfaced in a search for
+new golf-specific club-tracking work (this log's rotation area 4) as a
+distinct project from the ones already logged here (GolfPose, 2026-08-13;
+`mamoonik/golf-swing` and `ryanboscobanze/GolfPosePro`, both referenced as
+asides in that same entry). On inspection it does not hold up, for three
+independent, verified reasons below.
+
+**URL.** https://github.com/matiarj/dj_masters (repo root, README.md,
+`GOLFDB_SETUP_GUIDE.md`, and `CLUB_DETECTION_IMPROVEMENTS.md` all fetched
+directly and confirmed live).
+
+**Licence — claimed MIT, but no LICENSE file exists. Commercial use: NOT
+confirmed permitted; treat as forbidden by default.** The README states
+"MIT License - see LICENSE file for details," but
+`raw.githubusercontent.com/matiarj/dj_masters/main/LICENSE` returns HTTP
+404, and no `LICENSE`/`LICENSE.md`/`LICENSE.txt` appears anywhere in the
+repo's root file listing (confirmed via direct fetch of the GitHub file
+tree, not just search-indexing). Under GitHub's default-licence rule, a
+README's licence claim with no accompanying LICENSE file grants nothing —
+the code remains "all rights reserved" by default. Same posture this log
+has already applied to GolfPose (2026-08-13), detectInBlur (2026-08-14),
+and DTUM (2026-08-14): a stated intent to be permissively licensed is not a
+licence.
+
+**Second, independent dealbreaker: the repo's own `GOLFDB_SETUP_GUIDE.md`
+documents GolfDB (CC BY-NC-4.0, non-commercial only — verified and logged
+here on 2026-08-13) as the data source its setup process is built around.**
+Even if the code licence were fixed, any club-detector weights trained by
+following this project's own documented pipeline would inherit a
+non-commercial data provenance problem, making the resulting weights
+unusable for this app regardless of what licence the code itself carries.
+
+**Third, independent dealbreaker: the headline "80%+ detection accuracy"
+claim is not a measured result.** `CLUB_DETECTION_IMPROVEMENTS.md` lists
+"Detection rate: 21% → 60-80%" under a section literally titled "Expected
+Improvements," with no test-set description, no metric definition
+(precision/recall/F1/IoU threshold — none stated), and no reported
+methodology anywhere in the repo's own documentation. The Kalman-filter
+"Motion-consistent Tracking" that the README's badges present as a current
+feature is, per `CLUB_DETECTION_IMPROVEMENTS.md`'s own "Recommended Next
+Steps" section, unimplemented — only a skeleton `cv2.KalmanFilter(4, 2)`
+stub is present, not a working tracker. The badge-level marketing in the
+README does not match the project's own internal status documentation.
+
+**Which failure mode.** Neither, in practice — nothing here is validated
+enough to attribute an effect to. If the described (but unimplemented)
+Kalman-filtered trajectory-smoothing idea were ever built, it would be
+camouflage-adjacent (bridging a frame where the detector returns zero
+candidates by carrying forward a predicted position from prior confident
+detections) — the same idea this log's TrackNetV4 and DTUM entries reach
+by a more rigorous route. But that idea is generic, well-established
+control-theory (Kalman filtering for object tracking predates this
+project by decades) and this repo contributes no working implementation,
+no benchmark, and no golf-specific insight beyond stating the idea as a
+TODO — so there is nothing here worth adopting over just implementing a
+standard Kalman/constant-velocity tracker directly from first principles
+if that direction is pursued.
+
+**Effort vs. payoff.** Low effort (one search-and-verify pass), zero
+payoff — that is the finding. Recorded per the brief's instruction to log
+"nothing new" honestly: this is a case where a plausible-sounding search
+hit (golf club detection, 80%+ accuracy, Kalman tracking) evaporates on
+direct inspection of the actual repo contents rather than its README
+badges. Worth noting as a general caution for future runs in this log:
+GitHub project READMEs for small/personal repos can state accuracy figures
+and feature lists that are aspirational rather than achieved, and licence
+badges that are aspirational rather than backed by an actual LICENSE file
+— both should be checked against the repo's own file listing and internal
+docs, not taken at README-badge value, exactly as this run did.
