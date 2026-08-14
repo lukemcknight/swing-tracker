@@ -528,3 +528,150 @@ frame-averaging idea, not as a substitute for eventually getting real
 low-light/indoor footage (still unmeasured, per the brief) — synthetic blur
 on well-lit source images does not create the exposure/noise/dynamic-range
 characteristics that real indoor motion blur will actually have.
+
+---
+
+## 2026-08-14 — DTUM: direction-coded temporal module for dim/low-contrast moving targets (IEEE TNNLS 2023), from the infrared-surveillance literature rather than sports tracking
+
+**Area covered.** This run first spent effort re-checking the "commercial
+golf video/image dataset, especially low-light/indoor/simulator/older-phone"
+area (rotation bullet 1), since it's the least-covered area in the log and
+the brief flags indoor performance as never measured. That search came up
+empty: a fresh Roboflow Universe search surfaced only outdoor/broadcast golf
+datasets already in the same family as the ones the project already draws
+54% of its training data from, and a separate GitHub/academic search for
+indoor-simulator or low-light golf swing footage found nothing beyond
+GolfDB (already checked and ruled out on 2026-08-13). `universe.roboflow.com`,
+`roboflow.com`, `app.roboflow.com`, `api.roboflow.com`, `kaggle.com`,
+`huggingface.co`, `arxiv.org`, `zenodo.org`, `figshare.com`, and
+`opendatalab.com` are all unreachable from this sandbox's egress proxy
+(`curl` to each returns "CONNECT tunnel failed, response 403"; only
+`github.com` and `raw.githubusercontent.com` are reachable), which caps how
+far a dataset search can go in this environment — noted here so a future run
+doesn't re-spend a whole cycle re-discovering the same block. Given that
+dead end, this entry instead logs a genuinely new finding from rotation
+bullet 3 (small/low-contrast/camouflaged object detection, temporal
+methods), specifically chosen from a research field the log hasn't touched
+yet.
+
+**What it is.** DTUM ("Direction-Coded Temporal U-Shape Module for
+Multiframe Infrared Small Target Detection," Li et al., IEEE Transactions on
+Neural Networks and Learning Systems 2023) is from the infrared/thermal
+surveillance small-target-detection literature — a different research
+community from the sports-broadcast-tracking lineage TrackNetV4 (logged
+2026-08-13) comes from, working on a structurally similar problem: detecting
+a small, dim, low-contrast target that is nearly invisible in a single
+static frame because it barely differs in appearance from cluttered
+background. DTUM's mechanism is a direction-coded convolution block (DCCB)
+that encodes each target's motion *direction* across a short multi-frame
+window into learned features, feeding a U-shaped temporal module that
+enhances the moving target's signal while suppressing background false
+alarms. Unlike TrackNetV4 (a full heatmap-regression network built around
+frame-differencing + a learned attention map), the repo's README describes
+DTUM explicitly as a plug-in module that "can be equipped with most
+single-frame networks to leverage spatial-temporal information" — i.e. it
+is pitched as an add-on to an existing single-shot detector's backbone
+rather than a wholesale architecture replacement, which is structurally
+closer to what modifying YOLO11n would require. The authors also built and
+released NUDT-MIRSDT, a dataset of dim, small, moving infrared targets
+against cluttered backgrounds with both mask- and point-level annotations,
+built specifically for this problem shape.
+
+**URL.** https://github.com/TinaLRJ/Multi-frame-infrared-small-target-detection-DTUM
+(paper: IEEE TNNLS 2023, IEEE Xplore document 10321723, also indexed at
+PubMed 37976190 — IEEE Xplore, PubMed, and arXiv were all unreachable from
+this sandbox for direct verification, same egress restriction as every
+prior run's finding; the paper's title, venue, year, and mechanism
+description are corroborated across three independently-indexed sources
+(IEEE Xplore, PubMed, ResearchGate) converging on the same description, and
+the repo's own README — fetched directly and live — independently confirms
+the DCCB/temporal-module mechanism and the plug-in-compatibility claim in
+the authors' own words, so the mechanism is treated as verified even though
+the PDF itself could not be read for exact reported numbers).
+
+**Licence (verified directly).** No LICENSE, LICENSE.md, LICENSE.txt, or
+COPYING file exists in the repository — checked directly via
+`raw.githubusercontent.com/TinaLRJ/Multi-frame-infrared-small-target-detection-DTUM/main/<file>`
+and the equivalent `master/` path for all four filenames; every one returned
+HTTP 404 (confirmed via `curl`, not just a page render), while
+`README.md` returns HTTP 200 on both branches, confirming the repo and both
+branch names are live and the absence of a licence file is real, not a
+fetch failure. Under GitHub's default-licence rule, this means **commercial
+use of this repo's code is NOT confirmed permitted; treat as forbidden by
+default** until the authors grant explicit terms — same posture as the
+GolfPose (2026-08-13) and detectInBlur (2026-08-14, PSF-synthesis) entries
+already in this log. The NUDT-MIRSDT dataset is not bundled in the repo at
+all — it's distributed externally via BaiduYun and Google Drive links with
+no separate licence text stated anywhere in the README, so it inherits the
+same "not confirmed permitted" status and is additionally ungated only by a
+generic file-sharing link (no request-access process, unlike GolfPose's
+dataset), which is worth noting but does not change the licence conclusion.
+What *is* safely reusable regardless of the code's licence status: the
+described technique — encoding a moving object's frame-to-frame direction
+into a convolutional feature via a direction-coded kernel, then fusing that
+motion-direction signal with single-frame appearance features ahead of a
+detection head — is an algorithmic idea describable and reimplementable
+from the paper's own mechanism description (as summarized in the repo
+README and corroborating abstracts) without copying any of this repo's
+actual code.
+
+**Which failure mode.** Camouflage, primarily and specifically — DTUM's own
+problem framing ("dim small target" against "cluttered background," typical
+signal-to-clutter ratios low enough that single-frame appearance is
+ambiguous) is close to a direct restatement of this project's camouflage
+failure mode (dark clubhead against dark clothing/foliage, zero detections
+even at confidence 0.05 in visually sharp frames). Not applicable to motion
+blur — DTUM's target model is a dim-but-sharp point/small-blob target, not
+an elongated blur streak.
+
+**Why it helps this model specifically.** This is the second independent
+verified source (after TrackNetV4) converging on the same conclusion from a
+completely different research field: when a single frame's appearance is
+genuinely insufficient — not just noisy or low-resolution, but ambiguous
+because the target and background actually look alike — the standard
+remedy in the literature is to inject a motion-derived signal computed
+across frames, not to keep improving the single-frame appearance model.
+Two independent literatures (sports broadcast tracking and infrared
+surveillance) landing on structurally the same fix for structurally the
+same problem is stronger evidence that this is the right general direction
+for camouflage than either paper alone would be. DTUM adds something
+TrackNetV4 didn't: an explicit plug-in framing compatible with existing
+single-frame detector backbones (closer to "add a module to YOLO11n" than
+"replace YOLO11n with a heatmap network"), and a purpose-built dim-small-
+moving-target dataset (NUDT-MIRSDT) that, licence permitting, could serve as
+a pretraining or architecture-validation source for a motion-direction
+module even before any golf-specific data is touched — though the domain
+gap (infrared thermal imagery vs. visible-light phone video) means it could
+only validate the *architecture*, not directly transfer as training data.
+
+**Important caveat — same camera-motion problem as TrackNetV4, independently
+confirmed here.** Infrared surveillance/tracking systems in this literature
+are typically mounted on tripods, gimbals, or slow-panning platforms —
+DTUM's direction-coded motion signal assumes the dominant frame-to-frame
+motion is the target's, not the camera's. A handheld phone recording a golf
+swing has substantial camera motion of its own (especially during the
+downswing, when the phone is often also moving to track the club), which
+would corrupt a naive direction-coded motion signal exactly as it would
+corrupt TrackNetV4's frame-differencing input. Any prototype would need
+frame registration/stabilization ahead of the motion-encoding step. DTUM is
+also pure PyTorch research code with no CoreML export path or mobile
+inference budget discussed anywhere in the repo — same deployment gap as
+every architecture-change idea logged so far.
+
+**Effort vs. payoff.** High effort, moderate-confidence payoff, and mostly
+confirmatory rather than novel in its conclusion. Effort: comparable to or
+slightly cheaper than the TrackNetV4 idea — the DCCB is a small, well-
+specified convolutional block (not a full network) that could plausibly be
+prototyped as an added input branch to YOLO11n's backbone without adopting
+DTUM's full U-shaped multiframe architecture, but it still requires
+architecture surgery, retraining, camera-motion compensation research, and
+re-validation of the CoreML export path — none of which is small. Payoff:
+this entry's main value is *confirmatory*, not novel — it strengthens
+confidence that motion-direction encoding is the right general shape of fix
+for camouflage (two unrelated literatures agree) rather than introducing a
+new mechanism the project hadn't already identified via TrackNetV4. Given
+that, and given the unresolved licence and camera-motion problems shared
+with TrackNetV4, this should not be treated as a second, independent thing
+to build — it's evidence to weight the existing TrackNetV4-style research
+spike (does a motion-direction/frame-difference signal survive handheld
+camera shake?) higher, not a separate line of work.
