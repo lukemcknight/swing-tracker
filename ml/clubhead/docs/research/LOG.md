@@ -428,3 +428,103 @@ unverified (blocked from the paper itself), so the honest recommendation is
 a small experimental spike (train an n=3 channel-stacked YOLO11n variant on
 the existing training set, compare against the existing baseline on the
 held-out test set) before treating the payoff as real.
+
+---
+
+## 2026-08-14 — PSF-based blur synthesis with box expansion (Sayed & Brostow, CVPR 2021): a second, cheaper route to correctly-elongated blur labels
+
+**What it is.** "Improved Handling of Motion Blur in Online Object Detection"
+(Mohamed Sayed & Gabriel Brostow, UCL — CVPR 2021, pp. 1706–1716,
+arXiv:2011.14448) studies five remedy classes for the sharp/blurred
+performance gap in object detectors. The one directly relevant here is their
+label-generation remedy: they convolve sharp training crops with generated
+motion-blur point-spread-function (PSF) kernels (parameterised by blur type
+and exposure length via `--param_index`/`--high_exposure`/`--low_exposure`),
+and — critically — **expand the ground-truth bounding box to match the
+kernel's blur extent** (`--expand_target_boxes` in their training/eval code)
+instead of leaving the original sharp-object box in place. Per the search-
+indexed abstract/README text, this "custom label generation aimed at
+resolving spatial ambiguity" is what "markedly improves object detection" in
+their experiments, more than the blur-conditioning/ensemble remedies they
+also tried. Reference implementation (PyTorch, built on torchvision's
+detection reference code, includes `generate_PSFs.py`, `motion_blur/`, and
+the full train/eval CLI with the flags above) is at
+`github.com/mohammed-amr/detectInBlur`, fetched and inspected directly (root
+file listing and full README fetched via raw.githubusercontent.com and
+github.com — both live and confirmed, not just search-indexed).
+
+**URL.** https://github.com/mohammed-amr/detectInBlur (paper: CVPR 2021 /
+arXiv:2011.14448 / project page visual.cs.ucl.ac.uk/pubs/handlingMotionBlur —
+arxiv.org, the UCL project page, and deepai.org were all blocked by this
+sandbox's egress proxy, consistent with every prior run of this log, so the
+paper's specific quantitative deltas were not directly readable; only a
+search-engine-indexed summary confirming the label-generation remedy is the
+strongest of the five and the authors' names/venue/page range could be
+cross-checked. Treat the *existence and mechanism* of the PSF+box-expansion
+technique as verified — it's visible directly in the repo's README and CLI
+flags, not just claimed — but treat any specific accuracy number as
+unverified, since none could be fetched.).
+
+**Licence (verified directly).** No LICENSE, LICENSE.md, LICENSE.txt, or
+COPYING file exists anywhere in the repository root (checked the live file
+listing at github.com/mohammed-amr/detectInBlur/tree/master, and confirmed
+`raw.githubusercontent.com/.../LICENSE` returns 404 on both `master` and
+`main`). The README states "most of this repo is based on the detection
+reference code from torchvision" (torchvision's own reference scripts are
+BSD-3-Clause, which does permit commercial use), but the author's own
+additions — `generate_PSFs.py`, the blur-application code, the box-expansion
+logic, the blur-estimator classifier — carry no licence grant of their own.
+Under GitHub's default-licence rule, unlicensed code is "all rights
+reserved": **commercial use of this repo's own code is NOT confirmed
+permitted; treat as forbidden by default** until the author (Mohamed Sayed)
+grants explicit terms. Same posture as the GolfPose entry logged 2026-08-13.
+What *is* safely reusable regardless: PSF-based motion-blur synthesis
+(convolving a sharp crop with a directional blur kernel) is a decades-old,
+generic image-processing technique with no original-expression claim
+attached to it (OpenCV and countless textbooks describe the identical
+operation) — reimplementing "convolve with a motion PSF, then grow the
+label box along the kernel's direction/length" from the paper's description
+requires none of this repo's actual code.
+
+**Which failure mode.** Motion blur, specifically and only. Does not touch
+camouflage.
+
+**Why it helps this model specifically.** This is a second, independently-
+sourced route to the exact same root gap the 2026-08-12 frame-averaging
+entry identified: labelled boxes in this project's training set are
+near-square (median elongation 1.60) because blurred training examples are
+scarce, not because annotators mislabel blur when it's present (the labeling
+spec already instructs boxing the full streak). Frame-averaging (08-12)
+fixes this by *capturing new footage* (a burst of sharp frames, averaged,
+with the box derived from tracked sub-frame positions) — it needs
+slow-motion/high-fps source video the project may or may not already have.
+This technique instead fixes it by *synthesizing blur from footage already
+in hand*: take an existing sharp, correctly-boxed clubhead crop from the
+training set, convolve it with a directional PSF kernel of chosen length/
+angle, and analytically grow the box by that same kernel's extent — no new
+capture, no tracker, no burst-mode footage required, just the labels and
+images the project already has. The two techniques are complementary, not
+competing: frame-averaging produces genuinely more realistic blur (true
+optical integration) but depends on footage the project may not have yet;
+PSF synthesis is available immediately from the existing dataset but the
+blur is synthetic/approximate rather than physically captured. Running both
+is plausible and cheap since neither requires new licensed assets.
+
+**Effort vs. payoff.** Low-to-medium effort, plausible payoff, capped by an
+unverified accuracy claim. Effort: PSF generation and convolution is a small
+amount of NumPy/PIL code (no need for this repo's training loop or model
+code, just the blur-kernel-generation idea), and the box-expansion rule is
+pure geometry (grow the axis-aligned box by the kernel's projected
+length along its angle) — this is the cheapest-to-implement idea logged in
+this file so far, since it needs no new footage, no tracker, no architecture
+change, and no GPU-hours beyond normal training. Payoff: directly produces
+more elongated, correctly-boxed training examples, which is exactly the
+labelled-data gap the brief describes — but the paper's actual reported
+accuracy delta for this remedy could not be fetched in this run (egress
+blocked on every hosting domain tried), so "markedly improves" is a
+paraphrase of a search-indexed summary, not a number this entry can stand
+behind. Recommended as a cheap experimental addition alongside the
+frame-averaging idea, not as a substitute for eventually getting real
+low-light/indoor footage (still unmeasured, per the brief) — synthetic blur
+on well-lit source images does not create the exposure/noise/dynamic-range
+characteristics that real indoor motion blur will actually have.
