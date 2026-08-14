@@ -753,3 +753,89 @@ and feature lists that are aspirational rather than achieved, and licence
 badges that are aspirational rather than backed by an actual LICENSE file
 — both should be checked against the repo's own file listing and internal
 docs, not taken at README-badge value, exactly as this run did.
+
+---
+
+## 2026-08-14 — Copy-Paste augmentation (Ghiasi et al., CVPR 2021): a data-synthesis route to camouflage, not an architecture change
+
+**What it is.** "Simple Copy-Paste Is a Strong Data Augmentation Method for
+Instance Segmentation" (Ghiasi et al., CVPR 2021, arXiv:2012.07177) pastes a
+real labelled object cutout onto a different background image, with the new
+bounding box (and mask) computed directly from the pasted region — no
+generative model, no learned harmonization network. This run checked an
+independent, unofficial implementation, `conradry/copy-paste-aug`, and
+fetched both the README and the actual augmentation code
+(`copy_paste.py`) directly, not just a description. Verified mechanism, read
+from the code itself: bounding boxes are *outputs*, recomputed by extracting
+min/max nonzero coordinates from the pasted mask
+(`extract_bboxes()`) after merging masks via
+`np.logical_and(mask, np.logical_xor(mask, alpha))` to correctly punch out
+occluded original content; blending is Gaussian edge-smoothing of the paste
+mask (`gaussian(alpha, sigma=sigma)`, default `sigma=3`), i.e.
+`img = paste_img * alpha + img * (1 - alpha)` — a soft feathered edge, not
+Poisson/gradient-domain blending. **Important limitation confirmed from the
+code:** it requires segmentation masks as input, not bare boxes — it cannot
+run on box-only annotations without first deriving a mask.
+
+**URL.** https://github.com/conradry/copy-paste-aug (paper: CVPR 2021 /
+arXiv:2012.07177 — arxiv.org itself was unreachable from this sandbox's
+egress proxy, consistent with every prior run's restriction, so the paper's
+own reported accuracy numbers were not fetched; the augmentation mechanism
+above is verified directly from the reimplementation's own code, not the
+paper).
+
+**Licence (verified directly, not just README-claimed — see the dj_masters
+entry above for why that distinction matters).**
+`raw.githubusercontent.com/conradry/copy-paste-aug/main/LICENSE` was fetched
+directly and returns the actual MIT License text (Ryan Conrad, 2020):
+"Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files... to deal in the
+Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software." **Commercial use: permitted.**
+
+**Which failure mode.** Camouflage, primarily. This is the first entry in
+the log to attack camouflage from the *data* side rather than the
+*architecture* side (TrackNetV4 and DTUM, both logged above, both require
+adding a temporal/motion module to the model and re-validating the CoreML
+export). Secondarily useful for motion blur: nothing stops pasting an
+already-blur-augmented clubhead crop (from either the frame-averaging or
+PSF-synthesis entries logged above) onto a new background, combining both
+fixes in one augmentation pass.
+
+**Why it helps this model specifically.** The camouflage failure as
+described is a single-frame appearance problem: a dark clubhead against
+dark clothing or cluttered foliage produces zero candidates because the
+detector has never seen enough examples of *that specific hard contrast
+combination* — not because the model architecture is incapable of a box
+detection task. Copy-paste directly manufactures more of exactly that
+combination: take real, already-correctly-boxed clubhead crops from the
+existing training set and composite them onto real hard backgrounds pulled
+from this project's own footage. The labeling spec already keeps
+unannotated negative frames as first-class data (follow-through, non-swing
+footage) — those are a ready, zero-new-capture, zero-licence-risk source of
+exactly the dark-clothing/foliage backgrounds needed, since they're already
+this project's own footage. This needs no new external dataset, no new
+capture, and — unlike TrackNetV4 or DTUM — no architecture change or
+re-validation of the on-device CoreML export path, since the model and
+input format are untouched; only the training set grows.
+
+**Effort vs. payoff.** Low-to-medium effort, plausible payoff, and the
+cheapest camouflage-directed idea in this log so far specifically *because*
+it doesn't touch the model. Effort: the mask requirement is the one real
+obstacle — this project's labels are boxes only (per the labeling spec), so
+either (a) a cheap approximate mask can be derived per crop (e.g. an
+ellipse or the box itself, feathered at the edge, without a real
+segmentation model, which likely loses little for a small, roughly-blob-
+shaped clubhead) or (b) a lightweight off-the-shelf background-removal
+step generates a real mask once per crop, which is a one-time preprocessing
+cost, not a per-training-run cost. Composition (sampling a background from
+the existing negative frames and pasting a blur-augmented clubhead crop
+with feathered edges) is a small, self-contained script. Payoff: directly
+produces more of the specific hard training examples the camouflage failure
+mode is short on, with no architecture risk — but composited realism is
+inherently imperfect (lighting/shadow/scale mismatch between the crop's
+original scene and the new background), so this should be treated as
+*more hard examples*, not a faithful simulation of real camouflage
+conditions, and evaluated on the held-out test set before trusting it to
+move the needle.
