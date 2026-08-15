@@ -1076,3 +1076,67 @@ build. The MoCA-licence dead end is itself worth the entry: it closes off a
 specific, plausible-sounding "maybe there's a usable general-purpose
 camouflage-video dataset" lead cheaply, rather than leaving a future run to
 re-discover and re-chase the same unverifiable claim.
+
+---
+
+## 2026-08-15 — AICaddy (`oswinkil-git/AICaddy-A-Golf-Club-Tracer`) checked and ruled out (golf pose/club-tracking area, negative result: genuinely permissive licence, but no shippable artifact)
+
+**What it is.** This is this log's third run today (after RT-Focuser and
+SLT-Net, both logged above), rotated into the golf-specific pose/club-
+tracking area since the prior two entries covered motion blur and
+camouflage back-to-back. AICaddy is a small GitHub project — "a Python
+program and Yolov8 model that aims to allow anyone to use machine learning
+to trace their golf swing for better analysis" — whose README claims the
+model is "already trained on 6000+ images of golf club heads (just
+drivers)." It surfaced as the most specific, GitHub-hosted (i.e.
+fetchable, unlike Roboflow/Kaggle/HuggingFace, all still blocked by this
+sandbox's egress proxy per every prior run's finding) hit for "golf club
+head detection YOLO github pretrained model."
+
+**URL.** https://github.com/oswinkil-git/AICaddy-A-Golf-Club-Tracer
+(README.md, LICENSE, and main.py all fetched directly via
+raw.githubusercontent.com and confirmed live — HTTP 200 on all three, not
+search-indexed).
+
+**Licence (verbatim, from the repo's `LICENSE` file, fetched directly).**
+BSD 3-Clause License, Copyright (c) 2023, oswinkil. "Redistribution and use
+in source and binary forms, with or without modification, are permitted
+provided that [attribution/no-endorsement conditions are met]." **Commercial
+use: permitted** — this is a genuine, verified permissive licence, unlike
+several prior golf-tracking entries in this log (GolfPose, dj_masters) that
+turned out to have no real licence grant at all.
+
+**Which failure mode.** Would be camouflage-adjacent if it worked (a
+club-specific detector checkpoint could plug the same "does anyone already
+solve golf club localization" gap GolfPose was logged for on 2026-08-13) —
+moot, per the dealbreaker below. Not motion blur.
+
+**Why it doesn't help this model, despite the clean licence (verified,
+not just claimed).** Fetched `main.py` directly: it loads
+`model = YOLO('model.pt')` — a local weights file — but the repo's file
+listing (fetched directly from the GitHub tree view, not just the README)
+contains exactly three files: `LICENSE`, `README.md`, `main.py`. **No
+`model.pt`, no dataset, and no download link for either is anywhere in the
+repo.** The "trained on 6000+ images" claim in the README is exactly the
+kind of unimplemented/aspirational claim this log flagged as a pattern in
+the dj_masters entry (2026-08-14) — stated in prose, not backed by an
+artifact in the repo itself. Practically: this project ships a licence with
+nothing to license. There is no weights file to run, no dataset to retrain
+from, and no way to reproduce the claimed model from what's actually in the
+repo. Also worth noting: even the claimed training scope (drivers only,
+6000+ images, unstated capture conditions) would not have touched the
+indoor/low-light gap this project actually needs — the README says nothing
+about lighting or capture conditions at all.
+
+**Effort vs. payoff.** Low effort (one search-and-verify pass), zero
+payoff — that is the finding. Recorded so a future run doesn't re-discover
+this same repo and re-spend a cycle checking it: the licence is real and
+clean, but there is nothing shippable behind it. General pattern now
+confirmed across three separate golf-tracking-repo checks in this log
+(GolfPose's licence-blocked-but-real dataset, dj_masters's fake licence
+badge, and now AICaddy's real licence but phantom weights file): small
+personal golf-CV GitHub repos in this space consistently oversell what they
+actually deliver in the repo itself. Future runs in this area should verify
+the artifact (weights/dataset actually present and fetchable), not just the
+README's claims or the LICENSE file's presence, before logging anything as
+usable.
