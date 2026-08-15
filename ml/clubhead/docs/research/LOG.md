@@ -839,3 +839,116 @@ original scene and the new background), so this should be treated as
 *more hard examples*, not a faithful simulation of real camouflage
 conditions, and evaluated on the held-out test set before trusting it to
 move the needle.
+
+---
+
+## 2026-08-15 — RT-Focuser (ICTA 2025): lightweight edge/CoreML deblurring as an inference-time preprocessing step, not a training-side fix
+
+**What it is.** Every motion-blur entry logged so far (frame-averaging
+2026-08-12, PSF-synthesis 2026-08-14, channel-stacked multi-frame YOLO
+2026-08-13) attacks the training side: make blurred, correctly-boxed
+examples so the detector *learns to recognize* a blur streak. RT-Focuser
+("A Real-Time Lightweight Model for Edge-side Image Deblurring," Wu et al.,
+IEEE ICTA 2025, arXiv:2512.21975) is a different remedy class entirely: a
+small U-shaped deblurring network (a "Lightweight Deblurring Block" with
+edge-aware feature extraction, a "Multi-Level Integrated Aggregation"
+encoder-fusion stage, and a "Cross-source Fusion Block" decoder) meant to
+run **at inference time**, sharpening each blurred frame *before* it reaches
+a downstream detector — no retraining of the detector required at all.
+Reference implementation (PyTorch + ONNX, training and inference scripts,
+pretrained weights already included in the repo, CoreML export path
+documented) is at `github.com/ReaganWu/RT-Focuser`.
+
+**URL.** https://github.com/ReaganWu/RT-Focuser (paper: IEEE ICTA 2025,
+arXiv:2512.21975 — arxiv.org and ieeexplore.ieee.org are both unreachable
+from this sandbox's egress proxy, same restriction as every prior run of
+this log, so the paper's own PSNR/SSIM claims are sourced from the repo's
+own README table, not the PDF. The repo itself — README, `LICENSE`,
+`requirements.txt`, `Inference_Image_Torch.py`, `Inference_Video_ONNX.py`,
+and a specific weight file,
+`Pretrained_Weights/rt_focuser_wint8_afp16.onnx` — was fetched directly via
+`raw.githubusercontent.com` and confirmed live (HTTP 200 on every path
+checked), not just search-indexed, so the existence of working code and
+included pretrained weights is fully verified, unlike several prior entries
+in this log where only a paper claim, not code, could be checked.)
+
+**Licence (verbatim, from the repo's `LICENSE` file, fetched directly).**
+MIT License, Copyright (c) 2025 ReaganWu. "Permission is hereby granted,
+free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software
+without restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Software... subject to the following conditions: The above copyright notice
+and this permission notice shall be included in all copies or substantial
+portions of the Software." **Commercial use: permitted**, including of the
+included pretrained weights (the MIT grant in this repo is not scoped to
+code-only the way some prior entries' licences were silent on weights/data —
+the weights ship inside the same repo under the same LICENSE file, with no
+separate licence file or restriction stated for `Pretrained_Weights/`).
+
+**Which failure mode.** Motion blur, specifically and primarily. Not
+camouflage — a deblurring pass sharpens edges and texture but does not
+manufacture an appearance cue where the object's color genuinely matches its
+background; it would not turn a dark clubhead invisible against dark
+clothing into something detectable.
+
+**Why it helps this model specifically.** This is the first entry in the log
+that requires **zero changes to the existing model, training set, or
+labels** — the current YOLO11n CoreML detector stays exactly as it is. The
+proposal is purely additive: run RT-Focuser over each captured frame before
+handing it to the existing detector. Three things make it a specifically
+good fit for this app, verified directly from the README, not inferred: (1)
+**it is already deployed and benchmarked on iPhone via CoreML** — 146.72 FPS
+on an iPhone 15 (A16 Bionic), which is the exact target runtime class this
+project ships to, not a generic "should be exportable" claim like most prior
+architecture entries in this log; (2) it is tiny (5.85M params, 15.76
+GMACs) and fast (6ms/frame on an RTX 3090, sub-frame-time even on CPU per
+the README's OpenVINO/ONNX Runtime numbers), so it plausibly fits inside the
+existing per-frame latency budget alongside YOLO11n rather than replacing
+it; (3) unlike the training-side blur fixes already logged, this can be
+prototyped and measured **immediately against the existing eval harness**
+with no training run at all — pull the pretrained ONNX weights, run them as
+a preprocessing pass over the held-out test set's frames (especially the
+fast-downswing frames where blur is worst), and re-score with the unchanged
+`chdet.evaluate` harness to see whether detection rate or center error moves
+on the existing CreateML/future-YOLO baseline. That is a same-day
+experiment, not a data-engine or architecture-surgery commitment.
+
+**Important caveats.** (1) Trained/benchmarked on the GoPro deblurring
+benchmark (Nah et al., general camera-shake and object-motion blur), not
+golf-specific data — domain transfer to a golf clubhead's specific
+elongated-streak blur shape is unverified and is exactly what the same-day
+harness experiment above would test. (2) Deblurring restores *plausible*
+sharpness from a lossy blur, not the true pre-blur image — for a clubhead
+moving fast enough that its shape is smeared across many pixels, RT-Focuser
+may sharpen edges without actually recovering enough real structure for the
+existing appearance-only YOLO11n detector to latch onto; the PSNR/SSIM
+numbers in the README measure image-quality fidelity, not downstream
+detection-rate lift, and the paper's own reported numbers could not be
+fetched to check whether they evaluate a detection task at all (arXiv
+blocked). (3) Adds a second model to the on-device pipeline, which is a real
+latency and binary-size cost even if individually each model is fast —
+total added time and combined CoreML memory/compute budget on-device is
+unmeasured here. (4) This is complementary to, not a substitute for, the
+training-side blur entries already logged (frame-averaging, PSF-synthesis,
+channel-stacked YOLO) — those fix the *label* gap so the detector learns
+what a real blur streak looks like; this fixes the *input* by removing blur
+before detection. Running both is plausible.
+
+**Effort vs. payoff.** Low effort for a first measurement, genuinely unknown
+payoff pending that measurement — and that's exactly what makes this a good
+next step rather than a full commitment. Effort: no training required at
+all — download the included ONNX weights, run `Inference_Video_ONNX.py` (or
+adapt it) over a handful of held-out test-set clips, feed the deblurred
+frames through the existing CoreML detector, and diff the eval harness
+report against the unmodified-frame baseline. This is the cheapest
+experiment logged in this file to date, in wall-clock terms, because the
+model is pretrained and the harness already exists. Payoff: if detection
+rate improves meaningfully on the fast-downswing frames, this is a
+zero-retraining win deployable as a small preprocessing addition to the
+existing iOS pipeline; if it doesn't (per caveat 2), the experiment still
+answers a real open question cheaply and rules out an entire remedy class
+without having spent architecture-surgery or data-engine effort first. It
+should be tried before, not after, any of the higher-effort architecture
+changes already logged (TrackNetV4, DTUM, channel-stacked YOLO) precisely
+because it's so much cheaper to falsify or confirm.
