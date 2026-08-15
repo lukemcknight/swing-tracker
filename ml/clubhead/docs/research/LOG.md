@@ -952,3 +952,127 @@ without having spent architecture-surgery or data-engine effort first. It
 should be tried before, not after, any of the higher-effort architecture
 changes already logged (TrackNetV4, DTUM, channel-stacked YOLO) precisely
 because it's so much cheaper to falsify or confirm.
+
+---
+
+## 2026-08-15 — SLT-Net (CVPR 2022): a third, differently-mechanized field converging on motion for camouflage — plus a dead-end check on its MoCA-Mask benchmark's licence
+
+**What it is.** "Implicit Motion Handling for Video Camouflaged Object
+Detection" (Cheng et al., CVPR 2022) is the founding work of a distinct
+research field this log hadn't touched yet: video camouflaged object
+detection (VCOD) — objects that are hard to see in a single frame
+specifically *because* their appearance matches the background, made
+detectable by motion across frames. That is a closer literal match to this
+project's camouflage failure mode than either of the two camouflage entries
+already logged (TrackNetV4, from sports-broadcast tracking; DTUM, from
+infrared surveillance) — this field's entire premise is "camouflage in
+ordinary RGB video, fixed with motion," not a related-but-different problem
+adapted to camouflage. Architecturally it's also a different mechanism from
+both prior entries: instead of raw frame-differencing (TrackNetV4) or a
+hand-designed direction-coded convolution (DTUM), SLT-Net builds a **dense
+correlation volume** between consecutive frames (the same kind of
+representation RAFT-style optical-flow networks use) to *implicitly* capture
+inter-frame motion, jointly trained end-to-end with the segmentation loss —
+so the motion representation itself is learned, not a fixed differencing
+operator — then a **short-term detection module** predicts a mask per frame
+pair and a **long-term refinement module** (a spatio-temporal transformer
+over T short-term predictions) enforces consistency across the sequence.
+The paper also released **MoCA-Mask**, a VCOD benchmark of 87 video
+sequences / 22,939 frames (67 animal species, natural environments,
+pixel-level masks on every 5th frame), built by adding dense masks to the
+earlier MoCA ("Moving Camouflaged Animals") dataset. Repository (PyTorch,
+training/eval code for both modules, pretrained checkpoints linked via
+Google Drive) fetched and inspected directly at
+`github.com/XuelianCheng/SLT-Net` — README, root file listing, and both
+`LICENSE` paths confirmed live via direct fetch, not just search-indexing.
+
+**URL.** https://github.com/XuelianCheng/SLT-Net (paper: CVPR 2022,
+openaccess.thecvf.com/content/CVPR2022/papers/Cheng_Implicit_Motion_Handling_for_Video_Camouflaged_Object_Detection_CVPR_2022_paper.pdf
+— thecvf.com, arxiv.org, and paperswithcode.com's own arXiv mirror were all
+unreachable from this sandbox's egress proxy, same restriction noted in
+every prior run of this log, so the mechanism description above is sourced
+from the repo's own README plus a search-engine-indexed excerpt of the
+paper's abstract, not the PDF directly; treat the mechanism's *existence*
+as verified (it's stated in the authors' own repo) but the paper's specific
+reported accuracy numbers as unfetched and therefore not cited here.)
+
+**Licence (verified directly, not README-claimed).**
+`raw.githubusercontent.com/XuelianCheng/SLT-Net/main/LICENSE` and the
+equivalent `master/LICENSE` path both return HTTP 404 — no LICENSE,
+LICENSE.md, or COPYING file exists anywhere in the repo. **Commercial use
+of the code is NOT confirmed permitted; treat as forbidden by default**
+until the authors grant explicit terms — same posture already applied in
+this log to GolfPose, detectInBlur, DTUM, and dj_masters (2026-08-13/14
+entries). What's safely reusable regardless: the *architectural idea*
+(correlation-volume-based implicit motion estimation, jointly trained with
+the detection/segmentation head, rather than a fixed differencing operator)
+is describable and reimplementable from the paper's own mechanism
+description without copying this repo's code.
+
+**A second check this run made and could not resolve: MoCA/MoCA-Mask's own
+licence.** A search-engine summary (not the primary source) claimed the
+underlying MoCA dataset is "available to download for commercial/research
+purposes under a Creative Commons Attribution 4.0 International License."
+This could **not** be verified — the dataset's home page,
+`robots.ox.ac.uk/~vgg/data/MoCA/`, is blocked by this sandbox's egress
+proxy at both the raw-fetch and tool level (confirmed via two independent
+fetch attempts, including a Wayback Machine fallback, both blocked), so
+this claim is explicitly **not trusted** and is not being logged as a
+usable dataset. One piece of corroborating-the-other-way evidence: this run
+also checked CAMotion (`github.com/Garyson1204/CAMotion`), a newer
+(2026) VCOD benchmark from the same research community that extends the
+same MoCA lineage — its README states in the project's own words: **"The
+CAMotion dataset is released for academic research only. Commercial use is
+strictly prohibited without permission from the authors."** That doesn't
+prove MoCA itself is non-commercial, but it means the field's more recent,
+directly-comparable benchmark explicitly forecloses commercial use, which
+is reason enough to not act on the unverified CC-BY claim for MoCA without
+independently confirming it from the primary source first (e.g. from a
+machine with unrestricted egress). Recorded so a future run doesn't
+re-attempt the same blocked fetch or mistake the unverified claim for a
+confirmed one.
+
+**Which failure mode.** Camouflage, specifically and directly — this is the
+closest-matching research field found in three runs' worth of camouflage
+searching (TrackNetV4 2026-08-13, DTUM 2026-08-14, this entry), since VCOD's
+entire premise is single-frame appearance failing due to genuine
+background-similarity, fixed by a motion signal. Not applicable to motion
+blur.
+
+**Why it helps this model specifically.** Two things make this a real
+addition to the log rather than a third redundant restatement of "use
+motion for camouflage": (1) it's evidence from a *third independent
+research community* (sports broadcast, infrared surveillance, and now
+dedicated video-camouflage research) converging on the same general
+direction, which is stronger triangulation than two; (2) it introduces a
+specific, different candidate mechanism for the camera-motion problem both
+prior camouflage entries flagged as real and unresolved — raw
+frame-differencing (TrackNetV4) or direction-coded convolution (DTUM) both
+assume the dominant inter-frame motion is the target's, which breaks on a
+handheld phone with its own camera shake. A *learned*, jointly-optimized
+correlation volume is not obviously immune to this (it's still built from
+raw frame content), but it is a materially different bet than a fixed
+differencing operator, since the network could in principle learn to
+partially discount coherent whole-frame motion (camera shake) in favor of
+motion that's spatially localized and inconsistent with the rest of the
+frame (the swinging club) — this is a hypothesis, not a claim the paper
+makes or that this run could verify, but it's a concretely different thing
+to test in the camera-motion research spike that TrackNetV4's and DTUM's
+entries already called for, not a reason to treat this as a fourth
+unrelated idea.
+
+**Effort vs. payoff.** High effort, mostly confirmatory payoff, same
+posture as DTUM. Effort: not a drop-in — the correlation-volume + short-
+term/long-term-transformer architecture is a substantial departure from
+single-shot YOLO11n, with the same unresolved CoreML-export and
+on-device-budget questions as TrackNetV4 and DTUM, and the same licence
+block on the reference code. Payoff: this entry's primary value is
+strengthening the case (now three fields, not two) that motion-based
+camouflage handling is the right general direction, plus one concrete,
+testable implementation detail (try a learned correlation-volume motion
+representation, not just raw differencing, when that research spike
+happens) — it should not be treated as a fourth separate architecture to
+build. The MoCA-licence dead end is itself worth the entry: it closes off a
+specific, plausible-sounding "maybe there's a usable general-purpose
+camouflage-video dataset" lead cheaply, rather than leaving a future run to
+re-discover and re-chase the same unverifiable claim.
