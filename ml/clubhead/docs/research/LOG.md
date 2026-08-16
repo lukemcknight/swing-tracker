@@ -1483,3 +1483,125 @@ effort (a crop-generation preprocessing script plus a retrain, no new
 architecture), payoff unverified until the diagnostic is run. Tiled
 inference: not recommended, effort would be moderate but payoff is
 presumptively negative for this app's real-time on-device constraint.
+
+---
+
+## 2026-08-16 (fourth run) — SINet-V2: single-frame, appearance-based camouflage detection — a fourth, structurally different mechanism, and licence-blocked despite an Apache-2.0 file
+
+**Area covered.** This is the fourth run today. The first three (BlurBall,
+RealBlur, SAHI) covered motion blur, datasets, and a resolution-framed take
+on camouflage, respectively. This run re-checked the golf-specific
+club-tracking area first (bullet 4, not touched today) with a fresh search
+for anything released since the last check (2026-08-15, AICaddy) — one new
+repo surfaced, `onkar-99/Golf-Ball-Tracking` (misleadingly named; it actually
+tracks the *clubhead*, using YOLOv5 plus optical-flow/Dlib-tracker fallbacks
+for blurred frames, and its own README states the fallbacks "were not as
+promising as were expected to be" — but it has no LICENSE file and no
+weights included in the repo, only a Google Drive link, so it's the fourth
+instance of the exact "no shippable artifact" pattern already documented in
+this log for GolfPose, dj_masters, and AICaddy; not worth a separate full
+entry, noted here only so a future run doesn't re-discover it). Given that
+dead end, this run pivoted to a genuinely unexplored sub-area within bullet
+3: every camouflage entry logged so far (TrackNetV4, DTUM, SLT-Net) is
+**motion**-based — it takes multiple frames as input and separates the
+clubhead from clutter by how it moves. None of them address the case where
+only a *single* frame is available or motion happens to be ambiguous. The
+dedicated **camouflaged object detection (COD)** literature — a separate
+research field from video camouflaged object detection (VCOD, already
+covered via SLT-Net) — solves single-frame camouflage directly, using
+appearance cues (fine boundary/texture discrimination) rather than motion.
+That's the new thing checked this run.
+
+**What it is.** SINet-V2 ("Concealed Object Detection," Fan, Ji, Cheng, Shao
+et al., IEEE TPAMI 2022 — the journal extension of the original SINet, CVPR
+2020) is a well-established, actively-cited reference implementation in the
+COD field. Its "Search and Identification Network" architecture has two
+stages: a coarse localization stage (find candidate regions that might
+contain a concealed object) followed by a refinement stage using a Neighbor
+Connection Decoder (NCD) and Group-Reversal Attention (GRA) modules that
+sharpen the object's boundary against a visually-similar background — i.e.,
+the mechanism is explicitly about exploiting subtle edge/texture
+discontinuities between object and background *within one frame*, not
+motion across frames. It's a segmentation network (outputs a per-pixel
+mask), not a box detector. Repo (PyTorch, training/eval scripts, an
+`AWESOME_COD_LIST.md` survey of the wider field) fetched and inspected
+directly at `github.com/GewelsJI/SINet-V2` — README, LICENSE, and root file
+listing all confirmed live via direct fetch, not search-indexed.
+
+**URL.** https://github.com/GewelsJI/SINet-V2 (paper: IEEE TPAMI 2022,
+DOI 10.1109/TPAMI.2021.3085766 — IEEE Xplore unreachable from this
+sandbox's egress proxy, same restriction as every prior run of this log, so
+claims here are sourced from the repo's own README and LICENSE files,
+fetched directly, not the PDF).
+
+**Licence — a real conflict between the LICENSE file and the README's own
+words, resolved conservatively.** `raw.githubusercontent.com/GewelsJI/
+SINet-V2/main/LICENSE` returns the standard Apache License 2.0 full text
+verbatim (grants "perpetual, worldwide, non-exclusive, no-charge,
+royalty-free, irrevocable copyright license to reproduce, prepare
+Derivative Works of, publicly display, publicly perform, sublicense, and
+distribute the Work" — ordinarily commercial-use-permitting). **But the
+README, fetched directly and separately, states in the authors' own words:
+"The source code is free for research and education use only. Any
+commercial usage should get formal permission first."** This is a direct
+contradiction between the machine-readable LICENSE grant and the authors'
+stated intent in prose. Per this log's established practice of trusting
+verified primary-source text over inference, and given the explicit,
+unambiguous README restriction: **commercial use is NOT confirmed
+permitted — treat as forbidden by default until the authors (contact via
+the repo) grant explicit written permission**, exactly as the README itself
+instructs. This is a new licence-verification lesson worth flagging for
+future runs: an Apache-2.0/MIT LICENSE file's presence is necessary but not
+sufficient — the README can (and here does) impose an additional
+restriction the LICENSE file's text does not itself contain, so both must
+be checked, not just whichever is fetched first.
+
+**Which failure mode.** Camouflage, specifically and directly — arguably a
+closer literal match to the failure-mode description than any of the three
+motion-based entries already logged. The brief's own wording is that
+camouflage failures occur "even in visually sharp frames" with "ZERO
+candidate detections... at confidence 0.05" — that is a description of a
+single-frame appearance failure, which is COD's exact problem statement,
+not VCOD's (which assumes multi-frame context is available and useful).
+Not applicable to motion blur — COD's target objects are typically static
+or slow-moving (frogs, insects, snakes in natural habitat), so the field
+has no blur-handling mechanism to borrow.
+
+**Why it helps this model specifically — and an important honest tension
+with the three motion-based entries already logged.** If the camouflage
+failure really is "the clubhead's colour/texture genuinely matches its
+background in this one frame," a motion-based fix (TrackNetV4, DTUM,
+SLT-Net) only helps if the frames around the failing frame carry a usable
+motion signal — exactly the camera-shake caveat all three of those entries
+already flag as unresolved for handheld phone video. An appearance-based
+fix doesn't have that dependency: it would work (or not) on the failing
+frame in isolation. That makes single-frame COD a genuinely different bet,
+not a restatement of the same idea — worth testing independently of
+whether the camera-motion problem for the motion-based entries ever gets
+resolved. The honest complication, not papered over: COD's target domain
+(large-ish, often-static camouflaged animals filling a meaningful fraction
+of the frame) is a substantial geometry mismatch with a small, often
+elongated (per the brief's own elongation-percentile finding), fast-moving
+clubhead — the field's boundary/texture-refinement mechanism is tuned for
+a very different object scale and motion regime, and nothing in the
+repo or README claims applicability to tiny fast objects. This should be
+read as "a structurally interesting, unverified hypothesis," not as
+evidence the technique will transfer.
+
+**Effort vs. payoff.** High effort, low-confidence payoff, and blocked by
+licence regardless. Effort: SINet-V2 is architecturally a segmentation
+network, not a box detector — even setting the licence question aside,
+adopting the *idea* (a boundary/texture-refinement mechanism inserted into
+the existing single-frame YOLO11n pipeline, or run as a separate
+segmentation pass whose mask is converted to a box for use as a candidate-
+region proposal ahead of the existing detector) is a nontrivial engineering
+project with no CoreML-export precedent shown anywhere in the repo, on top
+of the same architecture-surgery/retraining costs already flagged for
+TrackNetV4/DTUM/SLT-Net. Payoff: genuinely uncertain given the object-scale
+domain gap above, and moot for direct code/weight reuse until the licence
+question is resolved by contacting the authors. The one thing worth
+carrying forward cheaply: if a future camera-motion research spike (already
+called for by the TrackNetV4/DTUM/SLT-Net entries) finds that motion-based
+signals are unreliable on handheld footage, single-frame appearance-based
+COD is the field to come back to as the alternative bet — logged here so
+that pivot doesn't require rediscovering the field from scratch.
