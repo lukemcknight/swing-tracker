@@ -1396,3 +1396,90 @@ already logged. Recommended as a cheap follow-up validation step for the
 RT-Focuser idea (2026-08-15), not as a standalone action item — and the
 "dataset host unreachable from this sandbox" finding itself is worth
 recording so a future run doesn't re-attempt the same blocked fetch paths.
+
+---
+
+## 2026-08-16 (third run) — SAHI: slice-based fine-tuning as a resolution fix, distinct from the tiled-inference half of the technique
+
+**What it is.** "Slicing Aided Hyper Inference and Fine-Tuning for Small
+Object Detection" (Akyon, Onur Altinuc & Temizel, ICIP 2022) and its
+official implementation, the `sahi` library, describe **two** separable
+techniques, not one: (1) slice/tile an image into overlapping crops, run
+detection on each crop plus the full image, and merge results at inference
+time; (2) **train** on sliced crops (small objects occupy far more of a
+crop's pixels than of the full frame) so the network learns higher-fidelity
+small-object features even when later run at normal, unsliced resolution.
+Every prior camouflage entry in this log (TrackNetV4, DTUM, SLT-Net,
+channel-stacked YOLO, Copy-Paste) treats camouflage as an appearance/motion
+problem. This is the first entry to treat it as a **resolution** problem:
+YOLO11n downsamples the full frame to a fixed square input, and a small,
+distant clubhead can be reduced to only a handful of pixels before the
+network ever sees it — a failure mode indistinguishable, in the zero-
+detections-even-at-conf-0.05 symptom described in the brief, from true
+visual camouflage, but with a different fix.
+
+**URL.** Code: https://github.com/obss/sahi (repo confirmed live, `README.md`
+and `LICENSE` fetched directly). Paper: arXiv:2202.06934 (arxiv.org itself
+unreachable from this sandbox, per this log's standing egress limitation —
+paper claims here are sourced from the abstract as indexed by search and
+from the repo's own description of the method, not the PDF).
+
+**Licence (verbatim, from `LICENSE` in `obss/sahi`, fetched directly via
+`raw.githubusercontent.com`).** MIT License, "Copyright (c) 2020 obss."
+"Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software..." **Commercial use: permitted.** No
+dataset ships with this repo — it's a library, not a data source — so no
+separate dataset licence question applies.
+
+**Which failure mode.** Camouflage — but, per the framing above, only the
+subset of "camouflage" frames that are actually a too-small-for-input-
+resolution problem rather than a genuine color/texture-similarity problem.
+Not motion blur (slicing a blurred streak into tiles doesn't restore lost
+detail; if anything it's neutral-to-harmful there since a streak can span
+tile boundaries).
+
+**Why it helps this model specifically.** Two distinct, honestly-scoped
+uses:
+1. **Diagnostic, cheap, do this first.** Before investing further in
+   camouflage-specific architecture or data work, check whether the
+   existing camouflage-failure frames in the eval set are actually low-
+   resolution-of-subject failures: crop each failing frame tightly around
+   the (human-known) clubhead location and re-run the current model on the
+   crop alone. If detection recovers on the crop, the "camouflage" failures
+   are at least partly a resolution artifact, not an appearance problem —
+   which redirects effort toward training-time slicing (or simply training
+   at higher input resolution) instead of the temporal/appearance-focused
+   fixes already logged. This costs a single evaluation script, no
+   retraining, no new data.
+2. **If step 1 confirms the resolution hypothesis**, slice-based
+   fine-tuning (train on tight crops around labeled clubheads, mixed with
+   full-frame negatives, at the same 640-ish input size) is a training-data
+   preprocessing change, not an architecture or runtime change — it costs
+   nothing at inference time, unlike tiled inference (below), and is
+   directly compatible with the existing YOLO11n/CoreML export pipeline.
+
+**Important caveat — the inference-time half of SAHI is likely a dead end
+for this app and should not be pursued.** Tiled inference multiplies
+inference calls per frame by the number of tiles (the repo's README does
+not state a specific overhead figure, and this could not be independently
+benchmarked from this sandbox, but the mechanism itself — N crops plus one
+full-frame pass, each a separate forward pass — is inherently several times
+more compute per frame). This app runs live, on-device, per-frame video
+detection; that cost is very unlikely to fit a real-time mobile budget on
+top of an already-lightweight YOLO11n. The README's own emphasis (large,
+high-resolution static images and satellite imagery) is a different
+use case from real-time phone video, and this log should not conflate the
+two: only the fine-tuning half of the SAHI paper is being recommended here.
+
+**Effort vs. payoff.** Diagnostic step: very low effort (one script, uses
+data and a model already in hand), and it's a fork in the road — a cheap
+way to find out whether several already-logged camouflage entries
+(TrackNetV4, DTUM, SLT-Net) are solving the right problem before spending
+real effort on any of them. Fine-tuning step (if warranted): low-to-medium
+effort (a crop-generation preprocessing script plus a retrain, no new
+architecture), payoff unverified until the diagnostic is run. Tiled
+inference: not recommended, effort would be moderate but payoff is
+presumptively negative for this app's real-time on-device constraint.
