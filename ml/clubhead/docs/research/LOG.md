@@ -1140,3 +1140,134 @@ actually deliver in the repo itself. Future runs in this area should verify
 the artifact (weights/dataset actually present and fetchable), not just the
 README's claims or the LICENSE file's presence, before logging anything as
 usable.
+
+---
+
+## 2026-08-16 — BlurBall: blur-aware labeling convention + joint position/blur-attribute detector for table tennis (Gossard et al., CVPR 2026 Workshops)
+
+**Area covered.** Rotated back into motion blur (bullet 2), specifically the
+"datasets of fast-moving blurred small objects in sport" sub-area, which
+this log had not touched directly before (prior blur entries — frame-
+averaging, PSF box-expansion, RT-Focuser — are all synthesis/preprocessing
+techniques, not an existing real-world blurred-small-object sports
+dataset). The commercial-dataset area (bullet 1) was not re-attempted this
+run since two prior runs (2026-08-13, 2026-08-14) already exhausted it and
+hit the same egress wall (Roboflow/Kaggle/HuggingFace/Dryad/NextCloud all
+return `CONNECT tunnel failed, response 403` from this sandbox — confirmed
+again this run against `datadryad.org` before pivoting away from it).
+
+**What it is.** BlurBall ("Joint Ball and Motion Blur Estimation for Table
+Tennis Ball Tracking," Gossard, Radovic, Ziegler, Zell — University of
+Tübingen, accepted CVPR 2026 Workshops/CVSports) is a detector for a
+structurally identical problem to this project's blur gap: a small, fast
+sports object (table tennis ball) that is frequently a motion-blur streak,
+not a point, in broadcast-style footage. Two things are directly relevant,
+independent of whether the dataset itself turns out to be usable:
+
+1. **A blur-aware labeling convention that is a direct refinement of this
+   project's own rule.** `docs/labeling-spec.md`'s motion-blur rule already
+   says "box the full visible clubhead including its motion-blur streak" —
+   but a plain axis-aligned box only encodes *extent*, not *direction* or
+   *center*. BlurBall's convention instead places the annotated point at the
+   **center of the blur streak** (not the ball's leading or trailing edge,
+   which is what naive point-labeling defaults to and what the project's
+   own elongation-percentile finding suggests may be happening implicitly
+   when annotators under-draw blur boxes) and explicitly records blur
+   **length and orientation** as separate fields alongside position. Their
+   stated motivation for this convention is exactly this project's own
+   observed problem: naive point/box labeling "introduces asymmetry and
+   ambiguity to the detection task" for blurred objects.
+2. **A concrete, working mechanism for turning that richer label into a
+   training target**: from a (center, length, orientation) blur annotation,
+   generate a heatmap that is an elongated Gaussian smeared along the blur
+   axis, rather than a circular point-Gaussian — "blur-aware heatmaps...
+   guide the network to capture both the ball center and its motion
+   extent." This is a heatmap/keypoint-detector technique (HRNet backbone
+   with Squeeze-and-Excitation attention), not a YOLO box-regression
+   technique, so it does not port directly to YOLO11n's architecture — but
+   the underlying idea (encode blur length + orientation as explicit
+   auxiliary supervision, not just a bigger box) is architecture-agnostic
+   and could inform a future auxiliary regression head or loss term on top
+   of YOLO11n's existing box output.
+
+**URL.** Code: https://github.com/cogsys-tuebingen/blurball (`README.md`
+and `LICENSE.md` fetched directly via `raw.githubusercontent.com`, HTTP 200,
+confirmed live). Project page:
+https://cogsys-tuebingen.github.io/blurball/ (unreachable directly —
+`github.io` is blocked by this sandbox's egress proxy like every other
+non-`github.com`/`raw.githubusercontent.com` host — but the same content is
+published verbatim on the repo's `gh-pages` branch, fetched directly via
+`raw.githubusercontent.com/cogsys-tuebingen/blurball/gh-pages/index.html`,
+HTTP 200, and used as the primary source for the abstract, dataset
+description, and labeling-convention claims above). Paper: arXiv:2509.18387
+(arxiv.org itself unreachable from this sandbox; title, venue, authors, and
+abstract corroborated identically across the GitHub README, the gh-pages
+project page, and independently-indexed ResearchGate/arXiv-HTML search
+snippets, so treated as verified short of reading the PDF itself). Dataset:
+hosted on University of Tübingen NextCloud
+(`cloud.cs.uni-tuebingen.de`) — this host is also blocked by the sandbox's
+egress proxy, so the dataset's actual contents could not be inspected.
+
+**Licence.** **Code: MIT** (verbatim from the repo's `LICENSE.md`, fetched
+directly — "Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software... to deal in the Software without
+restriction, including without limitation the rights to use, copy, modify,
+merge, publish, distribute, sublicense, and/or sell copies of the
+Software"). **Commercial use of the code: permitted.** **Dataset: licence
+NOT confirmed.** Neither the README nor the gh-pages project page states a
+licence for the released table-tennis dataset itself (no CC-BY/CC0/ODC
+notice found anywhere in either fetched source), and the dataset is
+distributed via a bare NextCloud share link with no accompanying terms file
+that could be located. Per this log's established convention (same posture
+as DTUM's NUDT-MIRSDT dataset, 2026-08-14): **treat the dataset as NOT
+confirmed permitted for commercial use** until the authors state explicit
+terms — only the training/model code is a verified permissive licence here.
+This matters doubly for this project, since the underlying footage is
+described as coming from "diverse table tennis scenes" (i.e. likely
+broadcast/online recordings, the same copyright-provenance problem GolfDB
+was ruled out for on 2026-08-13), which is exactly the kind of source
+material that tends to carry restrictive redistribution terms even when a
+paper's own code is openly licensed.
+
+**Which failure mode.** Motion blur, specifically and only. Not camouflage
+— BlurBall's problem is a fast, blurred-but-visible ball against a
+relatively uncluttered table-tennis-table background, not a low-contrast
+object indistinguishable from clutter.
+
+**Why it helps this model specifically.** This is the first source in the
+log to attack the *labeling* side of the motion-blur gap rather than the
+*data-volume* side (frame-averaging, PSF synthesis) or the *inference-time*
+side (RT-Focuser deblurring). The brief's own evidence — median labelled
+elongation of only 1.60 despite a spec that instructs full-streak boxing —
+is consistent with annotators defaulting to a tight box around the most
+visually salient part of the streak rather than the true full extent,
+exactly the labeling ambiguity BlurBall's paper calls out by name. Adopting
+a center-of-blur + explicit length/orientation convention (even while
+keeping YOLO-style box output for training, by deriving the box
+deterministically from center+length+orientation instead of hand-drawing
+it) would make blur-labeling **mechanical and consistent** rather than
+subjective — directly targeting the "box the full streak" rule's actual
+failure mode (inconsistent human judgment of what "full" means) rather than
+requiring new footage or a new architecture to fix.
+
+**Effort vs. payoff.** Low-to-medium effort for the labeling-convention
+idea, unclear payoff since it is unbenchmarked for this exact use; higher
+effort and lower confidence for the heatmap-mechanism idea. Effort (part
+1): changing the labeling spec to require center + length + orientation
+instead of a free-hand box, and adding a small geometry step that derives
+the axis-aligned box deterministically from those three numbers, is a
+schema and tooling change (labeling-spec.md, the annotation tool, and the
+box-derivation code) — no new footage, no architecture change, comparable
+effort to the already-logged PSF box-expansion idea. Effort (part 2): the
+blur-aware-heatmap idea requires either bolting an auxiliary
+length/orientation regression head onto YOLO11n (architecture surgery, CoreML-
+export risk, same category as DTUM/TrackNetV4/SLT-Net) or abandoning
+YOLO11n's box-regression paradigm for a heatmap-based one entirely (a much
+larger change with no CoreML-export precedent shown here) — treat as a
+research direction, not a near-term change. Payoff: plausible for part 1
+(directly targets a labeling-consistency problem the brief already
+diagnosed with hard numbers), unverified for part 2 (no reported accuracy
+delta from this run — the PDF was not reachable — and the mechanism is
+demonstrated only on point-object ball tracking, not elongated golf-club-
+head geometry, which is a bigger domain gap than it looks). The dataset
+itself is not usable regardless of payoff, per the licence finding above.
