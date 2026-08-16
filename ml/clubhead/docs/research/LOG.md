@@ -1271,3 +1271,128 @@ delta from this run — the PDF was not reachable — and the mechanism is
 demonstrated only on point-object ball tracking, not elongated golf-club-
 head geometry, which is a bigger domain gap than it looks). The dataset
 itself is not usable regardless of payoff, per the licence finding above.
+
+---
+
+## 2026-08-16 (second run) — RealBlur: a real, low-light/indoor camera-shake blur dataset with a verified commercial-use licence (Rim et al., ECCV 2020)
+
+**Area covered.** Bullet 1 (commercial datasets, especially low-light/
+indoor footage) — this run deliberately avoided re-querying
+Roboflow/Kaggle/HuggingFace/Zenodo/Dryad/NextCloud, all confirmed blocked
+by this sandbox's egress proxy in three prior runs (2026-08-14, 2026-08-15,
+and again earlier today), and instead searched for GitHub-hosted work in
+adjacent (non-golf) low-light/blur research, since `github.com` and
+`raw.githubusercontent.com` are the only hosts this sandbox can reach
+directly. Rotated away from motion-blur *technique* papers (this log's
+2026-08-16 first run today, BlurBall, already covered that) toward the
+dataset bullet specifically, which — unlike the technique bullet — has
+produced nothing usable in three prior attempts.
+
+**What it is.** RealBlur ("Real-World Blur Dataset for Learning and
+Benchmarking Deblurring Algorithms," Rim, Lee, Won, Cho — POSTECH, ECCV
+2020) pairs blurred and sharp images of the *same* scene, captured
+simultaneously through a beam-splitter dual-camera rig (one camera at a
+long exposure, one at a short exposure, geometrically aligned) — i.e. the
+blur is physically real camera output, not synthesized or approximated.
+4,738 image pairs across 232 scenes, released as two subsets: RealBlur-R
+(camera RAW) and RealBlur-J (JPEG, camera ISP-processed). Per a
+search-indexed paper excerpt (ECVA/ecva.net PDF link surfaced in search
+results, but ecva.net itself was not fetched directly — same egress
+restriction as arXiv in every prior run of this log, so treat the *scene
+count and composition* below as one notch below full verification, per
+this log's established convention): the blur is described as caused by
+**camera shake**, captured in **low-light environments including streets at
+night and indoor rooms**, specifically "to cover the most common scenarios
+for motion blur." This is the direct, verified-to-exist answer to what
+every prior dataset search in this log has failed to find: a low-light/
+indoor blur dataset, real (not synthetic).
+
+**URL.** Code + README: https://github.com/rimchang/RealBlur (`README.md`
+fetched directly via `raw.githubusercontent.com`, HTTP 200, confirmed
+live). Paper: ECCV 2020, `ecva.net/papers/eccv_2020/papers_ECCV/papers/123700188.pdf`
+(not fetched directly — ecva.net is not `github.com`/`raw.githubusercontent.com`
+and was not tested against this sandbox's proxy, so the scene-composition
+claim above rests on a search-engine-indexed excerpt, not the PDF).
+**Dataset host is NOT reachable from this sandbox**: the primary download
+link (`cgdata.postech.ac.kr/sharing/YhKdbtvD0`) returned a connection
+failure (`curl` exit with no response, HTTP code `000`), the project page
+(`cg.postech.ac.kr/research/RealBlur/`) returned HTTP 403, and the
+alternate Google Drive link (`drive.google.com/drive/folders/...`) is
+blocked outright by this sandbox's egress proxy (`EGRESS_BLOCKED`,
+confirmed via the fetch tool's explicit error, not a timeout). **This run
+could not actually download or inspect a single image from the dataset —
+only the repo's own README (which states the licence) and secondary
+search-indexed summaries (which describe the scene composition) were
+verified.** This is a real gap: per the task brief's own instruction to
+"check whether the data or code is genuinely downloadable today," the
+honest answer here is *not from this sandbox* — a machine with unrestricted
+egress would need to confirm the link is still live before this is treated
+as actionable.
+
+**Licence (verbatim, from the repo's `README.md`, fetched directly — no
+separate `LICENSE` file exists in the repo; the grant is stated inline).**
+"The RealBlur dataset is released under CC BY 4.0 license." **Commercial
+use: permitted**, subject to CC BY 4.0's attribution requirement. This is a
+meaningfully stronger licence finding than most dataset-adjacent entries in
+this log to date (GolfPose, DTUM's NUDT-MIRSDT, BlurBall's table-tennis
+set, SLT-Net's MoCA-Mask all logged as "not confirmed" or blocked) — the
+grant is explicit, in the authors' own words, in a directly-fetched file,
+not inferred or aspirational. The code itself (SRN-Deblur, DeblurGAN-v2
+training/eval scripts, included as git submodules) is not covered by this
+statement and was not separately checked — irrelevant here regardless,
+since only the *dataset* is of interest, not these specific (older,
+non-CoreML) deblurring architectures.
+
+**Which failure mode.** Motion blur — but a different blur regime than
+every technique previously logged, which matters for how it's used. All
+four prior blur entries (frame-averaging 2026-08-12, PSF-synthesis and
+channel-stacked YOLO 2026-08-13/14, RT-Focuser 2026-08-15, BlurBall
+2026-08-16) model or synthesize *subject*-motion blur: a small, fast object
+smearing across an otherwise sharper frame, which is what a clubhead does.
+RealBlur's blur is **camera-shake** blur from a long exposure of a largely
+static scene — closer to "the whole frame smears somewhat uniformly"
+than "one object streaks while the background stays sharp." It does not
+directly simulate a blurred clubhead. What it *does* provide, and what no
+other blur source logged so far provides, is the **low-light/indoor
+lighting, noise, and dynamic-range characteristics** the brief flags as
+completely unmeasured for this model.
+
+**Why it helps this model specifically.** RT-Focuser (logged 2026-08-15)
+is a promising zero-retraining deblur-preprocessing candidate, but its own
+caveat (already logged) is that it was trained/benchmarked on GoPro — an
+outdoor-daylight, general camera-and-object-motion blur benchmark — with
+domain transfer to golf's specific blur "unverified." RealBlur does not fix
+that domain gap for the *clubhead-streak* part (wrong blur regime, as
+above), but it is the first source found in four runs of dataset searching
+that could plausibly fix the *lighting-domain* part of that same gap: if
+RT-Focuser (or any deblur-preprocessing net) is fine-tuned or validated
+against RealBlur's low-light/indoor image pairs before being trusted on
+this app's own indoor/simulator-bay footage, that at least tests whether
+the deblurring step degrades gracefully under the noise/exposure
+conditions of dim indoor phone video — a cheap, real check the brief's own
+"indoor performance has never been measured" gap calls for, done with an
+existing off-the-shelf resource instead of waiting on new golf-specific
+indoor capture. It is explicitly a partial, adjacent fix — not a
+golf-specific or subject-blur-specific one — and should be scoped as such.
+(Aside, not separately verified: the same authors released a 2022 ECCV
+follow-up, RSBlur, at `github.com/rimchang/RSBlur`, describing a
+"realistic blur synthesis pipeline" that models camera ISP effects — noise,
+CRF, saturation — on top of synthetic blur; its README states no licence
+and no `LICENSE` file exists in the repo, checked directly, so it is NOT
+logged as usable here, only noted so a future run doesn't need to
+re-discover it from scratch if the licence question is ever resolved.)
+
+**Effort vs. payoff.** Low effort to identify, genuinely unresolved payoff
+because the dataset itself could not be inspected or downloaded from this
+sandbox. Effort: the licence question is fully answered (permitted), so if
+a future run or the project owner can reach `cgdata.postech.ac.kr` (or the
+Google Drive mirror) from an unrestricted network, downloading a sample and
+visually confirming the indoor/low-light scene claim is a same-day check.
+Payoff: capped and indirect — this is not a source of golf-specific
+training data, not a source of subject-motion-blur examples, and not
+independently confirmed to be downloadable; its only concrete use is as a
+lighting/noise-domain sanity check for a deblur-preprocessing candidate
+already logged. Recommended as a cheap follow-up validation step for the
+RT-Focuser idea (2026-08-15), not as a standalone action item — and the
+"dataset host unreachable from this sandbox" finding itself is worth
+recording so a future run doesn't re-attempt the same blocked fetch paths.
