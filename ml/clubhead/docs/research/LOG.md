@@ -1741,3 +1741,65 @@ def motion_image(self, im):
 **Important caveats.** (1) **No verified free-to-use golf club 3D model was actually confirmed this run** — a search surfaced claims that Meshy's golf-tagged asset library is CC0, but no specific model's licence page was individually fetched and checked, so this is a plausible starting point, not a confirmed one; each candidate asset needs its own licence check before use, same as every dataset entry in this log. (2) Sim-to-real domain gap is real and unmeasured: even excellent domain randomization does not guarantee a model trained partly on rendered clubheads generalizes to real phone video — this is a well-known, general risk of synthetic-CG training data, not something specific to BlenderProc, and the only way to know is to run the experiment and score it on the existing real held-out test set. (3) This is by far the highest up-front-effort synthesis idea logged to date: it requires sourcing or modeling a reasonably accurate 3D clubhead (several club types, ideally), building a BlenderProc scene script (camera path along a swing arc, background/lighting randomization, motion-blur sweep), and a render farm or patient local rendering — materially more engineering than any post-hoc blur or compositing technique already logged, none of which need 3D assets or a renderer at all. (4) COCO/BOP is the confirmed native annotation output, not YOLO `.txt` — a (trivial, well-trodden) format-conversion step is needed before the renders slot into this project's existing YOLO-format dataset pipeline.
 
 **Effort vs. payoff.** High effort, potentially high and uniquely-shaped payoff, and the first synthesis entry in this log that could address the camouflage-plus-blur *combination* directly rather than one failure mode at a time. Effort: real and substantial — 3D asset sourcing/creation, scene-script engineering, a rendering budget, and a format-conversion step, before a single synthetic image reaches the training set; this is a multi-week undertaking, not a same-day spike like Motion-Informed Enhancement or a config-flag change like YOLO26. Payoff: uncapped in principle (arbitrarily many perfectly-labeled examples of the exact failure combination this model has almost none of) but entirely unverified for this specific model until an experiment is actually run, and gated on two real open questions this run could not resolve — a genuinely free-for-commercial-use club model, and the sim-to-real gap. Recommended only as a **later-phase bet**, after the cheaper, already-logged single-failure-mode fixes (Motion-Informed Enhancement for camouflage, PSF-synthesis for blur) have been tried and scored — not as a first move, given the up-front cost.
+
+---
+
+## 2026-08-18 (third run) — CaddieSet (Jung et al., CVPR 2025 Workshops) checked and ruled out: launch-monitor golf dataset, permissive licence, but no imagery released (golf dataset area, negative result)
+
+**What it is.** This log's third run today, rotated back into the golf-
+specific dataset area since the first two runs today (Motion-Informed
+Enhancement, BlenderProc) were both camouflage/blur-mechanism entries, and
+that area hasn't had a hit since AICaddy was ruled out on 2026-08-15.
+CaddieSet is a golf swing dataset published at CVPR 2025 Workshops
+(CVSPORTS): "swing videos and ball flight estimates of 8 individuals with
+diverse golf skills were collected using a **camera-based launch
+monitor**," comprising 1,757 shots (924 face-on, 833 down-the-line views).
+The "camera-based launch monitor" capture method is notable because that
+class of device (TrackMan, GCQuad-style units) is exactly the kind of
+hitting-bay/indoor-simulator setup this project has never captured or
+measured — the only golf-specific candidate so far in this log whose
+capture conditions plausibly overlap the unmeasured indoor gap at all.
+
+**URL.** https://github.com/damilab/CaddieSet (paper:
+https://openaccess.thecvf.com/content/CVPR2025W/CVSPORTS/html/Jung_CaddieSet_A_Golf_Swing_Dataset_with_Human_Joint_Features_and_CVPRW_2025_paper.html
+— blocked by this sandbox's egress proxy, so not read directly; the GitHub
+repo's README.md and LICENSE were fetched directly via
+raw.githubusercontent.com and confirmed live).
+
+**Licence (verbatim, from the repo's `LICENSE` file, fetched directly).**
+MIT License, copyright damilab 2024. "Permission is hereby granted, free of
+charge, to any person obtaining a copy of this software... to deal in the
+Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software." **Commercial use: permitted** — a real,
+unambiguous permissive licence, same tier as AICaddy's BSD-3-Clause.
+
+**Which failure mode.** Would be motion-blur-adjacent if usable (launch-
+monitor capture in a hitting bay is a real source of the indoor/lower-light
+conditions this project has zero measured data on) — moot, per the
+dealbreaker below.
+
+**Why it doesn't help this model, despite the clean licence.** Fetched the
+repo's actual README directly (not the paper abstract): the released
+dataset is **extracted numeric features only** — ball-flight metrics
+(carry, speed, spin, direction) and 21-22 derived biomechanical measurements
+(joint angles, hip rotation, weight shift) per shot, output by the launch
+monitor's own pose pipeline. There is no raw video, no frame images, and no
+bounding-box or keypoint annotation released anywhere in the repo — the
+source videos referenced in the paper were used to *derive* these numbers
+but were never published. This is the same dealbreaker pattern as GolfDB
+(links to YouTube, not distributable frames) and dj_masters (claims not
+backed by a shippable artifact), just with a genuinely clean licence this
+time, same as AICaddy. A dataset with no images cannot produce a single
+training frame for an object detector, regardless of how well its capture
+conditions would otherwise match the indoor gap this project needs filled.
+
+**Effort vs. payoff.** Low effort (one search-and-verify pass: fetched
+README + LICENSE directly, no speculation), zero payoff. Recorded so a
+future run doesn't re-spend a cycle on this repo. Fourth golf-dataset-area
+entry in this log (after GolfDB, dj_masters, AICaddy) to confirm the same
+pattern: small-to-mid golf-CV data releases in this space either don't ship
+imagery at all, or don't ship a real licence — never both a real licence
+and real images together yet. Worth another look only if damilab later
+releases the source videos (no indication in the repo that they plan to);
+until then this is a dead end, not a lead.
