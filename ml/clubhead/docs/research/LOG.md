@@ -1803,3 +1803,62 @@ imagery at all, or don't ship a real licence — never both a real licence
 and real images together yet. Worth another look only if damilab later
 releases the source videos (no indication in the repo that they plan to);
 until then this is a dead end, not a lead.
+
+---
+
+## 2026-08-18 (fourth run) — TinyDark-YOLO: a YOLO11-based low-light head, found but not independently verifiable in this sandbox (negative-with-caveats result)
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object detection),
+approached from a fresh angle — illumination adaptation rather than motion —
+after checking this log's own dead-end notes (2026-08-17 second run: ExDark
+is non-commercial; 2026-08-16 second run: RealBlur is the one confirmed
+commercial low-light asset so far) to avoid re-treading them.
+
+**What I found and could not clear this log's own bar for.** A paper titled
+"TinyDark-YOLO for adaptive and lightweight object detection in low-light
+conditions" (Zheng, Chen & Zhang), published in *Scientific Reports*
+(`https://www.nature.com/articles/s41598-026-58443-9`, June 2026),
+describing a YOLO11-based detector with three additions: an Adaptive Gamma
+Enhancement (AGE) module, an Attention-based Intra-scale Feature Interaction
+(AIFI) module, and a "Lite Efficient Head" (LEHead) aimed at cutting
+compute while improving weak-feature detection in dark scenes, evaluated on
+ExDark. Being built on the exact YOLO11 family this project already ships
+would make it an unusually direct fit if real.
+
+**Why this is not being logged as a usable finding.** `nature.com` hit this
+sandbox's standing egress block (the same one every prior run has recorded
+for `arxiv.org`, `universe.roboflow.com`, and others) on every fetch
+attempt, including via an archive.org mirror, which is itself blocked here.
+That means:
+- I could not read the paper itself — everything above is search-engine
+  synthesis of snippets, not something I read and verified firsthand. This
+  log's own rule ("do not log anything you have not confirmed exists") is
+  met only for the paper's *existence* (title/authors/journal/DOI-shaped ID
+  are consistent across several independent search results) — not for any
+  claim about its actual method, numbers, or contribution beyond what a
+  search summary asserts.
+- No GitHub repository, code release, or weights were found by search. If
+  none exists, this is idea-only — a from-scratch reimplementation based on
+  a secondhand summary, which is a materially weaker starting point than
+  every other architecture entry in this log (BlurBall, DTUM, SLT-Net,
+  Channel-stacked multi-frame YOLO, TrackNetV4 all had a real repo I could
+  fetch and read).
+- The licence is unconfirmed. *Scientific Reports* lets authors choose
+  between CC BY 4.0 and CC BY-NC-ND per article (confirmed as the journal's
+  general policy, not this article specifically) — search snippets leaned
+  toward NC-ND for this piece, but I could not fetch the article's own
+  rights statement to confirm which applies here. Note for whoever revisits
+  this: even a confirmed NC-ND tag on the article/PDF would restrict
+  redistributing the paper itself, not a clean-room reimplementation of the
+  disclosed architecture — that distinction would need the actual method
+  section to act on responsibly, which I don't have.
+
+**Which failure mode.** Camouflage-adjacent (low ambient light compounding
+low contrast) — same bucket as DEN (2026-08-17 second run), not motion
+blur.
+
+**Effort vs. payoff.** Not assessable yet, and that is the finding. This
+entry exists so a future run with working `nature.com` access (or that
+finds a code mirror/GitHub port this search missed) can pick it up at
+"confirm the licence and check for code" instead of re-discovering the
+paper from zero. Logged as a lead, explicitly not a recommendation.
