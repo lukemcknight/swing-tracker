@@ -1862,3 +1862,118 @@ entry exists so a future run with working `nature.com` access (or that
 finds a code mirror/GitHub port this search missed) can pick it up at
 "confirm the licence and check for code" instead of re-discovering the
 paper from zero. Logged as a lead, explicitly not a recommendation.
+
+---
+
+## 2026-08-19 — SloMoDeblur/SloMoBlur: a real (not synthetic) 42k-pair smartphone motion-blur dataset built on the exact frame-averaging method this log's first entry proposed — existence confirmed, licence NOT confirmed (sandbox egress block)
+
+**Area covered.** Bullet 2 (motion blur — specifically "datasets of
+fast-moving blurred small objects in sport," extended to the closest
+adjacent thing actually findable: a general-purpose real smartphone-blur
+dataset, since three prior runs of the sport-specific sub-area have only
+surfaced BlurBall, already logged 2026-08-16). Checked two other leads
+first and discarded them before this one, so a future run doesn't
+re-spend a cycle: (1) "SHOP" (Cooper & Isaacs, arXiv:2203.15228,
+pose-guided deblur→detect→ROI-filter pipeline for handheld objects in
+blurry video, IEEE-published) — no GitHub repo could be found by search,
+so its code/licence status is unverifiable from here, same disposition as
+this log's other no-repo leads; not logged as a full entry. (2)
+`LOUEY233/Deblur-YOLO` (joint GAN-deblur + YOLO detection, IJCNN 2021) —
+repo is real and MIT-licensed (verified directly via
+`raw.githubusercontent.com/LOUEY233/Deblur-YOLO/master/LICENSE`), but its
+own README states the repo is missing training/testing datasets,
+pretrained weights, and video-testing capability — the same "no shippable
+artifact" pattern this log has flagged repeatedly (GolfPose, dj_masters,
+AICaddy, `onkar-99/Golf-Ball-Tracking`, `rlarcher/GolfTracker`, DEN); not
+worth a full entry over that.
+
+**What it is.** "Deblurring in the Wild: A Real-World Image Deblurring
+Dataset from Smartphone High-Speed Videos" (Mahmud, Noki, Majumder, Al
+Radi, Sukanto, Lubaina, Khan — University of Dhaka, arXiv:2506.19445)
+builds a dataset, released as **SloMoBlur** (Hugging Face:
+`masterda/SloMoBlur`), using exactly the method this log's very first
+entry (2026-08-12, Brooks & Barron frame-averaging) proposed the project
+build for itself: shoot high-frame-rate slow-motion video on an ordinary
+modern phone (an iPhone 15 Pro specifically), then average temporally
+contiguous frames to synthesize a physically-real long-exposure blur
+image, with the temporally-centered sharp frame kept as ground truth. Per
+search-indexed excerpts of the paper (30 frames averaged from a 240fps
+capture, simulating a ~1/8s effective exposure): **42,000+ high-resolution
+(1920×1080) blur-sharp pairs, "8 times the amount of different scenes"
+versus prior deblurring benchmarks, "including indoor and outdoor
+environments, with varying object and camera motions,"** and a finding
+that state-of-the-art deblurring models benchmarked against it show
+"significant performance degradation" versus their reported numbers on
+older benchmarks (i.e., this is harder/more realistic blur than what
+existing deblur models, including RT-Focuser's GoPro-trained baseline
+already logged 2026-08-15, were tuned against).
+
+**URL.** Paper: https://arxiv.org/abs/2506.19445 (also indexed at
+`huggingface.co/papers/2506.19445`). Dataset:
+https://huggingface.co/datasets/masterda/SloMoBlur. **Every one of these
+hosts — `arxiv.org`, `huggingface.co`, plus `researchgate.net`,
+`researchsquare.com`, and `themoonlight.io` (secondary sources checked
+as fallbacks) — returned `EGRESS_BLOCKED` from this sandbox on direct
+fetch, consistent with every prior run's standing restriction.** No
+GitHub repository for this project could be found by search. Everything
+above (scene count, indoor/outdoor claim, frame-count/exposure-simulation
+parameters, benchmark-degradation claim) is therefore sourced from
+search-engine-indexed excerpts only, not a primary-source read — one
+notch below full verification, per this log's established convention.
+**Existence of the dataset and paper is confirmed** (consistent title,
+authors, arXiv ID, and Hugging Face dataset path across multiple
+independent search results); **its licence is not** — no licence tag,
+CC/MIT/other text, or terms-of-use snippet surfaced in any search
+performed this run, and the one page that would authoritatively state it
+(the Hugging Face dataset card's metadata) could not be fetched.
+
+**Which failure mode.** Motion blur, specifically — and unlike RealBlur
+(2026-08-16, camera-shake blur from a static beam-splitter rig), this is
+architecturally the **same blur regime** the golf clubhead produces:
+object/scene motion averaged over a real exposure window on a handheld
+phone, not whole-frame camera shake. Not camouflage.
+
+**Why it helps this model specifically.** Two distinct, honestly-scoped
+uses, neither blocked by the unresolved licence: (1) **Validates the
+method, not just the dataset.** This log's first-ever entry (2026-08-12)
+proposed frame-averaging high-fps footage as a way to manufacture
+genuinely blurred, correctly-boxed training examples from the project's
+own footage, but flagged it as an untested idea with "no confirmed
+pretrained model" backing it. SloMoDeblur is independent, published
+confirmation that the identical technique — averaging slow-mo frames from
+a modern iPhone, the same device class this app targets — produces a
+large, real, benchmark-grade blur dataset, not a hypothetical. That
+derisks recommending the same approach for this project's own data
+engine: it's now a demonstrated, published method, not just a plausible
+idea. (2) **A same-device-class deblur validation set, if the licence
+permits.** RT-Focuser (2026-08-15, already logged as the leading
+zero-retraining deblur-preprocessing candidate) was flagged with an
+open, unverified caveat: it was trained/benchmarked on GoPro footage, an
+outdoor-daylight, general-motion blur benchmark, with "domain transfer to
+golf's specific blur unverified." SloMoDeblur is real iPhone footage
+including indoor scenes — if licence-cleared, running RT-Focuser's
+pretrained weights against a SloMoDeblur sample (rather than only the
+project's own limited outdoor footage) would be a cheap, real test of
+whether RT-Focuser's deblurring generalizes to the actual device class
+and indoor/outdoor mix this app needs, closing exactly the domain-gap
+caveat that entry left open — without needing any new golf-specific
+capture.
+
+**Effort vs. payoff.** Low effort to identify, payoff currently capped at
+zero by an unresolved licence, same honest posture as the RealBlur entry
+(2026-08-16). Effort: if a future run or the project owner can reach
+`huggingface.co/datasets/masterda/SloMoBlur` from an unrestricted network,
+confirming the licence tag and downloading a sample is a same-day check;
+this sandbox's own repeated egress failures across five different hosts
+this run (arXiv, HuggingFace, ResearchGate, Research Square, themoonlight)
+make clear this is a sandbox limitation, not a sign the resource doesn't
+exist or isn't worth chasing. Payoff, once/if the licence is confirmed
+permissive: capped and indirect for the same reason RealBlur's was — this
+is not golf-specific and not a clubhead-shaped object, so its direct value
+is as (a) a derisking data point for the already-recommended frame-
+averaging technique and (b) a same-device-class validation set for the
+already-logged RT-Focuser deblur candidate, not as training data for the
+detector itself. Recommended next step: check the licence from an
+unrestricted network before doing anything else with it; do not download
+or use the dataset based on this entry alone, since "commercial use
+permitted" has not been established.
