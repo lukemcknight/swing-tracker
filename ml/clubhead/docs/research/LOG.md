@@ -2042,3 +2042,77 @@ its licence changed between runs. A future run in this area should consider
 widening the search to golf *swing-analysis SaaS/app vendors* with public
 technical blog posts or patents describing their detection approach, rather
 than continuing to search for more academic papers in the same thin vein.
+
+---
+
+## 2026-08-19 (third run) — Deblur-YOLO checked and ruled out: joint detection+deblur GAN architecture, real MIT licence, but no code ever shipped (motion blur area, negative-with-caveats result)
+
+**Area covered.** Rotated to bullet 2 (motion blur — blur-robust detection
+architectures specifically), avoiding bullet 1 (dataset area — SloMoDeblur,
+this run's immediately preceding run) and bullet 4 (golf pose/tracking —
+the second run today). Also distinct from the architecture-side entries
+already logged for camouflage (TrackNetV4, DTUM, SINet-V2, channel-stacked
+multi-frame YOLO, Motion-Informed Enhancement) and for blur specifically
+(RT-Focuser, DEN, PSF-based synthesis, BlurBall) — none of those is a
+joint detection+deblurring network, which is the angle this entry checks.
+
+**What it is.** "Deblur-YOLO: Real-Time Object Detection with Efficient
+Blind Motion Deblurring" (Zheng, Wu, Jiang, Lu & Gupta, IJCNN 2021). A
+YOLO-based detector fused with a GAN-based blind-deblurring front end: a
+dilated feature-pyramid generator restores a sharp image from a blurred
+input, trained against a pair of multi-scale spectral-norm discriminators
+plus a *detection* discriminator (i.e. the deblurring loss is shaped by
+what helps detection, not just pixel fidelity) — structurally the closest
+thing found so far to "take a YOLO model and make it blur-robust" rather
+than a wholesale architecture swap or a temporal/multi-frame trick.
+
+**URL.** https://github.com/LOUEY233/Deblur-YOLO (paper:
+https://ieeexplore.ieee.org/document/9534352, IJCNN 2021, paywalled, not
+fetched directly — this entry is sourced from the repo's own abstract
+reproduction, which is verified primary-source text, not a search summary).
+
+**Verification (repo cloned directly into this sandbox, GitHub egress is
+not blocked here).** `git clone` succeeded. Contents: a `README.md`
+(abstract, architecture description, citation), a `LICENSE` file, and two
+`Arch/`/`Vis/` folders containing PDFs and PNGs of the architecture diagrams
+and paper figures only — **no source code, no training or testing dataset,
+no pretrained weights**. The README's own TODO list confirms this directly:
+"Upload Training Dataset", "Upload Testing Dataset", "Update Code", and
+"Upload Pretrained Weight" are all unchecked. `git log` shows the repo's
+last commit is from 2021-11-29 — almost five years stale, effectively
+abandoned mid-TODO.
+
+**Licence, verbatim (`LICENSE` file, read directly, not inferred).**
+```
+MIT License
+
+Copyright (c) 2021 ShenZheng2000
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software...
+```
+Commercial use: **permitted** by the licence text — but there is no
+"Software" to license in any usable sense; the grant covers architecture
+diagrams and a README.
+
+**Which failure mode.** Motion blur, directly — but only as a design
+reference, not as adoptable code. The detection-driven deblurring-GAN idea
+(shape the deblur loss by what the downstream detector needs, not by pixel
+PSNR alone) is a genuinely relevant pattern for this model's specific gap:
+a from-scratch reimplementation ahead of a frozen YOLO11n export is a much
+bigger lift than any preprocessing option already logged (RT-Focuser, DEN),
+and CoreML/on-device GAN inference at video frame rate is a real feasibility
+question this entry does not resolve.
+
+**Effort vs. payoff.** Low-to-medium effort (repo clone + direct file read,
+no network egress issues this time since GitHub itself is reachable) for a
+confirmed-negative-with-caveats result: real permissive licence, directly
+on-topic architecture, but zero shippable artifact — same shape as the
+TinyDark-YOLO and AICaddy entries, and worth recording so a future run
+doesn't re-find this repo and re-spend a cycle discovering the same empty
+TODO list. Unlike TinyDark-YOLO (blocked domain, never actually reached),
+this one was fully inspected — the "nothing to use" verdict here is
+solid, not a placeholder for a retry.
