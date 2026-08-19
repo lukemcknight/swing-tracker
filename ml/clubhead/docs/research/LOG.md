@@ -1977,3 +1977,68 @@ detector itself. Recommended next step: check the licence from an
 unrestricted network before doing anything else with it; do not download
 or use the dataset based on this entry alone, since "commercial use
 permitted" has not been established.
+
+---
+
+## 2026-08-19 (second run) — "Explainable Graph-Based Golf Swing Analysis" (Applied Sciences, April 2026) checked and ruled out: club-keypoint consumer, not a detector, private unreleased capture (golf pose/tracking area, negative result)
+
+**Area covered.** Rotated to bullet 4 (golf-specific pose/club tracking
+papers, benchmarks, or open-source implementations), the area least touched
+in the last several runs (last full entry was AICaddy, 2026-08-15; the only
+thing since then was the 2026-08-17 GolfPose licence-status update, not a
+new find). Avoided bullet 1 (dataset) and bullet 2 (motion blur), both used
+in the immediately preceding runs (CaddieSet/TinyDark-YOLO on 08-18,
+SloMoDeblur on 08-19 first run).
+
+**What it is.** "Explainable Graph-Based Golf Swing Analysis Integrating
+Club and Body Keypoints for Ball Flight Outcome Prediction" (MDPI *Applied
+Sciences* 16(8):3813, published April 2026). It trains graph neural networks
+(ST-GCN, STGAT) over a unified spatio-temporal graph of body joints *plus*
+golf club keypoints to predict three ball-flight outcomes (spin axis, launch
+direction, ball speed), with Integrated Gradients used for phase-specific
+interpretability. Checked specifically because it is one of the only 2026
+papers found that treats the club, not just the body, as a first-class
+tracked entity — the same angle that made GolfPose (2026-08-13) worth
+logging.
+
+**URL.** https://www.mdpi.com/2076-3417/16/8/3813 — blocked by this
+sandbox's egress proxy on direct fetch (`EGRESS_BLOCKED`, same restriction
+as every MDPI/arXiv/HuggingFace host hit by prior runs of this log); the
+description here is sourced from search-engine-indexed abstract text only,
+not a primary-source read. No GitHub repository, dataset link, or
+supplementary-code reference for this specific paper turned up in three
+different targeted searches (including one aimed directly at data-
+availability/supplementary-material mentions).
+
+**Why it doesn't help this model (the finding, not a licence question this
+time).** Two independent, verified-enough-to-act-on reasons this is not
+usable, regardless of licence:
+1. **It is not a club detector — it assumes club keypoints as a given
+   input.** The graph model consumes body+club keypoints; it does not
+   describe or release a model that locates the club in a raw video frame.
+   Even under an ideal licence, this project would still need its own
+   clubhead detector to feed it — it solves a different, downstream problem
+   (predicting ball flight from an already-tracked swing), not the
+   detection problem this log exists to fix.
+2. **The capture is private and unreleased.** Per the indexed abstract, the
+   321 driver-swing sequences were collected "from six amateur golfers in a
+   controlled studio setting" synchronized to TrackMan ball-flight data — a
+   small, bespoke, non-public capture, with no dataset release, GitHub repo,
+   or supplementary-code link found anywhere in three targeted searches.
+   There is nothing here to download, licensed or not.
+
+**Which failure mode.** Neither — ruled out before the camouflage/blur
+question was even reachable, since there's no detector or dataset to
+evaluate against either failure mode.
+
+**Effort vs. payoff.** Low effort (one search-and-verify pass, consistent
+with this log's other negative results), zero payoff — recorded so a future
+run doesn't re-discover this same paper while searching the golf-pose area
+and re-spend a cycle confirming it's a dead end. The golf-specific
+pose/tracking area of this rotation is increasingly thin: of five things
+checked so far (GolfDB, GolfPose, dj_masters, AICaddy, and now this paper),
+only GolfPose has ever cleared to something implementable, and only after
+its licence changed between runs. A future run in this area should consider
+widening the search to golf *swing-analysis SaaS/app vendors* with public
+technical blog posts or patents describing their detection approach, rather
+than continuing to search for more academic papers in the same thin vein.
