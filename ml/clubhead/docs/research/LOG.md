@@ -2116,3 +2116,82 @@ doesn't re-find this repo and re-spend a cycle discovering the same empty
 TODO list. Unlike TinyDark-YOLO (blocked domain, never actually reached),
 this one was fully inspected — the "nothing to use" verdict here is
 solid, not a placeholder for a retry.
+
+---
+
+## 2026-08-19 (fourth run) — SAM-PM (CVPR 2024 Workshops): a seventh camouflage mechanism, verified permissive, but the one that rules out foundation-model VCOD as a category for this deployment target
+
+**What it is.** "SAM-PM: Enhancing Video Camouflaged Object Detection using
+Spatio-Temporal Attention" (Meeran, Adethya T & Mantha, CVPR 2024 Workshops,
+pp. 1857-1866) adapts Meta's Segment Anything Model (SAM) to video
+camouflaged object detection by keeping SAM's own encoder/decoder frozen and
+adding a trainable "SAM Propagation Module" that enforces temporal
+consistency via spatio-temporal cross-attention between consecutive frames'
+SAM features — i.e. the camouflage-relevant motion signal is injected as a
+lightweight add-on module rather than by retraining the whole backbone.
+Reference implementation (PyTorch, full train/eval pipeline, bundles a copy
+of Meta's `segment_anything` code, evaluated via MATLAB scripts against the
+MoCA and CAD benchmarks) is at `github.com/SpiderNitt/SAM-PM`, fetched and
+inspected directly — root file listing, README, and LICENSE all confirmed
+live via direct GitHub fetch, not search-indexing. The README itself is
+thin: no reported benchmark numbers, no stated SAM backbone variant
+(ViT-B/L/H), and no explicit pretrained-checkpoint download link despite a
+`ckpt/` directory existing — so this entry cites mechanism and licence only,
+not any accuracy claim.
+
+**URL.** https://github.com/SpiderNitt/SAM-PM (paper: CVPR 2024 Workshops /
+arXiv:2406.05802 — arxiv.org is blocked by this sandbox's egress proxy, same
+restriction as every prior run of this log, so the abstract and any
+benchmark numbers could not be fetched directly; only the repo's own
+README/LICENSE, which is where the claims below actually come from).
+
+**Licence (verbatim, from the repo's `LICENSE` file at the `master` branch,
+fetched directly).** Apache License, Version 2.0. **Commercial use:
+permitted**, standard Apache-2.0 conditions (retain notices, state changes).
+No separate, more restrictive licence applies to the propagation-module code
+itself. Note this says nothing about the MoCA/MoCA-Mask or CAD benchmark
+datasets used for the paper's own evaluation — this project would train on
+its own data, not those benchmarks, so their licence status (already flagged
+unresolved for MoCA-Mask in the 2026-08-15 SLT-Net entry) doesn't block
+reuse of the code/technique here.
+
+**Which failure mode.** Camouflage, directly — same problem framing as the
+six camouflage entries already logged (TrackNetV4, DTUM, SLT-Net, SINet-V2,
+Motion-Informed Enhancement, InpaintNet). Not applicable to motion blur.
+
+**Why it helps this model specifically — and why it mostly doesn't.** This
+is the seventh independently-sourced camouflage mechanism in this log, and
+by itself it isn't new information about *whether* motion/temporal signals
+help camouflage — six prior entries from four unrelated research fields
+already established that. What this entry actually adds is a boundary case
+on *how expensive is too expensive*: SAM's frozen encoder is a foundation-
+model backbone (SAM ViT-B alone is ~91M parameters; ViT-L and ViT-H are
+larger still), run once per frame at inference regardless of which variant,
+against YOLO11n's on-device footprint of roughly 2.6M total parameters.
+Every prior camouflage entry flagged an unresolved CoreML-export/on-device-
+budget question as a caveat; this is the first one where the answer isn't
+"unresolved," it's "already known to be no" — a SAM-sized encoder cannot run
+per-frame on an iPhone at video-capture rate alongside everything else the
+SwingSensei app already does, independent of how good the propagation
+module's temporal-consistency signal turns out to be.
+
+**Effort vs. payoff.** Low effort to check, essentially zero payoff as a
+model to adopt, but real payoff as a category-closing result. Effort: this
+was a fast verify (README + LICENSE fetch, no code run). Payoff: this
+closes off SAM/SAM2-based video-camouflaged-object-detection as a practical
+line of investigation for this specific on-device deployment target — a
+category that, per this run's search, includes multiple other 2024-2025
+SAM-based VCOD papers (e.g. "ST-SAM," "Phantom-Insight," "TokenMotion")
+that a future run might otherwise be tempted to check one at a time. All of
+them share the same disqualifying trait (a foundation-model encoder at
+inference time), so a future run should not re-spend a cycle verifying each
+one individually unless the project's deployment target changes (e.g. a
+server-side preprocessing step becomes acceptable instead of fully
+on-device inference). The camouflage rotation area is now well-covered by
+this log (seven mechanisms, four research fields, consistent conclusion:
+motion helps, architecture-matching to YOLO11n/CoreML is the real
+bottleneck) — a future run in this area would get more value from actually
+scoping the camera-motion research spike every entry since TrackNetV4 has
+called for, or from testing the one architecturally-compatible candidate
+already logged (channel-stacked multi-frame YOLO, 2026-08-13), than from
+finding an eighth mechanism.
