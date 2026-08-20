@@ -2195,3 +2195,138 @@ scoping the camera-motion research spike every entry since TrackNetV4 has
 called for, or from testing the one architecturally-compatible candidate
 already logged (channel-stacked multi-frame YOLO, 2026-08-13), than from
 finding an eighth mechanism.
+
+---
+
+## 2026-08-20 — DeFMO / the "FMO" (Fast Moving Objects) deblurring literature: an offline data-engine/labeling-QA tool for the motion-blur failure mode, not an on-device fix
+
+**Note on this run's environment.** This sandbox's egress proxy blocked
+every non-GitHub host tried this run — `arxiv.org`, `nature.com`,
+`universe.roboflow.com`, `huggingface.co`, `semanticscholar.org`,
+`paperswithcode.com`, `kaggle.com`, and `r.jina.ai` all returned
+`EGRESS_BLOCKED`, a broader block than prior runs report (several earlier
+entries could at least reach `arxiv.org` or a Roboflow project page). Only
+`github.com` was reachable, which is why this entry's search deliberately
+converged on a GitHub-hosted result: it is the one class of source this run
+could actually verify first-hand rather than from a search snippet. A
+promising non-GitHub lead was found and dropped for this reason: "MoSA-Det:
+motion state adaptive object detection for sports videos" (Scientific
+Reports, April 2026, `nature.com/articles/s41598-026-43231-2`) directly
+targets both this project's failure modes (its abstract, per search
+snippets only, names "motion blur-induced feature degradation" and
+"temporal aggregation failure" from "excessive inter-frame displacement" as
+its two target problems) but its full text, licence, and code/data
+availability could not be loaded — logging it as unverified would repeat
+the exact pattern this log already flags as low-value (see the 2026-08-19
+first-run SloMoDeblur entry). Also checked and rejected as a repeat: MoSA-Det
+and any further camouflage-mechanism search would have been a second
+consecutive run on the same rotation area the 2026-08-19 fourth-run entry
+just closed out — see that entry's own note not to spend a cycle finding an
+eighth mechanism.
+
+**What it is.** DeFMO ("Deblurring and Shape Recovery of Fast Moving
+Objects," Rozumnyi et al., CVPR 2021) and its companion repos
+(`rozumden/MotionFromBlur`, CVPR 2022, and `rozumden/fmo-deblurring-benchmark`)
+belong to a named research subfield — "FMO" (Fast Moving Objects) — built
+specifically around the case this project's own labeling spec describes:
+a single small object, one per frame, that appears as a motion-blur streak
+rather than a sharp shape. DeFMO takes one blurred frame and outputs a
+temporal super-resolution: an ordered sequence of sharp sub-appearances of
+the object across the exposure window, plus a recovered 2D/3D shape mask —
+i.e. it doesn't just sharpen the streak, it decomposes it into where the
+object actually was at each instant within that single frame's exposure.
+Verified by direct GitHub fetch (not search-indexed): `rozumden/DeFMO`'s
+README confirms an MIT `LICENSE` file, a pretrained-model download link
+(Polybox-hosted `.zip`, load into `./saved_models`), and working
+inference/training scripts. The training dataset (`ShapeBlur`, synthetic:
+ShapeNet objects + DTD textures + VOT backgrounds, rendered in Blender
+2.79b) is **not** redistributed in the repo — the README states plainly:
+"Due to this and also the ShapeNet licence, we cannot make the pre-generated
+dataset public" — only the generation recipe is. The companion
+`fmo-deblurring-benchmark` repo (also MIT, per its GitHub license badge)
+ships three synthetic/lab evaluation sets (TbD: uniformly-colored spheres;
+TbD-3D: textured spheres with 3D motion; Falling Objects: arbitrary shapes)
+via a `download_datasets.sh` script — none of it golf imagery, and this run
+could not confirm the remote hosts behind that script are still live.
+
+**URL.** https://github.com/rozumden/DeFMO (paper: CVPR 2021,
+arXiv:2012.00595 — unreachable this run, same egress block noted above) and
+https://github.com/rozumden/fmo-deblurring-benchmark.
+
+**Licence (from the GitHub-displayed license badge/file on both repos,
+fetched directly, not search-indexed).** MIT License on both `DeFMO` and
+`fmo-deblurring-benchmark`. **Commercial use of the code: permitted.** The
+pretrained DeFMO weights are distributed from the same repo under the
+README's plain instruction to download and use them, with no separate,
+more restrictive licence stated for the weights themselves — but note the
+weights were trained on ShapeNet-derived synthetic shapes (generic
+household-object-style geometry, not clubs), so their *licence* is clear
+while their *applicability* to a golf clubhead without retraining is not
+(see caveats). The `ShapeBlur` training set itself is explicitly **not**
+redistributable (ShapeNet's own non-commercial-research licence blocks
+that), so reusing DeFMO's training pipeline as-is, rather than just its
+pretrained weights, would require regenerating shapes from a
+commercially-licensed source instead of ShapeNet.
+
+**Which failure mode.** Motion blur, specifically — not camouflage, for the
+same reason the 2026-08-15 RT-Focuser entry already gives (recovering
+sharper structure from a blur streak doesn't fix a case where the object's
+colour already matches the background; there's no blur to undo there).
+
+**Why it helps this model specifically.** Every motion-blur entry logged so
+far is either a training-side fix (make correctly-boxed blurred examples:
+frame-averaging, PSF-synthesis, channel-stacked multi-frame YOLO,
+BlenderProc) or an inference-side fix (sharpen before detecting:
+RT-Focuser). This is a third, distinct use: an **offline labeling-QA and
+data-engine tool**, not a training-time or inference-time model change to
+the shipped pipeline at all. The project's own stated blur gap is that
+labelled boxes are suspiciously close to square (median elongation 1.60)
+even though the spec instructs annotators to box the full streak — i.e.
+there's an open question of whether annotators are under-boxing genuinely
+blurred frames, or whether the training set genuinely lacks blurred frames
+to begin with. DeFMO gives a way to check mechanically, on captured footage
+the app already owns: run it over a captured swing clip, and its recovered
+sub-frame trajectory directly implies what the *correct*, fully-elongated
+streak box should have been for that frame — a way to audit existing labels
+or auto-suggest corrected boxes for new footage, instead of relying only on
+annotator judgement. This is a complementary, different-in-kind role to
+every prior blur entry: it doesn't generate new training images (BlenderProc,
+PSF-synthesis) and it doesn't run on-device (RT-Focuser) — it's a one-time
+or periodic offline pass over the data-engine's own footage.
+
+**Important caveats.** (1) The pretrained weights' generalization to a golf
+clubhead's actual shape (thin blade/hosel geometry, metallic reflectance) is
+unverified — ShapeNet's synthetic training shapes are generic
+household/toy-style objects, and the benchmark's own eval sets are spheres
+and "arbitrary shapes," not anything club-like; DeFMO may need retraining on
+club-shaped geometry to be trustworthy as a labeling aid, which reopens the
+Blender-2.79b/ShapeNet-licence problem in caveat (2) below rather than being
+a drop-in tool. (2) Retraining or extending the pipeline requires Blender
+2.79b (released 2019, obsolete) and a source of 3D shapes with a licence
+that permits this project's commercial use — ShapeNet's own licence does
+not, so a golf-club-shaped retrain would need a different asset source
+(e.g. a purchased or self-modeled clubhead mesh), which is extra work not
+included in anything verified this run. (3) This produces label *guidance*,
+not ground truth — DeFMO's shape recovery is itself a model output with its
+own error, so any auto-suggested box would need human review, not blind
+acceptance, same as any other auto-labeling aid. (4) Neither repo was run in
+this sandbox (no GPU/compute available here) — verification this run is
+limited to confirming the code, licence, and pretrained-weight links are
+real and live, not to confirming DeFMO's actual deblurring quality on
+anything resembling golf footage.
+
+**Effort vs. payoff.** Moderate effort, uncertain but directly-on-point
+payoff. Effort: downloading the pretrained weights and running inference on
+a handful of already-captured, already-blurry own-swing clips is a bounded,
+single-day experiment (no Blender, no retraining, no ShapeNet needed for
+this first check) — only *extending* it to golf-shaped retraining would hit
+the Blender/licence wall in caveats (1)-(2). Payoff: if DeFMO's recovered
+sub-frame trajectory on real swing footage looks plausible even
+off-the-shelf, it directly answers the log's open question about whether
+the near-square median box elongation reflects genuinely sharp training
+frames or under-boxed blurred ones — the single most actionable unresolved
+question the motion-blur failure mode currently has, more actionable than
+adding an eighth architecture candidate. If the off-the-shelf weights
+produce garbage on a club-shaped, metallic, fast-moving object (plausible,
+per caveat 1), that's still a cheap, useful negative result before
+committing to a full retrain.
