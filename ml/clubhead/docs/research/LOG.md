@@ -2330,3 +2330,121 @@ adding an eighth architecture candidate. If the off-the-shelf weights
 produce garbage on a club-shaped, metallic, fast-moving object (plausible,
 per caveat 1), that's still a cheap, useful negative result before
 committing to a full retrain.
+
+---
+
+## 2026-08-20 (second run) — CamDiff: diffusion-inpainting camouflage-scene augmentation (Luo, Wang, Wu, Sakaridis, Cheng, Fan, Van Gool — CAAI AIR 2023), an eighth camouflage mechanism and the first generative-synthesis one
+
+**Area covered.** Before starting fresh research, this run first read the
+full log (~2,300 lines, 27 prior entries back to 2026-08-12) to avoid
+repeating ground. Note for future runs: the branch `research/clubhead-YYYY-
+MM-DD` for **today's date already existed on `origin`** with prior commits
+before this run started (this routine appears to fire multiple times per
+day, not once) — always `git fetch origin research/clubhead-<today>` and
+rebase onto it before starting local work, rather than branching fresh from
+`main`/whatever HEAD happens to be checked out, or you will duplicate
+already-logged findings and hit a rejected push. This run's first research
+pass (Albumentations `MotionBlur` + Sayed & Brostow CVPR 2021 box-dilation)
+turned out to exactly duplicate the entry already logged 2026-08-14 (line
+434) — caught only because the log was read in full before committing.
+Discarded that draft and rotated into area 5 (data-synthesis techniques),
+specifically a generative/diffusion angle none of the seven prior
+camouflage entries (TrackNetV4, DTUM, SLT-Net, channel-stacked YOLO,
+Motion-Informed Enhancement, SAM-PM, SINet-V2) or the two prior
+data-synthesis entries (Copy-Paste, BlenderProc) had tried.
+
+**What it is.** CamDiff ("Camouflage Image Augmentation via Diffusion
+Model," Luo, Wang, Wu, Sakaridis, Cheng, Fan, Van Gool — CAAI Artificial
+Intelligence Research 2023, also arXiv:2304.05469) uses a latent diffusion
+inpainting model to synthesize new **salient (non-camouflaged) objects
+into existing camouflaged-scene images**, with CLIP-based zero-shot
+classification used as a filter to reject failed generations that don't
+match the intended object prompt or that accidentally blend into the
+background instead of standing out. The stated purpose is the opposite
+direction from what this project needs (they add visible clutter to
+camouflage scenes to diversify hard-negative backgrounds for a COD model),
+but the underlying mechanism — diffusion-inpaint a target object into an
+existing background image, filter failures with CLIP, keep the original
+scene's other labels intact — is directly invertible for this project's
+actual need: diffusion-inpaint a **clubhead** into backgrounds chosen
+specifically for low contrast (dark clothing, dense foliage crops pulled
+from the project's own footage or public sources), which is exactly the
+manufactured-negative-turned-positive the camouflage failure mode is short
+of. This is the first generative/diffusion-based data-synthesis technique
+in this log — mechanically distinct from Copy-Paste's simple cut-and-paste
+compositing (2026-08-14) and BlenderProc's physically-based 3D rendering
+(2026-08-18), since a diffusion model can blend lighting/shadow/texture at
+the boundary in a way flat compositing cannot, which matters specifically
+for a camouflage augmentation whose entire point is subtle blending into
+the background rather than looking obviously pasted-in.
+
+**URL.** Code + released 5GB augmented dataset:
+https://github.com/drlxj/CamDiff (`README.md` fetched directly via
+`raw.githubusercontent.com`, HTTP 200, confirmed live; repo contains
+`inpainting_diff.py`, `clip_classification.py`, and generated-image folders
+`new`/`new1+1`/`new3`, per direct repo-listing fetch). Paper: CAAI AIR 2023
+/ arXiv:2304.05469 — arxiv.org and sciopen.com (the CAAI AIR journal host)
+are both unreachable from this sandbox's egress proxy, the same standing
+restriction noted in every prior run of this log, so the mechanism
+description above is corroborated across the GitHub README (fetched
+directly) plus independently-indexed ResearchGate/ADS/ETH Zürich
+(people.ee.ethz.ch) search snippets that converge on the same description
+— treated as verified in mechanism, not in reported accuracy numbers, which
+could not be read from the PDF.
+
+**Licence — VERIFIED ABSENT. Commercial use: NOT confirmed permitted;
+treat as forbidden by default.** Checked directly via
+`raw.githubusercontent.com/drlxj/CamDiff/<branch>/<file>` for `LICENSE`,
+`LICENSE.md`, `LICENSE.txt`, and `COPYING` on both `main` and `master` —
+all eight return HTTP 404, while `README.md` returns HTTP 200 on the same
+branch, confirming the repo is live and the absence is real, not a fetch
+failure. Same posture as GolfPose-before-its-license-update, detectInBlur,
+DTUM, dj_masters, and ZoomNeXt/EASE (the latter two checked and discarded
+this run in favor of CamDiff — also no LICENSE file, but a less useful
+mechanism: both are supervised COD detectors, an architecture category this
+log already has five license-blocked examples of). **Do not use this
+repo's code or its released 5GB dataset without the authors' explicit
+written terms.** What is reusable regardless of the code's licence status:
+diffusion-inpainting an object into a chosen background with a CLIP-based
+accept/reject filter is a generic, describable pipeline buildable from
+scratch against any commercially-licensed diffusion inpainting model (e.g.
+Stability AI's SDXL inpainting checkpoints under their own commercial
+terms, not evaluated here) and the MIT-licensed open CLIP implementation —
+none of CamDiff's own code needs to ship.
+
+**Which failure mode.** Camouflage, specifically and only. Not motion blur
+— nothing about diffusion inpainting addresses blur-streak geometry.
+
+**Why it helps this model specifically.** Every camouflage fix logged so
+far is either an architecture change (TrackNetV4, DTUM, SLT-Net,
+channel-stacked YOLO, SAM-PM, SINet-V2 — all requiring model surgery and
+unverified CoreML export) or a labeling/resolution change (SAHI). This is
+the first one that stays entirely on the data side: if it works, it plugs
+into the existing YOLO11n training pipeline with zero architecture change,
+the same appeal BlenderProc and Copy-Paste have for their respective
+problems. The specific value-add over Copy-Paste (already logged) is
+blend quality: Copy-Paste's flat compositing leaves a visible seam that a
+network can learn to key on as a shortcut cue, which is a bad shortcut to
+teach a detector whose entire job is finding objects that do *not* stand
+out from their background — a diffusion inpainter blending lighting,
+shadow, and local texture at the object boundary is a mechanistically
+better match for synthesizing genuinely low-contrast training examples.
+
+**Effort vs. payoff.** Medium-high effort, uncertain payoff, and the
+weakest-verified entry in the log's camouflage-mechanism family so far.
+Effort: this is not a drop-in — it requires standing up a diffusion
+inpainting model (with its own separate licence to check), writing prompt/
+mask-selection logic to target dark-clothing and foliage regions specif-
+ically (CamDiff's own prompts target generic "salient object" diversity,
+not this project's specific low-contrast-background requirement, so the
+prompt/region-selection work is net-new, not reusable), and building the
+CLIP-filter step to reject inpaints that look obviously synthetic — a
+non-trivial data-engineering project, not a config change. Payoff is
+genuinely unverified: no experiment here (or, as far as could be read, in
+the source paper) tests diffusion-inpainted objects for the *reverse* task
+(making an object blend in) rather than the paper's actual task (making an
+object stand out), so treat "this would work for manufacturing camouflaged
+positives" as a plausible, mechanism-grounded hypothesis, not a demonstrated
+result. Recommended as a research spike (generate a small batch, spot-check
+whether a human can tell they're synthetic, before any pipeline investment)
+rather than a committed data-engine change.
