@@ -2448,3 +2448,81 @@ positives" as a plausible, mechanism-grounded hypothesis, not a demonstrated
 result. Recommended as a research spike (generate a small batch, spot-check
 whether a human can tell they're synthetic, before any pipeline investment)
 rather than a committed data-engine change.
+
+---
+
+## 2026-08-20 (fourth run) — GoPro & REDS: the canonical *object-motion* blur/sharp paired datasets, built by frame-averaging, with raw sub-frames shipped — probable CC BY 4.0 (verbatim read blocked)
+
+**What it is.** The two standard real motion-blur/sharp *paired* deblurring
+benchmarks, both from Seungjun Nah et al.:
+- **GoPro** (a.k.a. GOPRO_Large; Nah, Kim & Lee, "Deep Multi-Scale
+  Convolutional Neural Network for Dynamic Scene Deblurring", CVPR 2017):
+  3,214 blur/sharp pairs at 1280×720 (2,103 train / 1,111 test). Blur is
+  synthesised by **averaging consecutive short-exposure frames from GoPro
+  Hero4 240 fps video** — i.e. the exact frame-averaging construction this
+  log's first entry (2026-08-12, Brooks & Barron) proposed. Crucially, the
+  companion **GOPRO_Large_all** ships *all the raw sharp sub-frames* used to
+  build the blur, so you can regenerate blur yourself by averaging an
+  arbitrary number of frames (i.e. pick your own synthetic shutter length).
+- **REDS** (Nah et al., NTIRE 2019 Challenge on Video Deblurring &
+  Super-Resolution): 300 sequences × 100 frames at 720×1280 (240 train / 30
+  val / 30 test), blur built by high-fps frame interpolation + averaging with
+  a measured camera response function (more physically faithful than plain
+  averaging).
+
+**URL.**
+- GoPro: https://seungjunnah.github.io/Datasets/gopro (author page) and the
+  author's own mirror https://huggingface.co/datasets/snah/GOPRO_Large
+- REDS: https://seungjunnah.github.io/Datasets/reds
+- (Both author pages `seungjunnah.github.io` AND the HuggingFace mirror were
+  egress-blocked in this sandbox, as was arxiv.org — same block wall every
+  prior run hit.)
+
+**Licence — PROBABLE CC BY 4.0, but NOT read verbatim (honest gap).** Three
+independent secondary sources agree both datasets are **CC BY 4.0**
+(commercial use permitted *with attribution*): (1) the GS-Blur paper
+(arXiv:2410.23658) tabulates GoPro and REDS as "CC BY 4.0"; (2) the original
+author's own HuggingFace mirror `snah/GOPRO_Large` carries a machine-readable
+`license: cc-by-4.0` metadata tag; (3) curated deblurring-dataset lists
+repeat the same. That the *original author* tagged his own mirror cc-by-4.0
+is strong provenance. **BUT** I could not open the authoritative licence text
+on either the github.io author page or the HF card (both blocked), so this is
+convergent-secondary evidence, **not** the verbatim primary read the log's
+standard demands. Treat commercial-use as *probable* and verify the licence
+line on the HF card / author page from an unblocked network before relying on
+it. (Note the standard caveat for scraped video datasets: a CC BY tag on the
+compilation does not by itself launder any third-party footage inside it —
+though GoPro/REDS were self-shot by the authors, which mitigates this.)
+
+**Which failure mode.** Motion blur. Not camouflage.
+
+**Why it helps THIS model specifically — and why it is NOT the already-logged
+RealBlur or SloMoDeblur.** The blur here is **dynamic-scene / object-motion**
+blur (things moving in the frame), which is a closer statistical match to a
+fast clubhead streak than the already-logged **RealBlur** (2026-08-16), whose
+blur is *camera-shake* (global, handheld) in low light — a different kernel
+family. Against the 2026-08-19 **SloMoDeblur** entry (a smartphone
+frame-averaging blur set whose licence was totally unconfirmed), GoPro/REDS
+is the *licence-cleaner* counterpart (author-tagged CC BY 4.0 vs. nothing) and
+adds one thing neither prior entry has: **GOPRO_Large_all's raw sub-frames**.
+That raw-frame corpus is a ready, off-the-shelf way to build and unit-test the
+frame-averaging augmentation pipeline (log entry #1) end-to-end — averaging N
+sub-frames, deriving the elongated box — *before* the project has captured any
+golf-specific high-fps footage. It is a **development/validation asset for the
+augmentation code and (optionally) pre-training a deblur preprocessor**, not
+detector training data: it contains zero clubheads and zero golf domain, so
+it cannot close the golf-blur *labelled-example* gap on its own.
+
+**Effort vs. payoff — modest, and honestly incremental.** Low effort to
+obtain (single download, standard format). Payoff is indirect and capped:
+(a) as a **prototyping corpus** for the frame-averaging pipeline it is
+genuinely handy and de-risks that idea cheaply; (b) as **deblur-preprocessor
+pre-training** data it feeds the inference-time-deblur route the RT-Focuser
+entry (2026-08-15) already flagged as questionable for on-device iOS, so
+inherits that skepticism; (c) it does **nothing** for the core "need real
+blurred *clubheads*" gap. Recommendation: use GOPRO_Large_all's raw frames to
+build/validate the frame-averaging augmentation now (cheap, no licence risk to
+the *code*), but treat the datasets themselves as scaffolding, not training
+data — and confirm the CC BY 4.0 line verbatim from an unblocked network
+before shipping anything derived from the pixels. Net: a useful enabling
+asset, not a model-accuracy fix in itself.
