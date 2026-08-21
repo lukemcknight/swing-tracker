@@ -2526,3 +2526,69 @@ the *code*), but treat the datasets themselves as scaffolding, not training
 data — and confirm the CC BY 4.0 line verbatim from an unblocked network
 before shipping anything derived from the pixels. Net: a useful enabling
 asset, not a model-accuracy fix in itself.
+
+---
+
+## 2026-08-21 — CADDIE (CVPR 2026 Workshops): a golf-club-specific, real-time-compact pose paper exists, but this sandbox cannot verify anything past its title (existence-only result, golf pose/tracking area)
+
+**What it is.** "CADDIE: Compact Adaptive Detection-Driven Inference for
+Real-Time Golf Club Pose Estimation" — Jung, Changsoo; Yang, Fan; Blanchard,
+Nathaniel; Wong, HonYung (Fujitsu Research of America and Colorado State
+University), published in the Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition (CVPR) Workshops, June 2026,
+CVsports workshop, pp. 9978–9987. The title alone is a near-exact match for
+this project's deployment constraint (real-time, "compact," detection-driven
+club pose, i.e. specifically not a heavy offline model) rather than a
+generic sports-pose paper adapted after the fact, which is why this is
+logged despite the thin verification below rather than discarded.
+
+**URL.**
+https://openaccess.thecvf.com/content/CVPR2026W/CVsports/papers/Jung_CADDIE_Compact_Adaptive_Detection-Driven_Inference_for_Real-Time_Golf_Club_Pose_CVPRW_2026_paper.pdf
+(listed on https://openaccess.thecvf.com/CVPR2026_workshops/CVsports). The
+paper's existence, exact title, full author list, institutions, venue, and
+page range are corroborated identically across multiple independent search
+results (the CVF open-access listing plus separate indexed citations), which
+is good evidence the paper is real — but every domain that could serve its
+actual content is blocked from this sandbox: `openaccess.thecvf.com` (the
+PDF and the workshop listing itself), `www.semanticscholar.org`,
+`www.google.com`, and IEEE Xplore (no reachable document link was ever
+surfaced for the "final published version" the CVF listing references) were
+all tried and all refused. `arxiv.org` — also tried, per this log's standing
+restriction — has no listing under this title, so there is no preprint
+mirror either. No GitHub repository, project page, or author lab page
+publishing this work was found despite targeted searches (including
+co-author Nathaniel Blanchard's CSU/CU Boulder pages).
+
+**Licence — UNKNOWN, not merely unconfirmed.** Zero licence information was
+found for either code or data, because no code or data location was found at
+all. **Do not treat as available for any use, commercial or otherwise, until
+a primary source is actually read.**
+
+**Which failure mode.** Unknown — cannot be determined without the abstract
+or method section. The title's "detection-driven" phrasing suggests a
+two-stage pipeline (club detection feeding a pose/keypoint stage), which
+would be architecturally relevant to a camouflage fix in the same way the
+already-logged GolfPose entry (2026-08-13/08-17) is, but this is a guess
+from the title, not a verified claim, and is flagged as such.
+
+**Why this is being logged anyway.** This log's standing rule is not to log
+things that can't be confirmed to exist — this paper's existence and exact
+identifying metadata are confirmed via multiple converging sources, which is
+different from a single unverifiable claim. What's unverified is everything
+about its actual content and any code/data terms. Given three prior "golf
+pose/tracking" entries in this log (GolfPose, dj_masters, AICaddy, graph-
+based swing analysis) turned up nothing usable, and this is the first
+2026-vintage, purpose-built, real-time-golf-club paper this log has found,
+it is worth a named pointer for the project owner — who may have institutional
+access (an IEEE Xplore or CVF member login, or a direct email to the
+authors) this sandbox does not — rather than silently discarding it.
+
+**Effort vs. payoff.** Low effort spent (a single search-and-verify pass,
+~6 queries, all content fetches blocked), payoff currently zero and
+unknowable from here. This is *not* an actionable technique yet — it is a
+lead. Recommended next step for whoever has real network/institutional
+access: pull the actual PDF from IEEE Xplore or CVF, read the method and any
+code/data availability statement, and only then decide whether it's a
+architecture reference (most likely, given "detection-driven inference") or
+a labelled-data source. Do not spend implementation effort on this entry
+until someone has actually read the paper.
