@@ -2592,3 +2592,74 @@ code/data availability statement, and only then decide whether it's a
 architecture reference (most likely, given "detection-driven inference") or
 a labelled-data source. Do not spend implementation effort on this entry
 until someone has actually read the paper.
+
+---
+
+## 2026-08-21 (second run) — Golf dataset sweep for the day: one ruled out, one flagged unreadable (golf dataset area, negative result)
+
+**What was checked.** This run rotated to the "golf swing video/image
+datasets, especially indoor/low-light/simulator footage" area, which this
+log has hit least often (only GolfDB and CaddieSet so far, both ruled out).
+Two new leads surfaced and both dead-end the same way as prior entries in
+this area.
+
+**1. GolfPosePro (`github.com/ryanboscobanze/GolfPosePro`) — ruled out.**
+Fetched directly. It is an MIT-licensed *tool* (MediaPipe-based swing
+analyzer that uses `yt-dlp` to pull reference clips from YouTube Shorts at
+run time), not a dataset — the repo's `input videos`/`output generated.mp4`
+are worked examples, not a shipped corpus. No indoor/low-light footage is
+bundled or mentioned. Same shape as the already-logged AICaddy/dj_masters
+checks: permissively licensed code, nothing to train on.
+
+**2. "On the Utility of Pose Estimation Models for Golf Swing Understanding"
+(SCIRP, published December 2025) — flagged, not usable.** Multiple
+independent search snippets (not the primary source — see below) describe
+this paper as comparing YOLO Pose vs. MediaPipe Pose on golf swings using
+"a custom dataset consisting of golf swing recordings across diverse
+players, backgrounds, and lighting conditions" — the exact "diverse
+lighting" property this project's test coverage lacks. That is the only
+reason this is worth a named pointer rather than silent discard.
+
+**URL.** https://www.scirp.org/journal/paperinformation?paperid=148105 —
+**this sandbox's egress proxy blocks `www.scirp.org` outright** (same
+failure mode as `arxiv.org`, `ar5iv.labs.arxiv.org`, `peerj.com`, and
+`universe.roboflow.com`, all also tried and blocked this run). Every detail
+above is reconstructed from third-party search-result snippets, not the
+paper itself, so treat it as one notch below even the CADDIE entry's
+verification level (CADDIE's *existence* was corroborated by independently
+matching metadata across sources; here even that corroboration is thin —
+only one source paraphrase was found, repeated verbatim-ish across search
+results, which is more consistent with one search engine's summary
+propagating than with independent confirmation).
+
+**Licence — unknown.** No data-availability statement, licence, or download
+link for the dataset was found in any snippet despite several targeted
+searches. SCIRP articles are typically open-access (CC BY), which would
+likely cover the *paper text*, but that says nothing about a redistribution
+licence for the underlying video, which almost always needs separate
+human-subject/institutional clearance that authors do not grant by default.
+
+**Which failure mode.** Motion blur / camouflage (both, potentially) —
+"diverse lighting conditions" is the closest any golf-specific source has
+come this log to naming indoor/low-light footage directly. But note: the
+paper's task is body-pose keypoints, not clubhead detection, so even if the
+raw video were released, there is no reason to expect clubhead bounding
+boxes in it — at best it would be unlabelled source footage for this
+project's own labeling pipeline, not a drop-in training set.
+
+**Why this is being logged anyway.** Following the same standing rule as
+the CADDIE entry: don't silently drop a lead whose existence is plausible
+just because this sandbox can't reach it. Unlike CADDIE, this one has a
+real, weaker corroboration problem (single-source snippet, not
+cross-verified) and a real, additional relevance problem (pose keypoints,
+not clubhead boxes) even in the best case — so it should be weighted lower
+than CADDIE was, not equally.
+
+**Effort vs. payoff.** Low effort (a handful of search queries plus one
+direct GitHub fetch), payoff most likely zero. Recommended next step for
+whoever has real network access: read the SCIRP paper's data-availability
+section first, before anything else — if it says "dataset available on
+request" or similar, it is very unlikely to also grant a commercial
+redistribution licence, in which case this lead should be closed out
+without further effort. Do not prioritize this over the still-open CADDIE
+lead.
