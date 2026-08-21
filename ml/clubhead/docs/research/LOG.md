@@ -2663,3 +2663,92 @@ request" or similar, it is very unlikely to also grant a commercial
 redistribution licence, in which case this lead should be closed out
 without further effort. Do not prioritize this over the still-open CADDIE
 lead.
+
+## 2026-08-21 (third run) — WASB-SBDT: a verified, MIT-licensed, working multi-sport ball-tracking codebase (small/fast/blurred objects) — code confirmed real, paper still unreadable
+
+**What it is.** `github.com/nttcom/WASB-SBDT` — code release for "Widely
+Applicable Strong Baseline for Sports Ball Detection and Tracking" (BMVC
+2023). It detects/tracks the ball in soccer, tennis, badminton, volleyball,
+and basketball footage — small, fast-moving, frequently motion-blurred
+objects, i.e. the same shape of problem as clubhead detection, just for a
+different object. This rotates into the "multi-frame/temporal methods for
+small, low-contrast objects" area, which this log has covered mostly via
+papers (TrackNetV4, DTUM, Motion-Informed Enhancement, channel-stacked
+multi-frame YOLO, BlurBall). WASB is different in kind: it is an actual
+maintained repo with runnable code and pretrained weights per sport, not a
+paper description.
+
+**Verification performed.** Fetched the GitHub repo directly (not search
+snippets). Confirmed real: `src/` (with `configs/`, `dataloaders/`,
+`datasets/`, `detectors/`, `losses/`, `models/`, `optimizers/`, `runners/`,
+`setup_scripts/`, `trackers/`, `utils/`), `Dockerfile`, `GET_STARTED.md`,
+`MODEL_ZOO.md`, `README.md`. `GET_STARTED.md` names five real dataset setup
+paths (soccer via a setup script, tennis via a SharePoint zip, badminton via
+the TrackNetV2 zip, volleyball via two Google Drive files, basketball via a
+setup script) and `MODEL_ZOO.md` lists pretrained weights per sport,
+compared against DeepBall, DeepBall-Large, BallSeg, TrackNetV2,
+ResTrackNetV2, and MonoTrack. This is a substantially more real artifact
+than most "existence-only" entries in this log — it's not just a title.
+
+**Licence — verified, permits commercial use.** Fetched
+`raw.githubusercontent.com/nttcom/WASB-SBDT/main/LICENSE.md` directly and
+read the full text:
+
+> MIT License
+>
+> Copyright (c) 2023 NTT Communications Corporation
+>
+> Permission is hereby granted, free of charge, to any person obtaining a
+> copy of this software and associated documentation files (the
+> "Software"), to deal in the Software without restriction, including
+> without limitation the rights to use, copy, modify, merge, publish,
+> distribute, sublicense, and/or sell copies of the Software, and to permit
+> persons to whom the Software is furnished to do so, subject to the
+> following conditions: [...]
+
+This covers the **code** (architecture, training/eval scripts, pretrained
+weights) for commercial use. It does **not** cover the five underlying
+sports datasets, which are separate third-party downloads (SharePoint,
+Google Drive) each carrying their own original licence — those were not
+checked here and must not be assumed permissive just because the WASB code
+wrapping them is MIT.
+
+**What could NOT be verified.** The actual architecture — whether it stacks
+consecutive frames as multi-channel input (à la TrackNetV2's 3-frame
+9-channel scheme), how many frames, backbone, and heatmap-regression
+details — is in the paper, not the repo docs. `arxiv.org`,
+`huggingface.co`, `papers.bmvc2023.org`, and `ui.adsabs.harvard.edu` were
+all tried and all blocked by this sandbox's egress proxy, the same
+recurring failure mode noted in the 2026-08-15, -19, -20, and -21 entries.
+`MODEL_ZOO.md` and `GET_STARTED.md` were fetched but neither documents
+input-frame count or architecture, only which pretrained weights exist per
+sport. So: the code and licence are real and confirmed; the specific
+mechanism that makes it work is not verified this run.
+
+**Which failure mode.** Camouflage primarily (multi-frame temporal
+detection of a small object against clutter — motion where appearance
+alone fails), motion blur secondarily (balls in these sports are
+frequently blurred at speed, same as clubheads). Same rationale as every
+other multi-frame entry in this log.
+
+**Why this doesn't move the needle much despite being real.** This is the
+fourth or fifth verified multi-frame/temporal small-object mechanism logged
+(TrackNetV4, channel-stacked multi-frame YOLO, DTUM, Motion-Informed
+Enhancement, BlurBall) and doesn't introduce a new mechanism — it's a
+working reference implementation of the same family of ideas already
+covered, for a different sport. Its actual value here is narrow and
+concrete: something a developer could clone today and read the `models/`
+and `dataloaders/` source directly to see a real, shipped implementation of
+this pattern, instead of reasoning from a paper abstract. That is genuinely
+useful for *implementation* once the multi-frame direction is chosen, but
+it is not new *evidence* that the direction is right, and it ships no golf
+data.
+
+**Effort vs. payoff.** Low-moderate effort (repo fetched directly, licence
+file read verbatim, several architecture-detail fetches blocked). Payoff:
+low as a new idea (redundant with prior entries), low-moderate as an
+implementation reference (real, permissively licensed, runnable code
+exists and was confirmed, unlike several earlier paper-only leads). Not
+worth further sandbox time — the next useful step is someone with real
+network access cloning the repo and reading `src/models/` directly rather
+than continuing to hunt for the paper.
