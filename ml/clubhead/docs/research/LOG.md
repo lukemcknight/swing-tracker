@@ -2752,3 +2752,79 @@ exists and was confirmed, unlike several earlier paper-only leads). Not
 worth further sandbox time — the next useful step is someone with real
 network access cloning the repo and reading `src/models/` directly rather
 than continuing to hunt for the paper.
+
+---
+
+## 2026-08-22 — CAMotion: a benchmark that annotates motion blur and camouflage as co-occurring attributes on the same sequences (research-only, ruled out for training data)
+
+**What it is.** `github.com/Garyson1204/CAMotion` — code and data release for
+"CAMotion: A High-Quality Benchmark for Camouflaged Motion Object Detection
+in the Wild" (arXiv 2604.08287, April 2026). It is a video camouflaged
+object detection (VCOD) dataset of wild animals (batfish, octopus, geckos,
+leopards, owls, insects, etc.) with pixel-level mask annotations, plus depth
+maps, optical flow, eval scripts (`eval_video.py`, `eval_image.py`), and
+predictions/checkpoints from 18 existing COD/VCOD methods run against it.
+
+This rotates into the small/camouflaged-object-in-video area, but it is a
+different kind of finding than the seven or eight VCOD *methods* already in
+this log (TrackNetV4, DTUM, SLT-Net, SINet-V2, Motion-Informed Enhancement,
+CamDiff, SAM-PM, InpaintNet): CAMotion is the first **benchmark** found here
+that explicitly tags **motion blur** as a per-sequence challenge attribute
+alongside camouflage, occlusion, and uncertain edges — i.e. it treats this
+model's two "co-equal" failure modes as attributes that occur *together* on
+the same footage, rather than as two separate research literatures. Every
+prior blur-vs-camouflage entry in this log picked one mechanism or the
+other; none pointed at a dataset built around both at once.
+
+**Verification performed.** Fetched the GitHub repo and its README directly
+(not search snippets). Confirmed real: `eval_video.py`/`eval_image.py`
+present, working Google Drive and Baidu Netdisk links for the main dataset,
+supplementary depth/optical-flow data, and an 18-model checkpoint/prediction
+folder. The README explicitly lists "uncertain edge, occlusion, motion
+blur, and shape complexity" as the per-sequence attribute set. `arxiv.org`
+was blocked by this sandbox's egress proxy as usual (recurring failure mode
+noted in the 2026-08-15, -19, -20, and -21 entries), so the paper's method
+section (how attributes are used, exact split sizes) was not read — only
+the repo/README content was verified.
+
+**Licence — verified, commercial use is prohibited.** The README states
+verbatim: *"The CAMotion dataset is released for academic research only.
+Commercial use is strictly prohibited without permission from the
+authors."* This is a hard research-only restriction with no ambiguity, so
+this entry is a negative result for sourcing training data, same as
+CaddieSet and MoCA-Mask earlier in this log. (A close relative, YUV20K —
+`github.com/K1NSA/YUV20K`, arXiv 2604.09985, also April 2026, wildlife VCOD
+with a similar motion-blur-plus-camouflage attribute framing — was checked
+in the same search and is CC BY-NC 4.0, also non-commercial, and additionally
+has no source code released yet, only the dataset. Not logged as a separate
+entry since it duplicates CAMotion's restriction and offers less.)
+
+**Which failure mode.** Both, genuinely — this is the first entry in this
+log where that's true of the *data* rather than of a proposed technique.
+
+**Why this doesn't move training forward, but could inform a decision
+already implied by this log.** No clubhead frames are gained (wrong domain,
+non-commercial licence). The real, narrow value: this log has now
+accumulated ~8 distinct camouflage/temporal mechanisms and several
+blur-synthesis routes without a shared way to compare them on footage that
+has *both* problems at once, which is exactly this model's outdoor-vs-indoor
+gap (the outdoor test set has camouflage without blur; indoor is expected to
+have both). CAMotion's attribute tags mean someone could filter its test
+split to sequences tagged both "motion blur" and generic camouflage, and use
+it as a proxy benchmark to rank the previously-logged methods (e.g.
+Motion-Informed Enhancement vs. DTUM vs. channel-stacked multi-frame YOLO)
+before committing engineering time to implementing any one of them on real
+golf footage. That is a research-planning use, not a training-data or
+architecture fix.
+
+**Effort vs. payoff.** Low effort (GitHub README fetched directly, licence
+read verbatim, no downloads attempted). Payoff: low as training data (wrong
+domain, non-commercial), low-moderate as a research-prioritization tool (it
+could cheaply rank existing candidate methods on blur+camouflage footage
+before implementation, which nothing else in this log offers) — but that
+requires someone to actually download ~20GB+ of animal video and run the
+eval harness, which is more setup cost than payoff unless the multi-frame
+direction is already committed to. Not a strong finding; logged mainly
+because it is the first evidence this log has found that blur and
+camouflage are being treated as a joint problem anywhere in the literature,
+which is directly relevant to this model's likely indoor failure mode.
