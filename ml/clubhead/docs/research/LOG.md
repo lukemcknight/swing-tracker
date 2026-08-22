@@ -2828,3 +2828,90 @@ direction is already committed to. Not a strong finding; logged mainly
 because it is the first evidence this log has found that blur and
 camouflage are being treated as a joint problem anywhere in the literature,
 which is directly relevant to this model's likely indoor failure mode.
+
+---
+
+## 2026-08-22 (second run) — Grounding DINO for open-vocabulary auto-labeling of raw phone footage (data-engine area, not a blur or camouflage technique)
+
+**What it is.** `github.com/IDEA-Research/GroundingDINO` — the official
+release of "Grounding DINO: Marrying DINO with Grounded Pre-Training for
+Open-Set Object Detection." It takes an `(image, text)` pair and returns
+boxes for whatever the text names (e.g. a prompt string like `"golf club
+head ."`), with no fine-tuning and no fixed class list. This is a
+data-engine finding, not a blur- or camouflage-technique finding: the
+proposal is to run it once over raw, currently-unlabelled footage to
+generate *candidate* boxes for a human to correct in Label Studio, rather
+than drawing every box from scratch — i.e. attack the "only ~29% of training
+data is the app's own phone footage" gap by making it cheaper to label more
+of it, not by synthesizing new pixels or changing the detector.
+
+**Verification performed.** Fetched the GitHub repo directly. Confirmed: the
+README documents the `(image, text)` input/output contract with a worked
+example (`"chair . person . dog ."` style prompts), `pip install -e .` is a
+real, documented install path, and inference code (`demo/inference_on_a_image.py`
+per the repo layout) ships in the repo — this is a working, downloadable
+codebase, not a paper-only lead. Pretrained weights are linked from the same
+README (Swin-T and Swin-B checkpoints). I did not run the model myself in
+this sandbox (no GPU/weights download attempted), so the *specific* claim
+that a bare "golf club head" prompt yields usable boxes on this project's
+footage is unverified — see caveat below.
+
+**Licence — verified, commercial use is permitted.** The repository's
+license badge and footer read **Apache-2.0**, confirmed by fetching the repo
+page directly (not a search snippet). Apache-2.0 permits commercial use,
+modification, and redistribution subject to standard notice-retention
+terms. No separate, more restrictive licence applies to the code; I did not
+separately verify the licence terms of the individual Swin-T/Swin-B
+checkpoint files, which is worth a follow-up if weights (not just code) end
+up redistributed.
+
+**Which failure mode.** Neither, directly — this is a data-engine/labelling
+throughput tool, not a fix for camouflage or motion blur specifically. It is
+logged because "ways to synthesise or augment training data" is one of the
+rotation areas and every prior entry in that area has been about
+synthesising *pixels* (blur kernels, diffusion inpainting, copy-paste,
+BlenderProc renders) rather than about reducing the *labelling cost* of real
+footage the project already has or could easily capture more of.
+
+**Why it helps this model specifically — and an honest limit on that.** The
+project's own stated gap is that only ~29% of training data is the app's own
+phone footage, with the rest third-party Roboflow imagery; more own-footage
+is repeatedly flagged elsewhere in this repo as the top data-engine
+priority. Manual Label Studio annotation is the likely bottleneck to using
+more of it. An open-vocabulary detector used as a pre-labelling pass (box
+proposal, then human correction, not automatic acceptance) is a standard,
+verifiable way to cut that cost — this exact workflow (open-vocabulary
+annotation followed by pseudo-label review) is the subject of a paper found
+in the same search, "DART: An Automated End-to-End Object Detection Pipeline
+with Data Diversification, Open-Vocabulary Bounding Box Annotation,
+Pseudo-Label Review, and Model Training" (arXiv 2407.09174) — arxiv.org was
+blocked by this sandbox's egress proxy as in every prior entry that hit it,
+so DART itself is logged as a corroborating title only, not independently
+verified.
+
+The honest limit: a general-purpose open-vocabulary model was pretrained on
+web-scale image-text pairs, not on golf video, and "golf club head" is a
+fine-grained, unusual phrase for it. It is plausible — and this log's own
+two failure modes predict — that Grounding DINO does fine on easy, sharp,
+well-lit frames (which are already the least useful ones to add more of)
+and does *poorly* on exactly the camouflaged and motion-blurred frames this
+model already fails on, since those are hard for any appearance-based
+detector, foundation-model or not. So this tool likely raises labelling
+*throughput* on the easy majority of frames, not the hard tail that
+actually limits the 82%/77% numbers. It should be scoped as a volume/cost
+tool for expanding own-footage coverage, not a fix for either named failure
+mode, and its candidate boxes should never be auto-accepted without human
+review given that mismatch risk.
+
+**Effort vs. payoff.** Low-medium effort: `pip install`, download one
+checkpoint, run inference over a batch of raw clips, spot-check candidate
+boxes against a few already-labelled frames to gauge quality before trusting
+it for volume — a half-day sanity check, not a training run. Payoff:
+plausibly good but unproven here — if a human still has to review and fix
+most boxes on the hard frames, the net time saved could be small; if it is
+reliably close on easy/medium frames (most of any new raw clip), it could
+meaningfully cut the labelling cost of finally using more own-footage,
+including whatever indoor/simulator capture eventually replaces the
+quarantined `indoor_test` set. Recommend a small pilot (one raw clip, count
+how many of its candidate boxes need no correction) before committing to it
+as a pipeline stage.
