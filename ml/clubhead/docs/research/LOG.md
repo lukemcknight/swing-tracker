@@ -2915,3 +2915,125 @@ including whatever indoor/simulator capture eventually replaces the
 quarantined `indoor_test` set. Recommend a small pilot (one raw clip, count
 how many of its candidate boxes need no correction) before committing to it
 as a pipeline stage.
+
+---
+
+## 2026-08-22 (third run) — TOTNet: visibility-weighted loss + train-time occlusion augmentation for temporal ball tracking (Xu et al., *Computer Vision and Image Understanding*, 2026)
+
+**What it is.** TOTNet ("Occlusion-aware temporal tracking for robust ball
+detection in sports videos," Xu, Baniya, Wells, Bouadjenek, Dazeley, Aryal —
+*Computer Vision and Image Understanding*, Elsevier, 2026, arXiv:2508.09650)
+is a small-fast-ball tracker built on the same lineage this log has already
+covered (it re-implements TrackNetV2, monoTrack and TTNet as baselines, and
+uses WASB-SBDT — logged 2026-08-21 — as its strongest comparison point). Its
+architecture is the now-familiar family already logged five times over
+(TrackNetV4, DTUM, SLT-Net, channel-stacked YOLO, WASB-SBDT): 3D
+convolutions over a stack of 5 consecutive frames, regressing a heatmap for
+ball position instead of a single-frame bounding box. That part is not new
+here and is not the reason for this entry.
+
+What *is* new, and not yet logged in this file, is the specific train-time
+technique the paper uses to make the model robust to frames where the ball
+is barely or not visible at all — the closest published analogue to this
+project's camouflage failure mode (zero candidate detections, not just a
+weak one) found so far: (1) **occlusion augmentation** — during training,
+the ball is synthetically hidden in a controllable fraction of frames
+(`--occluded_prob`, used at 0.1 in the released config) so the model sees
+many more "the target is not visibly present" examples than any real
+dataset naturally contains; (2) **visibility-weighted loss** — each training
+sample is labelled with a visibility level (0 = out of frame, 1 = clearly
+visible, 2 = partially occluded, 3 = fully occluded) and the loss
+(weighted binary cross-entropy) up-weights the harder, lower-visibility
+levels (`--weighting_list 1 2 2 3`) instead of treating every frame
+equally. The paper's own ablation (frame count 3/5/7/9, broken out by
+visibility level) is a real, reported result, not just a mechanism claim.
+
+**URL.** https://github.com/AugustRushG/TOTNet (README and LICENSE fetched
+directly via `raw.githubusercontent.com` — both return HTTP 200 with
+substantive content: a full hyperparameter table, ablation figures embedded
+as `github.com/user-attachments/assets/...` image links — confirming a live,
+populated repo, not a stub. GitHub's own web UI and API
+(`github.com`, `api.github.com`, `codeload.github.com`) all returned
+403/400 through this sandbox's egress proxy, same restriction this log has
+hit on every non-raw GitHub host to date, so the exact file tree beyond
+`README.md`/`LICENSE` could not be enumerated — but the README's own
+content (hyperparameter tables, ablation description, a `torchrun` command
+with named CLI flags matching the mechanism described above) is corroborated
+independently via two separate fetches of the raw file and is treated as
+verified to the same bar as this log's other GitHub-only entries.)
+
+**Licence — code VERIFIED PERMISSIVE, data VERIFIED NON-COMMERCIAL. Read
+these as two separate things.** `raw.githubusercontent.com/AugustRushG/TOTNet/main/LICENSE`
+returns the standard MIT License text verbatim (`Copyright (c) 2024
+August`, "Permission is hereby granted, free of charge... to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Software..."), fetched and read directly, not summarized — **commercial use
+of the code is permitted.** Separately, the paper's own dataset (TTA —
+Table Tennis Australia, 9,159 samples with 1,996 occlusion cases, collected
+with Paralympics Australia) is gated behind a signed access agreement and
+the README states plainly: **"Commercial use and redistribution are
+strictly prohibited"** for that dataset. This project has no use for the TTA
+data itself (wrong sport, non-commercial anyway) — the value here is the
+MIT-licensed *code and technique*, not the data.
+
+**Which failure mode.** Primarily camouflage, in a narrower and more
+directly-actionable sense than this log's five prior motion-based
+camouflage entries. Those all propose new architecture (attention modules,
+direction-coded features, foundation-model segmentation) to give the
+network a better appearance-independent cue. TOTNet's contribution needs no
+new architecture: it is a loss-weighting and augmentation change, directly
+portable to the existing YOLO11n training pipeline without touching the
+model graph or the CoreML export path at all. Concretely: during YOLO
+training, synthetically blend/occlude the labelled clubhead region in some
+fraction of frames (the analogue of `occluded_prob`), and if per-sample loss
+weighting is available in the training config, up-weight frames the data
+engine already knows are hard (low-contrast background, partial occlusion,
+heavy blur) rather than weighting every frame equally. That is a real gap
+in what this log has logged for the data-synthesis area (bullet 5) — every
+prior synthesis entry (Copy-Paste, CamDiff, BlenderProc, PSF box-expansion)
+manufactures more *positive*, correctly-labelled hard examples; none of them
+changes *how much the loss cares* about the hard examples already in the
+1,308-frame set once camouflaged/blurred frames exist. Secondarily motion
+blur, only via the same generic "more temporal context helps" logic already
+covered by the five prior multi-frame entries — the frame-count ablation
+(accuracy peaks at 5 frames for racket sports, does not improve at 7 or 9,
+attributed to fast direction changes) is a genuinely new, concrete data
+point if this project ever tunes how many stacked frames the
+channel-stacked-YOLO entry (2026-08-13) uses, but it is not itself a
+blur-streak-geometry fix.
+
+**Why it helps this model specifically.** The camouflage failure mode as
+described in the brief is exactly "zero candidate detections... even at
+confidence 0.05" — not a low-confidence miss, a total absence of signal.
+Standard training (uniform loss weighting, no deliberate exposure to
+target-invisible frames beyond whatever negative frames the labeling spec
+already produces) has no mechanism that specifically teaches the network to
+behave sanely as visibility craters, because every frame contributes
+equally to the loss regardless of how hard it is. TOTNet's two changes are
+a direct, cheap answer to that: force more exposure to near-invisible
+targets during training, and make the loss function itself say those frames
+matter more, not just add more of them as ordinary examples. Nothing else
+already logged targets *loss weighting* specifically — Copy-Paste/CamDiff
+add examples, PSF-synthesis fixes box shape, InpaintNet (2026-08-17)
+patches gaps after detection — this is the first entry that touches how the
+existing 1,308 frames are weighted during training itself.
+
+**Effort vs. payoff.** Low effort, moderate-plausible payoff, and cheaper
+than every architecture-swap entry already logged. Effort: this does not
+require adopting TOTNet's heatmap-regression architecture (that would be a
+large, unproven-for-CoreML rewrite, same caveat as every other
+multi-frame-architecture entry in this log) — only two changes inside the
+existing Ultralytics YOLO training config: an occlusion/camouflage-blend
+augmentation applied at some tunable probability, and, if Ultralytics'
+loss supports per-sample weighting (needs to be checked against the
+installed version — not verified in this run), weighting hard frames
+higher. Both are a training-config change, not a new dependency or a new
+CoreML export risk. Payoff: genuinely unverified for this specific model —
+the paper's reported gains are for ball-heatmap tracking in racket sports,
+not bounding-box clubhead detection in golf, and the mechanism has not been
+tested here. But it is the only entry in this log's camouflage bucket that
+is a pure training-config change with no architecture or export risk at
+all, which makes it worth a cheap try (train one YOLO run with occlusion
+augmentation + hard-frame up-weighting, eval against the existing 3-clip
+test set) before committing effort to any of the architecture-graft options
+already logged.
