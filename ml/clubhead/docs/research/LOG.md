@@ -3037,3 +3037,112 @@ all, which makes it worth a cheap try (train one YOLO run with occlusion
 augmentation + hard-frame up-weighting, eval against the existing 3-clip
 test set) before committing effort to any of the architecture-graft options
 already logged.
+
+---
+
+## 2026-08-22 (fourth run) — iPhoneBlur: a real, current-generation iPhone motion-blur benchmark with a working, MIT-licensed frame-averaging synthesis script — the first working implementation of this log's own first idea
+
+**What it is.** iPhoneBlur is a 2026 motion-deblurring benchmark: 7,400
+blur-sharp image pairs (5,714 train / 1,686 test) extracted from 51 videos
+shot on iPhone 17 Pro at 177-240fps, stratified into Easy/Medium/Hard
+difficulty bands by PSNR (Easy >=30dB, Medium 24-30dB, Hard <24dB; the paper
+reportedly shows a "7-9dB Easy-to-Hard performance drop hidden by aggregate
+metrics" across six benchmarked deblurring architectures, NAFNet best at
+31.2dB overall). The part that matters most for this project is not the
+benchmark numbers but the synthesis code: `dataset/generate_iphoneblur.py`,
+fetched and read directly from `raw.githubusercontent.com` (not just
+described in the README), implements exactly the frame-averaging idea this
+log's very first entry (2026-08-12, Brooks & Barron) proposed but could not
+find a working implementation for. Concretely, the script: reads `.MOV`
+files, converts frames to linear color space (`gamma_decode()`/
+`gamma_encode()`, gamma=2.2), synthesizes blur as a weighted average over an
+adaptively-sized window of neighboring frames (`min_window`/`max_window`,
+default 3-21, via `synthesize_blur()`), quality-filters candidates against
+PSNR/SSIM/LPIPS thresholds, deduplicates with perceptual hashing
+(`imagehash.phash()`), and writes out blur/sharp JPEG pairs plus a
+19-column metadata CSV (PSNR, SSIM, optical-flow motion magnitude, ISP
+energy, difficulty label, etc.). Repo root (fetched directly, confirmed
+live) contains `LICENSE`, `README.md`, `requirements.txt`, and `dataset/`,
+`evaluation/`, `finetuning/`, `models/`, `Inferred_Notebooks/` directories —
+this is a real, structured, working codebase, not a stub.
+
+**URL.** https://github.com/C-loud-Nine/iPhoneBlur (dataset also listed on
+Kaggle per the README, ~9.08GB JPG+CSV; paper apparently at
+arXiv:2605.05990, "iPhoneBlur: A Difficulty-Stratified Benchmark for
+Consumer Device Motion Deblurring" — both `kaggle.com` and `arxiv.org` are
+blocked by this sandbox's egress proxy, same restriction as every prior run,
+so the arXiv identifier and Kaggle listing are unverified beyond what the
+GitHub README states; only `github.com`/`raw.githubusercontent.com` content
+described below is independently fetched and confirmed.)
+
+**Licence — code VERIFIED MIT, dataset licence claim NOT independently
+verified. Read these as two separate things.**
+`raw.githubusercontent.com/C-loud-Nine/iPhoneBlur/main/LICENSE` returns the
+standard MIT License text (2026, attributed to Shafi Abdullah): "Permission
+is hereby granted, free of charge... to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software," conditioned
+only on retaining the notice. **Commercial use of the synthesis code and
+any other repo code is permitted.** The README separately states the
+*dataset* itself (the 7,400 pre-generated pairs hosted on Kaggle) is
+"CC BY 4.0" and that both licences "permit academic and commercial use with
+appropriate attribution" — but since `kaggle.com` is unreachable from this
+sandbox, that specific claim was read only from the GitHub README, not
+confirmed against Kaggle's own licence field the way this log's other
+dataset entries (e.g. RealBlur, 2026-08-16) were verified. Treat the
+dataset's CC BY 4.0 status as one notch below full verification; the code's
+MIT status is fully verified. This project has more use for the code than
+the pre-built dataset anyway (see below), which limits how much that
+caveat matters.
+
+**Which failure mode.** Motion blur, specifically and only. Does not touch
+camouflage.
+
+**Why it helps this model specifically.** The 2026-08-12 entry identified
+the actual root gap correctly (labelled boxes are near-square because
+genuinely blurred, correctly-boxed training examples are scarce — median
+elongation 1.60) and proposed frame-averaging of high-fps footage as the
+fix, but flagged that no confirmed pretrained model and no working code
+were found — only the *idea*, sourced from a paper this sandbox couldn't
+even read the PDF of. This entry closes that gap: `generate_iphoneblur.py`
+is a working, inspectable, MIT-licensed implementation of the same idea,
+already tuned specifically for iPhone footage (gamma-correct in linear
+space before averaging, adaptive window sizing, PSNR/SSIM/LPIPS-based
+quality gating to reject bad synthetic pairs, perceptual-hash dedup) — all
+problems a from-scratch implementation would otherwise have to solve
+itself. It is also more directly applicable than the GoPro/REDS entry
+(2026-08-20, GoPro action-camera footage, licence only "probable" CC BY
+4.0) or SloMoDeblur (2026-08-19, licence unconfirmed): this is phone-native,
+current-generation capture (iPhone 17 Pro), matching this app's actual
+capture device family, and the code's licence is fully confirmed rather
+than probable. Two concrete uses: (1) adapt this script directly against
+the project's own high-fps swing footage (if the app or a dev captures
+120/240fps bursts) to generate blur/sharp pairs with the box then derived
+as the tracked-position hull, exactly as 2026-08-12 proposed, but now with
+working reference code instead of a from-scratch build; (2) even without
+new capture, the PSNR/SSIM/optical-flow-based *quality metrics* in the
+script are reusable standalone as a labeling-QA signal (does a candidate
+"blurred" training frame actually have the motion-magnitude/PSNR profile of
+real blur, versus a near-square mislabel) — a narrower, code-reusable
+version of the same QA idea the DeFMO/FMO entry (2026-08-20) proposed only
+as a general technique.
+
+**Effort vs. payoff.** Low-to-medium effort, plausible payoff, still capped
+by the same capture-availability caveat as 2026-08-12. Effort: the
+synthesis script is small and dependency-light (OpenCV/NumPy/perceptual-
+hashing-class tooling, no exotic ML framework), and directly portable — no
+GPL/unlicensed-code risk like several architecture-idea entries in this log
+carry. It does not, by itself, produce clubhead-specific training data: it
+still needs (a) the project's own high-fps source footage, which this run
+could not confirm exists yet, and (b) the box-derivation step (tracked-
+position hull across the averaging window) that 2026-08-12 already scoped
+using the existing CSRT tracker-propagation tooling. Payoff: this is the
+strongest evidence yet that the frame-averaging approach is a solved,
+reusable engineering problem rather than a research risk — the remaining
+work is capture (does the app or a dev have slow-motion swing footage) and
+integration (wiring the CSRT-derived box into this script's output format),
+not algorithm design. Recommended as the concrete next step for the
+2026-08-12 idea specifically: try adapting this script against any existing
+high-fps footage before investing further in the PSF-synthesis (2026-08-14)
+alternative, since real temporal-integration blur from actual footage is a
+strictly better ground truth than a synthetic PSF kernel once real high-fps
+source video exists.
