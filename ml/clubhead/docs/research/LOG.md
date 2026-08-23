@@ -3146,3 +3146,128 @@ high-fps footage before investing further in the PSF-synthesis (2026-08-14)
 alternative, since real temporal-integration blur from actual footage is a
 strictly better ground truth than a synthetic PSF kernel once real high-fps
 source video exists.
+
+---
+
+## 2026-08-23 — MoSA-Det (Scientific Reports, April 2026): a motion-state-conditioned mechanism aimed directly at the excess-displacement failure this log already flagged as unresolved for TrackNetV4 and DTUM
+
+**What it is.** "MoSA-Det: motion state adaptive object detection for sports
+videos" (Yang, Sun, Ren — *Scientific Reports* vol. 16, article 15969, April
+2026) is a sports-video detector built around the observation that fast
+sports objects break single-frame *and* naive multi-frame detectors in two
+distinct ways: (1) motion blur degrades single-frame appearance features
+("indistinct boundaries, texture loss, significantly reduced feature
+response intensity"), and (2) large inter-frame displacement breaks
+temporal-fusion methods that assume small, alignable motion between frames
+("existing temporal methods assume small inter-frame displacements... yet
+fast-moving objects often exhibit excessive inter-frame displacement that
+causes alignment failure"). It has two components: **MAAF**, a lightweight
+motion-state estimator (inter-frame differencing + local correlation) that
+drives a state-conditioned dynamic convolution with deformable spatial
+sampling in the regions it estimates are moving fast; and **SGTA**, which
+uses that same motion-state signal to *gate* temporal feature aggregation —
+static regions fuse fully across frames for stability, fast-moving regions
+aggregate less (or are down-weighted) specifically to avoid pulling in
+misaligned-frame noise. Reported results: mAP@0.5 +1.7pp and mAP@0.75
++2.6pp over the strongest baseline on SoccerNet-Tracking, and +1.6pp /
++1.8pp on SportsMOT (soccer and multi-sport broadcast tracking, not golf).
+
+**URL.** https://www.nature.com/articles/s41598-026-43231-2 (DOI
+10.1038/s41598-026-43231-2). `nature.com`, `doi.org`, and
+`api.semanticscholar.org` are all blocked by this sandbox's egress proxy —
+consistent with every prior run's experience with academic-publisher
+domains — so the article itself could not be fetched directly. Everything
+above (mechanism description, component names, quoted phrases, and the
+SoccerNet-Tracking/SportsMOT numbers) is sourced from web-search-indexed
+excerpts of the article that were internally consistent across two
+independently-worded search queries, not a direct read of the PDF/HTML.
+Treat the mechanism description as reasonably corroborated (the same
+distinctive phrasing — "excessive inter-frame displacement," MAAF, SGTA —
+recurred verbatim across independent search hits) but one notch below full
+verification, per this log's established convention for blocked domains. No
+GitHub repository was found for this paper under either the paper's name or
+any of the three authors' names — treat it as **paper-only, no released
+code**, not merely "code not yet located."
+
+**Licence — NOT permissive; do not treat this as reusable content.**
+*Scientific Reports* lets authors choose between CC BY 4.0 (commercial use
+permitted) and CC BY-NC-ND 4.0 (non-commercial, no derivatives) per
+article — it is not a single default, so this had to be checked per-article,
+not assumed. Two independent search queries both returned the same
+boilerplate licence sentence for this specific article: "This article is
+licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives
+4.0 International License, which permits any non-commercial use, sharing,
+distribution and reproduction in any medium or format... Creative Commons
+Attribution-NonCommercial-NoDerivatives 4.0 International License." **This
+article is CC BY-NC-ND — commercial use of the article's content is NOT
+permitted**, and since the primary source page could not be fetched
+directly (egress-blocked), this specific licence determination should be
+treated as corroborated-but-not-primary-verified, same caveat as the
+mechanism description above. There is no separate code licence to evaluate
+since no code was released. Per this log's established convention (applied
+to DTUM, PSF-synthesis, GolfPose pre-2026-08-17, etc.): the underlying
+*algorithmic idea* — motion-state-conditioned dynamic convolution gating
+temporal aggregation strength — is a describable technique, not
+copyrightable expression, and is reimplementable from the mechanism
+description without reproducing any of the article's actual text or figures.
+But note this is a materially weaker position than usual for this log: most
+prior "idea-only, licence-blocked" entries at least had real code to point
+to for implementation detail (DTUM, PSF-synthesis) even if the code itself
+carried licence risk. Here there is no code at all — only a two-paragraph
+mechanism description assembled from search snippets — so "reimplementable
+from the description" is a much thinner starting point than usual.
+
+**Which failure mode.** Both, explicitly, and — unusually for this log —
+the paper's own framing of the *second* problem (temporal aggregation
+failure from excessive inter-frame displacement) is a close structural
+match for something already flagged as an open, unaddressed gap in two
+earlier entries here, not just a generic "motion helps" claim.
+
+**Why it helps this model specifically.** The camouflage-mechanism entries
+already in this log (TrackNetV4, 2026-08-13; DTUM, 2026-08-14) both landed
+on the same fix — inject a motion-derived signal since a single frame's
+appearance is genuinely insufficient — but both entries independently
+flagged the identical unresolved caveat: frame-differencing / motion-
+direction encoding assumes small, alignable inter-frame motion, and a
+golf clubhead at swing speed (or a handheld phone moving to track it) will
+break that assumption exactly the way DTUM's own infrared-surveillance
+literature doesn't have to worry about (tripod/gimbal-mounted cameras).
+Neither entry offered a mechanism for what to do when that assumption
+breaks — they just flagged it as a research-spike question. MoSA-Det's SGTA
+component is, as far as this log has found, the first mechanism that
+targets *that specific sub-problem* directly: instead of assuming
+alignability everywhere, it uses the motion-state estimate itself to decide
+*how much* to trust temporal fusion per-region, explicitly to avoid
+"misaligned-frame noise" in fast-motion regions. For this model, that maps
+onto the two failure modes at once in a way no earlier entry does as
+cleanly: in the camouflage case (dark clubhead near swing speed against
+dark background), MAAF's motion-state estimate is exactly the kind of
+motion-vs-appearance-conflict signal DTUM and TrackNetV4 already argued for;
+in the motion-blur case, MoSA-Det treats blur-induced feature degradation
+and alignment failure as *the same underlying variable* (motion state)
+rather than two separate problems needing two separate fixes — which is a
+more parsimonious framing than this log's blur entries (frame-averaging,
+PSF-synthesis, iPhoneBlur — all label/data-side fixes) and camouflage
+entries (TrackNetV4, DTUM — appearance/architecture-side fixes) have
+offered separately so far.
+
+**Effort vs. payoff.** High effort, genuinely uncertain payoff, and the
+weakest evidentiary footing of any architecture-idea entry logged so far.
+Effort: same order of magnitude as TrackNetV4/DTUM — this is architecture
+surgery on YOLO11n (a motion-state estimation branch, state-conditioned
+dynamic/deformable convolution, and a gated temporal-fusion module), not a
+drop-in change, and — as with every other architecture idea in this log —
+CoreML exportability and on-device inference budget for the added modules
+is completely unvalidated by the source material. Payoff: conceptually this
+is the best-targeted idea logged yet for the *combination* of both failure
+modes and specifically for the camera-motion caveat this log has flagged
+twice before as unresolved, which is real value — but the practical
+starting point is much thinner than DTUM or TrackNetV4 (no code, no
+paper PDF read, mechanism reconstructed from search snippets, licence
+corroborated but not primary-source-verified), so treat this as a reason to
+prioritize the *camera-motion research spike* already recommended in the
+DTUM entry (does a motion/frame-difference signal survive handheld swing
+footage, and if not, does gating by estimated motion state fix it) over
+committing to reimplementing MoSA-Det's specific architecture from a
+secondhand description. This entry's main contribution is sharpening what
+that spike should test, not a ready-to-build mechanism.
