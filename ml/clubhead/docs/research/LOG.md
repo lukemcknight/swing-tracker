@@ -3497,3 +3497,91 @@ lower-priority "if the targeted fixes stall" experiment, not a next step,
 and the strongest thing it actually has going for it — the demonstrated
 first-party CoreML export path — applies to classification, not yet to
 detection.
+
+---
+
+## 2026-08-23 (fourth run) — Adding a P2/4 detection head to YOLO11n: a mechanical fix that targets the specific "zero candidate detections" symptom
+
+**Area covered.** Bullet 3 (small/low-contrast object detection). Also the
+first entry this log has logged that changes the *detection head resolution*
+rather than adding a module, a motion signal, or a new backbone — every
+architecture entry so far (TrackNetV4, DTUM, SLT-Net, SINet-V2,
+Motion-Informed Enhancement, SAM-PM, MoSA-Det, FastViT) operates on top of
+YOLO11n's existing P3/P4/P5 (stride 8/16/32) feature pyramid. This one
+argues the pyramid itself is the wrong shape for this object.
+
+**What it is.** Ultralytics' own repo ships `yolov8-p2.yaml`
+(`ultralytics/cfg/models/v8/yolov8-p2.yaml`), a variant of the standard
+detection config that adds a fourth, higher-resolution detection head at
+the P2/4 feature map (stride 4, i.e. 1/4 input resolution) alongside the
+usual P3/8, P4/16, P5/32 heads. Verified by fetching the raw file directly
+(`raw.githubusercontent.com/ultralytics/ultralytics/main/ultralytics/cfg/models/v8/yolov8-p2.yaml`,
+HTTP 200): structurally it inserts three extra layers (upsample P5→concat
+P4, P4→concat P3, P3→concat P2) and changes the `Detect` module's input
+list from `[15, 21, 24]` (3 scales) to `[18, 21, 24, 27]` (4 scales,
+including the new P2 layer). Ultralytics does not ship an equivalent
+`yolo11-p2.yaml` in the main repo (checked: not present in
+`cfg/models/11/`), but the same edit applied to `yolo11.yaml` is a
+well-documented community pattern — GitHub issue
+`ultralytics/ultralytics#20267` and `ultralytics/ultralytics#20359` both
+show users doing exactly this (`YOLO('yolo11n-p2.yaml')`), and a working
+example config (`yolo11-p2.yaml`) is published on Hugging Face at
+`davsolai/yolo11x-p2-coco`. This is a mechanical, same-repo, same-license
+config edit, not a new codebase or a new dependency: since YOLO11n training
+already goes through Ultralytics' `ultralytics` package (per this project's
+own v1/v2 design docs), the P2 head carries no new licensing exposure
+beyond what training with `ultralytics` already entails (AGPL-3.0 on the
+training/repo code; Ultralytics' own position is that this does not extend
+to the exported weights, which is the same position this project is
+presumably already relying on for the existing YOLO11n baseline — not
+independently re-verified here, flagged as a pre-existing assumption, not a
+new one this entry introduces).
+
+**Why it helps THIS model specifically.** The failure analysis's camouflage
+symptom is not "low confidence, wrong box" — it's **zero candidate
+detections even at confidence 0.05**. That symptom pattern (nothing fires
+at any threshold) is the classic signature of an object whose extent, after
+downsampling, no longer occupies a full cell at the coarsest strides the
+network detects from. A clubhead is one of the physically smallest objects
+in the frame class-for-class (a driver head is a few percent of frame
+width in typical phone-distance swing footage), and YOLO11n's finest
+detection stride today is P3 (1/8 resolution) — at 1080p that's already
+downsampling the clubhead's extent by 8x before any detection head sees it,
+and further for dark clubhead-on-dark-background cases where the true
+signal is a handful of edge pixels, not a filled blob. The P2 head halves
+that stride to 1/4, roughly quadrupling the spatial area each feature-map
+cell represents at the finest scale, which is the standard, well-established
+fix for exactly this "very small object, feature map has already lost it"
+failure mode in the small-object-detection literature (this is *why* P2
+variants exist at all — see `ultralytics/ultralytics` discussion #8227
+cited in earlier searches). It is a weaker match for the blur failure mode
+(P2 helps absolute pixel size, not elongation/aspect ratio directly), so
+this should be read as a camouflage-primary, blur-secondary fix, not a
+solution to both co-equally.
+
+**Cost.** Ultralytics' own published GFLOPs figures show the P2 variant
+roughly doubles compute for the nano scale (YOLOv8n: 8.9 GFLOPs → YOLOv8n-p2:
+17.4 GFLOPs); the same rough 2x should be expected for YOLO11n-p2. Given
+that plain YOLO11n→CoreML has been reported comfortably real-time on modern
+iPhones (tens to 80+ FPS in third-party benchmarks, not this project's own
+measurement), a 2x compute increase is very likely to still clear the
+on-device real-time bar, but this project's own baseline latency numbers
+were not available in this checkout to confirm the actual headroom — that
+check belongs in the experiment, not this entry.
+
+**Effort vs. payoff.** Low-to-moderate effort: no new dataset, no new
+dependency, no new labelling convention — it's a YAML config edit plus a
+retrain on the exact training set already in use, and a CoreML re-export
+using the same pipeline already in place for the current model. This is
+one of the cheapest experiments logged so far (comparable to the YOLO26
+checkpoint swap from 2026-08-17), while targeting the single most concrete,
+already-measured symptom in the failure analysis (zero detections at any
+threshold) more directly than any camouflage entry logged before it — the
+prior camouflage entries (SLT-Net, SINet-V2, SAM-PM, DTUM, Motion-Informed
+Enhancement, CamDiff, Copy-Paste, Zero-DCE) all add appearance- or
+motion-based signal on top of the existing pyramid; none of them change the
+pyramid's finest resolution, which is the more direct lever if the root
+cause is genuinely "the object is too small for the network to see," as
+the confidence-0.05 zero-detection symptom suggests. Recommended as a
+near-term experiment to run before, or alongside, the heavier camouflage
+architecture changes already logged.
