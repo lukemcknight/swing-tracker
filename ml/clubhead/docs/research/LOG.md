@@ -3365,3 +3365,135 @@ use is the safer, near-zero-risk first step and should be tried before any
 on-device commitment. Given the total absence of any indoor/low-light
 measurement to date, the honest framing is: this is a promising, cheap
 experiment to run, not a validated fix.
+
+---
+
+## 2026-08-23 (third run) — FastViT: Apple's own hybrid conv-attention backbone, first-party CoreML-exported, but a generic capacity lever rather than a targeted fix for either failure mode
+
+**Area covered.** Closest to bullet 3 (small/low-contrast object detection
+techniques), but honestly it doesn't fit any of the five bullets cleanly —
+it's not temporal, not camouflage-specific, not a labelled dataset, and not
+a data-synthesis technique. It's logged anyway because it's a structurally
+different lever from everything else in this file: every architecture entry
+so far (TrackNetV4, DTUM, SLT-Net, SINet-V2, Motion-Informed Enhancement,
+SAM-PM, MoSA-Det) adds a module or a motion signal to an existing
+single-frame CNN detector. This is the first entry proposing to replace the
+*backbone itself* with a hybrid conv+attention design, and the first
+architecture entry in this log where the CoreML export path is demonstrated
+by the model's own authors rather than assumed.
+
+**What it is.** "FastViT: A Fast Hybrid Vision Transformer using Structural
+Reparameterization" (Anasosalu Vasu, Gabriel, Zhu, Tuzel, Ranjan — Apple,
+ICCV 2023). It's a mobile-efficient backbone family that uses
+train-time-only multi-branch blocks (`MobileOneBlock`,
+`ReparamLargeKernelConv`, both confirmed present in the repo's own source)
+which collapse into single-branch convolutions at inference time
+(structural reparameterization, the same trick MobileOne and RepVGG use),
+combined with actual self-attention stages in the later network layers
+(`fastvit_sa*` variants) rather than pure convolution throughout, unlike
+YOLO11n's CSPDarknet-style backbone. Verified directly from source
+(`raw.githubusercontent.com/apple/ml-fastvit/main/README.md` and
+`models/fastvit.py`, both fetched directly, HTTP 200): the smallest variant,
+FastViT-T8, is 76.2% ImageNet-1K top-1 at 0.8ms latency on an iPhone 12 Pro;
+larger variants trade latency for accuracy up to 83.9%. The paper's own
+COCO object-detection and ADE20K segmentation claims ("comparable
+performance with 4.3x lower backbone latency" on Mask-RCNN detection,
+"1.5x lower latency" on segmentation) come from a search-engine-indexed
+excerpt of the abstract, not the paper itself — `arxiv.org` is blocked by
+this sandbox's standing egress restriction, so per this log's convention
+those two numbers are one notch below full verification; everything else
+above is read directly from the repo.
+
+**URL.** Code: https://github.com/apple/ml-fastvit (`README.md`,
+`LICENSE`, `ACKNOWLEDGEMENTS`, and `models/fastvit.py` all fetched directly
+via `raw.githubusercontent.com`, HTTP 200, confirmed live and real, not a
+placeholder repo). Paper: ICCV 2023, arXiv:2303.14189 (not fetched
+directly, see above). **Important verification gap:** the actual model
+weights and the pre-exported CoreML packages are hosted on
+`docs-assets.developer.apple.com`, which is blocked by this sandbox's
+egress proxy (`EGRESS_BLOCKED`, confirmed via direct `curl` and via the
+fetch tool, not a timeout) — the same class of gap this log hit with
+RealBlur's dataset host. So: the *code and its licence* are fully verified
+live; the *actual checkpoint and .mlpackage files* were not downloaded or
+opened in this run, only linked from the directly-fetched README. A
+follow-up from an unrestricted network should confirm those links still
+resolve before this is treated as actionable.
+
+**Licence (verbatim, from the repo's own `LICENSE` file, fetched
+directly).** "Apple grants you a personal, non-exclusive license, under
+Apple's copyrights in this original Apple software (the 'Apple Software'),
+to use, reproduce, modify and redistribute the Apple Software, with or
+without modifications, in source and/or binary forms; provided that if you
+redistribute the Apple Software in its entirety and without modifications,
+you must retain this notice..." No non-commercial clause anywhere in the
+file. **Commercial use: permitted**, condition is just notice-retention on
+verbatim redistribution (modified/derivative use, which is what training a
+new backbone on this project's own data would be, carries no stated
+condition at all). The `ACKNOWLEDGEMENTS` file (fetched directly) lists
+three bundled subcomponents — RepVGG (MIT), RepLKNet (MIT), and the
+MetaFormer/PoolFormer code (Apache-2.0) — all independently commercial-use
+permissive, no NC or copyleft terms found anywhere in the dependency chain.
+This is one of the cleanest licence findings in this log to date: a
+first-party corporate author, no academic-only clause, no unverifiable
+third-party licence.
+
+**Which failure mode.** Weakly, both — which is itself the honest
+weakness of this entry. The argument for camouflage: self-attention layers
+in the later stages give the network a broader effective receptive field
+than local convolution, which in principle helps weigh a low-contrast
+clubhead against its surrounding pixels using more of the frame's context
+rather than a small local window — the same broad-context intuition behind
+DTUM's direction-coded convolution and SLT-Net's correlation volume, just
+applied through attention instead of motion. The (weaker) argument for
+blur: an elongated motion-blur streak spans more spatial extent than a
+compact convolution kernel sees at once, and attention layers integrate
+across that whole extent by construction. Neither claim is demonstrated by
+Apple for this use case — FastViT was designed and benchmarked purely for
+general ImageNet efficiency, not for low-contrast or blurred-object
+detection, and no camouflage- or blur-specific benchmark for it exists
+anywhere that was found in this run.
+
+**Why it helps this model specifically.** Two things distinguish it from
+every prior architecture entry, and one thing meaningfully undercuts it.
+Distinguishing: (1) it is the only architecture-graft candidate in this
+log where the authors themselves ship pre-exported CoreML packages
+(`fastvit_t8_reparam.pth.mlpackage.zip` etc., linked directly from the
+verified README) — every other architecture entry (MoSA-Det, DTUM,
+TrackNetV4, SAM-PM) carries an open "will this even export to CoreML"
+question that this one answers in the affirmative, for classification at
+least, even though the actual files weren't downloadable from this
+sandbox; (2) the reparameterization trick means the deployed model is a
+plain single-branch CNN at inference time — no runtime attention-graph
+complexity survives to the edge, which matters for an app already shipping
+a CoreML pipeline. Undercutting it: the public checkpoints are ImageNet-1K
+*classification* pretrained only (confirmed from the README's own model
+zoo table) — YOLO11n's current backbone benefits from being pretrained
+inside a COCO object-detection pipeline, a transfer-learning head start
+this project would lose by swapping in a classification-only backbone
+unless it separately does the mmdetection-based downstream detection
+pretraining the repo's own source code is wired for (`from mmdet.models.builder
+import BACKBONES as det_BACKBONES`, confirmed directly in `models/fastvit.py`
+— the official downstream-task integration target is mmdetection/
+mmsegmentation, not Ultralytics). No existing FastViT-into-Ultralytics-YOLO
+integration was found in this search; wiring it into this project's actual
+YOLO11n/Ultralytics training config would be original engineering, not a
+one-line checkpoint swap like the YOLO26 entry (2026-08-17).
+
+**Effort vs. payoff.** Medium-to-high effort, unvalidated and likely
+overstated payoff. Effort: porting a non-Ultralytics-native backbone into
+the Ultralytics YOLO11 config, re-wiring the detection head, and then
+re-pretraining or fine-tuning without the COCO-detection transfer head
+start YOLO11n currently has is a substantially bigger lift than the
+STAL/YOLO26 checkpoint swap, and bigger than most single-module additions
+already logged (Motion-Informed Enhancement, Zero-DCE). Payoff: entirely
+speculative for this project's two failure modes — the camouflage and blur
+arguments above are this entry's own inference from FastViT's general
+design, not anything Apple measured or claimed. Given how many
+more-targeted, already-verified mechanisms this log has for camouflage
+(DTUM, SLT-Net, Motion-Informed Enhancement, SAM-PM, MoSA-Det, Zero-DCE)
+and for blur (frame-averaging, PSF synthesis, channel-stacked YOLO,
+RT-Focuser, BlenderProc), this should rank below all of them: a
+lower-priority "if the targeted fixes stall" experiment, not a next step,
+and the strongest thing it actually has going for it — the demonstrated
+first-party CoreML export path — applies to classification, not yet to
+detection.
