@@ -3271,3 +3271,97 @@ footage, and if not, does gating by estimated motion state fix it) over
 committing to reimplementing MoSA-Det's specific architecture from a
 secondhand description. This entry's main contribution is sharpening what
 that spike should test, not a ready-to-build mechanism.
+
+---
+
+## 2026-08-23 (second run) — Zero-DCE: zero-reference low-light enhancement, original code non-commercial, but a verified Apache-2.0 independent reimplementation exists
+
+**What it is.** "Zero-Reference Deep Curve Estimation for Low-Light Image
+Enhancement" (Guo et al., CVPR 2020, usually called Zero-DCE, with a later
+"Zero-DCE++" extension) is a tiny CNN (**DCE-Net**: 7 conv layers, 32
+3x3 kernels each, ReLU, final Tanh layer emitting 24 per-pixel curve
+parameters for 8 iterative enhancement steps) that learns to brighten a
+low-light image by estimating a pixelwise tonal curve. The key property for
+this project: it is **zero-reference** — trained with no paired
+dark/bright ground truth at all, only four unsupervised losses (spatial
+consistency, exposure control against a target well-exposedness level,
+color constancy, and illumination smoothness). That means it can be trained
+directly on raw, unlabeled low-light footage — exactly the kind of
+indoor/simulator-bay/evening footage this project has never had a use for
+until now, with no annotation step required.
+
+**URL.** Original repo (non-commercial):
+https://github.com/Li-Chongyi/Zero-DCE and
+https://github.com/Li-Chongyi/Zero-DCE_extension (Zero-DCE++). Verified
+independent, permissively-licensed reimplementation of the same
+architecture, losses, and zero-reference training procedure: Keras's
+official examples repository,
+https://raw.githubusercontent.com/keras-team/keras-io/master/examples/vision/zero_dce.py
+(page: `keras.io/examples/vision/zero_dce/`, blocked by this sandbox's
+egress proxy, but the raw source file on `raw.githubusercontent.com`
+fetched cleanly and was read directly, not summarized secondhand).
+
+**Licence (verbatim, both fetched directly).** Original `Li-Chongyi/Zero-DCE`
+README: "The code is made available for academic research purpose only...
+Under Attribution-NonCommercial 4.0 International License." Same clause,
+same wording, in `Li-Chongyi/Zero-DCE_extension`. **Commercial use of the
+original authors' code: NOT permitted.** The `keras-team/keras-io` repo's
+`LICENSE` file (fetched directly): **Apache License, Version 2.0** — "perpetual,
+worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright
+license to reproduce, prepare Derivative Works of... and distribute the
+Work." **Commercial use: permitted**, standard Apache-2.0 conditions
+(retain notices, mark changes). The Keras example is a clean-room
+reimplementation of the published algorithm (same DCE-Net layer counts,
+same four loss terms, same unpaired/zero-reference training loop), not a
+fork of the NC-licensed original — using it as the starting point avoids
+the original repo's licence entirely. One caveat: the Keras example itself
+trains on the LoL Dataset (a third-party low-light benchmark) purely for
+demonstration; that dataset's own licence was not checked here and is
+irrelevant regardless, since the zero-reference property means this
+project would retrain on its own footage, not reuse the demo weights.
+
+**Which failure mode.** Camouflage — specifically the not-yet-tested
+low-light subset of it. This is a preprocessing/enhancement technique, not
+a detector architecture change or a labelled dataset.
+
+**Why it helps this model specifically.** The brief's own caveat is that
+the camouflage finding (82%/77%/85.9%, dark clubhead vs. dark
+clothing/foliage) comes from bright, professionally-shot, fast-shutter
+outdoor footage, and that indoor/low-light performance has never been
+measured because the quarantined `indoor_test` set is unusable. Zero-DCE
+targets exactly the gap between those two situations: it doesn't change
+what the clubhead looks like (it isn't a detector), it changes how much
+signal is available for the detector to work with when a frame is
+genuinely underexposed — brightening a dark simulator-bay or evening frame
+before it reaches YOLO11n restores contrast between a dark clubhead and a
+dark background that a fixed exposure otherwise crushes into near-identical
+pixel values, which is a different mechanism from every appearance- or
+motion-based camouflage fix already in this log (TrackNetV4, DTUM, SLT-Net,
+SINet-V2, Motion-Informed Enhancement, SAM-PM, MoSA-Det, Copy-Paste,
+CamDiff — none of them touch exposure/illumination). Because training needs
+no labels, it is also directly usable as a **data-engine tool**: run it
+over any raw low-light phone footage the app already has or can cheaply
+collect (no waiting on a licensed dataset) to produce brightened frames
+that a human labeller can actually see well enough to box accurately, which
+directly serves the labeling spec's existing rule that occluded/invisible
+heads become negative frames — under-exposure currently forces some frames
+into that bucket for lack-of-visibility reasons that have nothing to do
+with true occlusion.
+
+**Effort vs. payoff.** Low-to-medium effort, uncertain but cheap-to-test
+payoff. Effort: DCE-Net is tiny (7 conv layers) — training it from scratch
+on a small batch of the project's own dark footage is realistic in a day,
+and a network this small should export to CoreML without the
+budget/exportability doubts that hang over every architecture-surgery entry
+in this log (MoSA-Det, DTUM, TrackNetV4). Two real open questions before
+committing: (a) whether brightening actually helps YOLO11n's *learned*
+features versus just making frames look better to a human — enhancement
+networks are known to sometimes hurt downstream detectors that already
+learned dark-domain features, so this needs an A/B eval on real held-out
+dark frames, not an assumption; (b) whether to run it on-device at
+inference time (extra latency + CoreML pipeline complexity for a real-time
+app) versus offline-only as a labelling aid — the offline-only, labelling-aid
+use is the safer, near-zero-risk first step and should be tried before any
+on-device commitment. Given the total absence of any indoor/low-light
+measurement to date, the honest framing is: this is a promising, cheap
+experiment to run, not a validated fix.
