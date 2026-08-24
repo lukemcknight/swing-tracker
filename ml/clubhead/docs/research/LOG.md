@@ -3666,3 +3666,73 @@ release. Logged as a lead only: a future run with working `arxiv.org` or
 `researchsquare.com` access, or a later search that turns up a code mirror,
 should pick this up at "read the method section and check for code" rather
 than rediscovering it from zero.
+
+---
+
+## 2026-08-24 (second run) — ReynoldsFlow: a training-free, physics-inspired optical-flow method evaluated by its own authors on GolfDB, but with no code or license actually released (existence-only result)
+
+**Area covered.** Bullet 3 (temporal methods for small/low-contrast/camouflaged
+object detection), chosen because the last several runs (2026-08-23 through
+today's first entry) had clustered on motion-blur architecture and generic
+backbones. Checked this log's existing camouflage/temporal entries first
+(TrackNetV4, DTUM, SLT-Net, SINet-V2, Motion-Informed Enhancement, CamDiff,
+SAM-PM, TOTNet) — ReynoldsFlow is mechanistically distinct from all of them:
+every one of those is a *learned* network (attention fusion, direction-coded
+convolution, a trained correlation volume, a trained segmentation head, a
+diffusion model, a trained visibility-weighted loss). ReynoldsFlow is not
+learned at all.
+
+**What I found.** A paper titled "ReynoldsFlow: Physics-Inspired Spatiotemporal
+Flow Representation for Video Understanding" (arXiv:2503.04500; an earlier
+version of the same arXiv ID was titled "ReynoldsFlow: Exquisite Flow
+Estimation via Reynolds Transport Theorem"), by Chen, Lin, Huang & Wu
+(University of Melbourne / National Yang Ming Chiao Tung University). Per
+search-engine synthesis (the paper itself is unreadable — see below), it
+derives a **training-free** flow representation from the Reynolds transport
+theorem rather than learning one, positioned as an alternative to classical
+Lucas-Kanade-style optical flow. The companion repo,
+`github.com/wish44165/ReynoldsFlow`, is real and actively maintained (commits
+dated March 2025, June 2025, February 2026, and August 6 2026 — five commits
+total, the most recent only 18 days before this run). Directly fetched and
+read its `README.md`: the paper's own evaluation datasets are listed there,
+and **GolfDB is one of them**, alongside HMDB, UCF101, Anti-UAV, and a
+drone-trajectory-reconstruction dataset — i.e. the authors themselves
+benchmarked this exact method on golf-swing video and on two fast-moving
+small/aerial-object tracking benchmarks (Anti-UAV, drone tracking), which is
+close to as direct a match to "does motion separate a fast small object from
+a cluttered background" as anything logged so far.
+
+**Why this cannot be logged as a usable finding.** Fetched the repo root
+directly: it contains **only `README.md`** — no source files, no requirements
+file, no weights, despite 5 real commits and August 2026 activity. A direct
+fetch of `LICENSE` at the repo root 404'd, and no license entry appears in
+the GitHub sidebar — there is nothing to license-check because there is no
+code to check. The README links a Zenodo DOI badge
+(`10.5281/zenodo.21802410`) that might hold a data/code archive, but
+`zenodo.org` and `doi.org` both hit this sandbox's standing egress block, so
+that could not be inspected. `arxiv.org` and `ar5iv.labs.arxiv.org` are
+likewise blocked, so the method itself (the actual flow-construction formula,
+and any quantitative results on GolfDB or Anti-UAV) could not be read
+firsthand — everything above beyond the directly-fetched README is
+search-snippet synthesis, unconfirmed.
+
+**Licence.** None found — no LICENSE file exists in the repo. Not usable
+commercially or otherwise today, because there is no code to use.
+
+**Which failure mode.** Camouflage, primarily — a training-free motion signal
+is exactly the kind of complementary channel (alongside RGB) that could help
+find a dark clubhead against dark clothing or foliage, where appearance
+alone gives zero candidates. It is single-frame-pair (needs one prior frame,
+not a learned temporal window), which would make it cheap to compute
+on-device as an extra input channel if it works as described — but that is
+speculative until the method can actually be read.
+
+**Effort vs. payoff.** Not assessable, and that is the finding — same
+category as this log's DFRCP and Deblur-YOLO entries: a real, actively
+maintained repo and a real paper, directly relevant by the authors' own
+choice of golf-swing and fast-small-object benchmarks, but zero usable
+artifact today (no code, no license, no readable method). Worth a future
+run picking this up specifically to check `zenodo.org` (the DOI badge) or a
+later commit that might add the actual implementation — the repo's commit
+cadence (four separate update dates over 17 months, most recently this
+month) suggests it is not abandoned.
