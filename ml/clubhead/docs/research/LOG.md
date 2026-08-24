@@ -3585,3 +3585,84 @@ cause is genuinely "the object is too small for the network to see," as
 the confidence-0.05 zero-detection symptom suggests. Recommended as a
 near-term experiment to run before, or alongside, the heavier camouflage
 architecture changes already logged.
+
+---
+
+## 2026-08-24 — DFRCP: a YOLOv11-native blur-robustness module (Dynamic Fuzzy Feature Fusion), found but not independently verifiable in this sandbox (existence-only result)
+
+**Area covered.** Motion blur specifically — blur-robust detection
+architectures, this run's rotation target after the last several runs
+covered architecture (P2/4 head), a generic backbone (FastViT), an
+augmentation route (Zero-DCE), and a motion-blur architecture (MoSA-Det) on
+2026-08-23. Checked this log's existing motion-blur architecture entries
+(TrackNetV4, DTUM, MoSA-Det, channel-stacked multi-frame YOLO,
+PSF-based blur synthesis) first to avoid re-treading them — DFRCP is a
+distinct mechanism from all of them (see below).
+
+**What I found.** A paper titled "Motion Blur Robust Wheat Pest Damage
+Detection with Dynamic Fuzzy Feature Fusion" (arXiv:2601.03046, January
+2026; a preprint version also indexed at Research Square,
+`rs-8760445/v1`, under the title "Learning from Motion: A Dynamic Feature
+Fusion Framework for Robust Agricultural Vision in Blurred Environments").
+It proposes **DFRCP (Dynamic Fuzzy Robust Convolutional Pyramid)**,
+described consistently across multiple independent search snippets as an
+explicit **plug-in upgrade to the YOLOv11 feature pyramid** — the same
+model family this project already trains and exports to CoreML. Mechanism,
+per those snippets: it combines large- and medium-scale pyramid features
+while preserving native representations, then synthesizes "fuzzy features"
+by rotating and nonlinearly interpolating multiscale features and merging
+them through a learned "transparency convolution" that trades off original
+vs. fuzzy cues per-content ("Dynamic Robust Switch" units). This is a
+structurally different mechanism from every blur entry already in this
+log: MoSA-Det conditions dynamic convolution on an inter-frame-differencing
+motion-state estimate; DTUM is a direction-coded temporal module; PSF-based
+synthesis and channel-stacked multi-frame YOLO both operate on the input
+side, not the feature pyramid. DFRCP is a single-frame, pyramid-internal
+technique — no temporal/multi-frame input required, which would make it
+cheaper to integrate than the multi-frame entries if it works as described.
+Reported result (from the same snippets, not independently confirmed): ~10.4
+percentage points of accuracy improvement over a YOLOv11 baseline on a
+blurred test split, using a CUDA custom rotation/interpolation kernel
+claimed to give "more than 400x speedup" over a naive implementation for
+training-time practicality (inference-time cost not stated in any snippet
+found).
+
+**Why this cannot be logged as a usable finding yet.** Both `arxiv.org` and
+`www.researchsquare.com` hit this sandbox's standing egress block (the same
+recurring failure mode noted in nearly every prior entry for `arxiv.org`,
+`nature.com`, `scirp.org`, `universe.roboflow.com`). I could not read the
+paper itself — everything above is search-engine synthesis of snippets that
+agree with each other closely enough (matching module names, matching
+numeric claims) to support the paper's *existence* and *general shape*, but
+not to independently confirm its method details or numbers firsthand. A
+dedicated search for a GitHub repository, code release, or weights (`DFRCP
+Dynamic Fuzzy Robust Convolutional Pyramid github`, and variants) returned
+nothing — no code was found. That makes this idea-only, the same weaker
+category as the TinyDark-YOLO entry (2026-08-18, fourth run): a from-scratch
+reimplementation based on a secondhand summary, not something with a real
+repo to fetch, read, and verify like BlurBall, DTUM, SLT-Net, or TrackNetV4
+had.
+
+**Licence — not applicable / not assessed.** No dataset transfer is at
+stake here (the paper trains on a private ~3,500-image wheat pest dataset,
+irrelevant to this project regardless of licence) — the only thing of
+interest is the architecture technique itself, and with no code found there
+is no licence to check yet. If code does surface later, it would need its
+own licence check before use, same as every other architecture entry in
+this log.
+
+**Which failure mode.** Motion blur, and only motion blur — the paper's own
+framing (camera-shake/jitter degrading edge-side detection) maps directly
+onto this project's blur-elongation gap (median labelled box elongation
+1.60), not camouflage.
+
+**Effort vs. payoff.** Not assessable yet, and that is the finding, same
+caveat as TinyDark-YOLO. If real and if the reported ~10.4pt number holds
+outside the wheat-pest domain, this would be one of the cheaper blur fixes
+in this log to try — single-frame, no new temporal input pipeline, and
+explicitly YOLOv11-compatible — but none of that can be acted on without
+either the paper's method section (to reimplement cleanly) or a real code
+release. Logged as a lead only: a future run with working `arxiv.org` or
+`researchsquare.com` access, or a later search that turns up a code mirror,
+should pick this up at "read the method section and check for code" rather
+than rediscovering it from zero.
