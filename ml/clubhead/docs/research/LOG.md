@@ -3801,3 +3801,74 @@ had been usable. Logged mainly to close out the "explicit vs. implicit
 motion handling" comparison this log's SLT-Net entry left open, and to mark
 this specific paper as checked (real, working, unlicensed) so a future run
 does not re-discover it from zero — not as an actionable lead.
+
+---
+
+## 2026-08-24 (fourth run) — "A high-quality sport ball dataset annotation based on videos" (Dryad, Apr 2026): a fast/small/blurred sports-object dataset, checked and ruled out for commercial use (motion blur area, negative result)
+
+**Area covered.** Bullet 2 — datasets of fast-moving blurred small objects
+in sport — rotating away from today's first three runs, which were all
+camouflage/blur *architecture or mechanism* entries (DFRCP, ReynoldsFlow,
+EMIP). The dataset side of this bullet hasn't had a hit since iPhoneBlur
+(2026-08-22, fourth run) and GoPro/REDS (2026-08-20, fourth run), neither
+of which is sport-specific. Checked this log's existing dataset entries
+first (GolfDB, CaddieSet, the 2026-08-21 golf dataset sweep, RealBlur,
+SloMoDeblur, GoPro/REDS, iPhoneBlur) — none of them cover ball-sports video
+with explicit motion-blur-driven detection difficulty as their stated
+premise, which is this dataset's whole reason for existing.
+
+**What I found.** "A high-quality sport ball dataset annotation based on
+videos" (Zou, Tianjian & Liu, Jun; Beijing University of Posts and
+Telecommunications), published on Dryad 2026-04-30, DOI
+`10.5061/dryad.3bk3j9m13`. Per two independently-issued WebSearch queries
+that returned self-consistent detail (same institution, same publish date,
+same DOI, same per-class object counts, same license split — direct fetch
+blocked, see below): table tennis, tennis, and soccer videos, each with
+over 10,000 annotated ball instances, in Ultralytics/YOLO-format bounding
+boxes (x, y, w, h), built specifically to address small-size,
+low-distinctive-feature, and motion-blur detection difficulty for fast
+spherical sports objects — the same class of problem this project has
+(small, fast, elongating-under-blur object), just for balls rather than
+clubheads. Source footage is described as "open-source online videos or
+competition videos," automatically de-identified (people blurred
+frame-by-frame) using a YOLO26 model before release.
+
+**Why this cannot be independently verified beyond snippets.** Both
+`datadryad.org` (the annotation/landing page) and the companion video host
+`zenodo.org` (DOI `10.5281/zenodo.19874312`, where the actual video files
+are published separately) hit this sandbox's standing egress block — the
+same recurring failure noted against `zenodo.org` and `doi.org` in this
+log's ReynoldsFlow entry earlier today, and against `arxiv.org`,
+`nature.com`, `scirp.org` and `universe.roboflow.com` in earlier entries.
+The two WebSearch queries agreed closely enough (identical numbers, DOIs,
+and license split, phrased in near-identical language each time) to
+support the dataset's existence and general shape, but the license text
+itself was not read firsthand from either the Dryad or Zenodo page.
+
+**Licence — split, and the split rules it out.** Per the corroborating
+snippets: the *annotation labels* are CC0 (public domain), but the *actual
+video/image content* — the only part usable for training — is licensed
+CC BY-NC-ND 4.0 on the separate Zenodo release. CC BY-NC-ND is one of the
+most restrictive Creative Commons tiers: no commercial use, and no
+derivative works (model training is arguably exactly that) even for
+non-commercial use. **Commercial use: not permitted.** This is consistent
+with the source description above — footage sourced from "competition
+videos" (broadcast-adjacent) is exactly the kind of asset that typically
+cannot be relicensed permissively by a downstream annotator.
+
+**Which failure mode.** Motion blur, specifically — the dataset's own
+framing (small, fast, blur-degraded spherical objects, annotated for
+exactly that difficulty) is the closest dataset-level match in this log to
+the clubhead's blur problem, closer than GoPro/REDS (generic camera-shake
+objects, not sport) or SloMoDeblur (generic smartphone scenes, not sport).
+
+**Effort vs. payoff.** Low effort, zero payoff for training data — the
+NC-ND video licence forecloses use regardless of the domain mismatch
+(balls, not clubheads) or resolution. The one non-dead-end angle: if a
+future run can get past the Zenodo egress block and confirm the
+annotation/de-identification methodology (reportedly built on YOLO26,
+already flagged as a checkpoint-swap candidate in this log's 2026-08-17
+entry), that could inform this project's own labeling-QA tooling, not
+serve as a data source. Logged mainly to close off "ball-sport
+motion-blur datasets" as a category and stop this specific one from being
+rediscovered from zero — not an actionable lead.
