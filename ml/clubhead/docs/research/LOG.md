@@ -3736,3 +3736,68 @@ run picking this up specifically to check `zenodo.org` (the DOI badge) or a
 later commit that might add the actual implementation — the repo's commit
 cadence (four separate update dates over 17 months, most recently this
 month) suggests it is not abandoned.
+
+---
+
+## 2026-08-24 (third run) — EMIP: an explicit optical-flow, two-stream video camouflaged-object-detection network (IEEE TIP 2025), real working code but no licence — the ninth distinct VCOD mechanism logged, and the direct "explicit" counterpart to this log's SLT-Net ("implicit") entry
+
+**Area covered.** Bullet 3 (temporal/multi-frame methods for small,
+low-contrast or camouflaged objects), rotating away from today's first two
+runs (motion-blur architecture, then a training-free flow method) toward a
+*learned* VCOD network, to check whether anything new has appeared in that
+family since the last one logged (SAM-PM, 2026-08-19). Checked this log's
+existing VCOD/camouflage entries first — TrackNetV4, DTUM, SLT-Net,
+SINet-V2, Motion-Informed Enhancement, CamDiff, SAM-PM, TOTNet, CAMotion,
+ReynoldsFlow — none use a frozen pretrained optical-flow model as an
+explicit second stream, which is EMIP's distinguishing mechanism.
+
+**What I found.** "Explicit Motion Handling and Interactive Prompting for
+Video Camouflaged Object Detection" (Zhang, Xiao, Ji, Wu, Fu, Zhao),
+published in *IEEE Transactions on Image Processing*, vol. 34, pp.
+2853–2866, 2025 (arXiv:2403.01968, first posted March 2024). Its own
+framing positions it directly against SLT-Net (already in this log,
+2026-08-15): SLT-Net handles motion *implicitly* through a learned temporal
+module, EMIP handles it *explicitly* — a two-stream architecture where one
+stream runs camouflage segmentation and the other runs optical-flow
+estimation via a frozen, pretrained flow backbone, fused through a
+"camouflage feeder" and "motion collector". Code is at
+`github.com/zhangxin06/EMIP` — fetched directly and confirmed real:
+`train.py`, `train_long.py`, `test.py`, `test_long.py`, `test_of.py`, a
+`configs/` directory, a `model/` directory, and loss-function code are all
+present, which is more than DFRCP or ReynoldsFlow had (README only, or
+README-only-with-broken-code-links respectively). No pretrained weights or
+checkpoints are included in the repo. It evaluates on MoCA-Mask, CAD2016,
+and COD10K — MoCA-Mask is the same benchmark SLT-Net and this log's
+CAMotion entry already touched.
+
+**Licence — confirmed absent, not usable.** No `LICENSE` file exists at
+either `main` or `master` in the repo (`raw.githubusercontent.com` 404s on
+both paths, checked directly), and the GitHub API confirms it:
+`GET /repos/zhangxin06/EMIP` returns `"license": null`. No licence text
+anywhere in the README either. Default copyright applies — the code is not
+usable, commercially or otherwise, without contacting the authors. This is
+a firmer negative than DFRCP (no code found at all) or ReynoldsFlow
+(code found but empty) — here the code is real and complete, and the
+blocker is purely the missing licence.
+
+**Which failure mode.** Camouflage, explicitly and only — the paper is a
+segmentation method (pixel masks on MoCA-Mask/CAD2016/COD10K), not a
+bounding-box detector, so even with a permissive licence it would need
+adaptation to this project's box-detection output, on top of everything
+else.
+
+**Effort vs. payoff — low, independent of the licence block.** Three
+compounding problems, not just one: (1) no licence, full stop; (2) it is a
+segmentation network needing box-conversion to fit this project's YOLO11n
+output; (3) it depends on an unnamed "frozen pretrained optical flow
+model" as a second stream — the README does not say which one, and this
+session's egress block on `arxiv.org` and `ieeexplore.ieee.org` prevented
+reading the method section to find out. A two-stream network carrying a
+full optical-flow backbone alongside a segmentation backbone is a heavy,
+almost certainly non-trivial-to-convert CoreML target for an on-device
+iOS app, well past what DFRCP (single-frame, pyramid-internal) or
+ReynoldsFlow (training-free, single-frame-pair) would have cost if either
+had been usable. Logged mainly to close out the "explicit vs. implicit
+motion handling" comparison this log's SLT-Net entry left open, and to mark
+this specific paper as checked (real, working, unlicensed) so a future run
+does not re-discover it from zero — not as an actionable lead.
