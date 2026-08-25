@@ -3872,3 +3872,86 @@ entry), that could inform this project's own labeling-QA tooling, not
 serve as a data source. Logged mainly to close off "ball-sport
 motion-blur datasets" as a category and stop this specific one from being
 rediscovered from zero — not an actionable lead.
+
+---
+
+## 2026-08-25 — RF-DETR: a DINOv2-backboned, Apache-2.0 detection transformer that shipped native CoreML export four weeks ago (architecture area, both failure modes, existence-and-code confirmed)
+
+**Area covered.** Camouflage and motion blur, both — this is an
+architecture-swap entry, the same category as this log's FastViT
+(2026-08-23, third run) and P2/4-head (2026-08-23, fourth run) entries.
+Checked those first: FastViT is a backbone-only, drop-in swap into the
+existing YOLO11n pipeline; this is a full detector-architecture
+replacement, a structurally different (and much higher-effort) proposal,
+so it is not a repeat.
+
+**What I found.** RF-DETR (`github.com/roboflow/rf-detr`, accepted ICLR
+2026), a real-time, query-based ("DETR-style", no NMS) object detector
+built on a **DINOv2** self-supervised vision-transformer backbone. Verified
+directly from the repo's README and releases page (two independent
+`WebFetch` reads, cross-checked against each other for consistency):
+
+- **License, confirmed via the README's License section, quoted:** "The
+  open-source `rfdetr` package and Apache-designated model weights are
+  licensed under Apache License 2.0" — and the Nano/Small/Medium/Large
+  detection variants (plus all Seg-N…Seg-2XL segmentation variants) are
+  explicitly listed as Apache-2.0. Only the XL/2XL detection variants
+  (`rfdetr_plus` extension) are PML 1.0 — irrelevant here since Nano/Small
+  are the only sizes plausible for this project's on-device budget.
+  **Commercial use is permitted** for the sizes that matter to us.
+- **Native CoreML export is real and current**, not a roadmap promise:
+  added in release `v1.9.0` (29 Jul 2026 — four weeks before this run),
+  confirmed via the releases page, quoted verbatim: "Native CoreML export —
+  `RFDETR.export(format="coreml")` produces a `.mlpackage` (mlprogram, iOS
+  16+) directly from `torch.export`, no ONNX intermediary." The repo has
+  shipped five further point releases since (through v1.9.4, 24 Aug 2026),
+  so it is actively maintained, not abandoned mid-feature.
+- **Sizes:** Nano is 30.5M parameters. That is roughly **12x the
+  parameter count of the YOLO11n this project currently trains and ships**
+  (YOLO11n ≈ 2.6M params). The 2.3ms latency figure quoted in RF-DETR's own
+  benchmarks is **not an on-device number** — it reads as a GPU-class
+  figure (the repo's benchmark table is not phone/ANE-specific) and I could
+  not find any published iPhone or Apple Neural Engine latency for RF-DETR
+  anywhere in what I read. This is an unverified, load-bearing gap: nothing
+  here confirms Nano actually runs in real time on the phone hardware this
+  app targets.
+
+**Why this addresses both failure modes.** Two distinct, plausible-but-
+unproven mechanisms:
+- *Camouflage:* DINOv2 is self-supervised on ~1.7B images (per its own
+  published pretraining set), so its features are trained for general
+  visual discrimination rather than only on this project's ~54%
+  Roboflow / ~29% first-party-phone label mix. The broader VCOD literature
+  already surfaced in this log (SAM-PM, 2026-08-19 fourth run) is built on
+  exactly this premise — that foundation-model features generalize better
+  under low-contrast/appearance-ambiguous conditions than a detector
+  trained end-to-end on a small labelled set. Unproven for clubhead-vs-
+  foliage specifically; RF-DETR has never been benchmarked on this kind of
+  target as far as I found.
+- *Motion blur:* DETR-style detection predicts boxes as a direct
+  regression from learned object queries, with no anchor grid and no
+  anchor aspect-ratio priors the way YOLO11n's head has. In principle that
+  removes one structural bias against predicting the kind of elongated
+  box this project's own labeling spec calls for (the full blur streak,
+  median elongation only 1.60 in current labels) — but this is a
+  mechanism argument, not something I found demonstrated on blurred data
+  anywhere in RF-DETR's own materials.
+
+**Effort vs. payoff.** High effort, uncertain payoff — the most expensive
+class of finding this log logs. Unlike FastViT (a backbone slotted into
+the existing training/export pipeline), adopting RF-DETR means standing up
+a new training pipeline end to end, then answering the one question that
+actually decides whether this is viable: does RF-DETR-Nano hit real-time
+on an iPhone via CoreML, or does its 12x parameter count over YOLO11n make
+it a non-starter for a live swing-capture app before any accuracy question
+even matters. That is a half-day-or-less spike (export a COCO-pretrained
+Nano checkpoint, drop it on a device, measure latency) that would settle
+the question cheaply, and it should happen before this project spends any
+time on a real training run.
+
+**Verification status.** README license section and releases-page CoreML
+changelog entry: read directly, quoted verbatim above, consistent across
+two independent fetches. DINOv2 pretraining-scale claim: from DINOv2's own
+published material, not independently re-verified this run. On-device
+latency: **not found, not verified — flagged explicitly as the open
+question above**, not glossed over.
