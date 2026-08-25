@@ -4063,3 +4063,120 @@ above. LICENSE file: fetched and quoted directly. FMOX/SAM2-on-fast-objects
 weakness claim: from a search-result summary of arXiv:2512.09633, not the
 paper itself (blocked) — flagged as second-hand, not independently
 confirmed.
+
+---
+
+## 2026-08-25 (third run) — 6-DOF camera-motion blur synthesis for object detection (Yang, Li & Zhang, ICPR 2024): the camera-shake half of blur this log's PSF/frame-averaging entries don't cover
+
+**Area covered.** Rotated deliberately away from architecture/tracking
+(bullets used the last two runs today: RF-DETR and EdgeTAM) back to bullet 2
+(motion-blur synthesis specifically). Before logging this, checked whether
+the CADDIE golf-pose lead (2026-08-21) had become reachable through any new
+route — it has not: `openaccess.thecvf.com` still returns `EGRESS_BLOCKED`
+this run, no GitHub repo or preprint mirror exists, and a targeted search for
+indoor/simulator-bay golf datasets again surfaced nothing beyond the
+industry-news noise every prior dataset-area run has already hit. Neither is
+logged as a new finding — both are re-confirmed dead ends of entries already
+in this file.
+
+**What it is.** "6-DOF Motion Blur Synthesis and Performance Evaluation of
+Object Detection" (Hanjin Yang, Feng Li, Lei Zhang — ICPR 2024, published as
+a Springer LNCS chapter). Per consistent search-indexed summaries from two
+independent indexes (see URL section), the method generates a random
+six-degree-of-freedom **camera** motion trajectory (translation + rotation,
+not a single object-local direction), maps that trajectory through the
+scene geometry to a spatially-varying, per-pixel blur kernel field (not one
+kernel for the whole frame), and — to make convolving with a different
+kernel at every pixel computationally tractable — decomposes the kernel
+field with non-negative matrix factorization (NMF) into a small basis of
+kernels plus per-pixel mixing coefficients. The paper evaluates the
+synthesized-blur training data specifically on **object detection**
+performance (not just image-quality metrics), reporting results against
+RealBlur, GoPro, and REDS — all three already logged in this file
+(RealBlur: 2026-08-16; GoPro/REDS: 2026-08-20) as the standard blur
+benchmarks, which is corroborating evidence this is a real, mainstream
+motion-blur-for-detection paper and not a mis-indexed unrelated result.
+
+**Why this is a genuinely different mechanism from what's already logged.**
+Every blur-synthesis entry so far in this log operates **per-object**: PSF
+convolution (Sayed & Brostow, 2026-08-14) applies one directional kernel to
+a cropped clubhead and grows its box; frame-averaging (Brooks & Barron,
+2026-08-12) and BlenderProc's `enable_motion_blur` (2026-08-18, second run)
+both model the blurred object's own motion. None of them model **whole-frame
+camera shake** — the blur a handheld phone itself contributes independent of
+what the clubhead is doing — despite this log flagging "camera-motion
+research spike" as an open, unresolved question in at least six prior
+entries (TrackNetV4 2026-08-13, DTUM 2026-08-14, MoSA-Det 2026-08-23, and
+others). This paper's 6-DOF *camera* trajectory model is the first blur-
+synthesis technique found that targets exactly that missing half: apply it
+to an existing sharp, correctly-boxed training frame and it degrades the
+*entire image* with a physically-plausible handheld-camera blur field,
+independent of and complementary to growing the clubhead's own box for its
+motion — the two could be composed (object-local PSF/streak blur on top of
+a globally camera-shaken frame) to approximate what real handheld swing
+footage with a slow shutter actually looks like, which is closer to the
+"genuinely blurred, correctly-boxed clubhead" gap the brief describes than
+either technique alone.
+
+**URL.** https://link.springer.com/chapter/10.1007/978-3-031-78444-6_1
+(also indexed identically at https://dl.acm.org/doi/10.1007/978-3-031-78444-6_1,
+same DOI, same title/author list/venue — independent-index corroboration of
+existence, not just one source). `link.springer.com` is blocked by this
+sandbox's egress proxy (same standing restriction as every prior Springer
+link in this log, e.g. line 280); `dl.acm.org` and `scite.ai` (an AI-
+summary/citation site that also indexes this paper) were also tried this run
+and both blocked. **No primary-source text was read.** Everything above is
+reconstructed from search-engine result summaries, which is one notch below
+this log's stronger entries (e.g. EdgeTAM, WASB-SBDT) where the repo/README
+itself was fetched directly — treat the mechanism description as plausible
+and internally consistent (it matches standard 6-DOF-trajectory blur
+literature and the RealBlur/GoPro/REDS benchmark choice is exactly what a
+real blur-for-detection paper would use) but not independently confirmed.
+
+**Licence — no code or repository found, so nothing to license.** Targeted
+searches for a GitHub release under the authors' names or the paper title
+turned up nothing (only unrelated repos, e.g. Wii Sports Resort mods).
+Unlike the PSF entry (2026-08-14), where a real, inspectable-but-unlicensed
+repo exists, here there is no artifact to grant or withhold rights over.
+The *idea* — a randomized 6-DOF camera trajectory mapped to a spatially-
+varying blur-kernel field, applied to already-owned training images — is
+ordinary image-processing/data-augmentation technique with no original-
+expression claim attached (the same posture this log already took on PSF
+synthesis); the NMF-basis-decomposition trick is a standard, decades-old
+linear-algebra method (not this paper's invention) used here purely for
+compute efficiency, so reimplementing the described idea from scratch
+carries no licensing exposure. **Commercial use: not a licensing question
+for this project** since nothing of the authors' is being redistributed or
+run verbatim — but also nothing shippable exists to save engineering time.
+
+**Which failure mode.** Motion blur, specifically. Camera-shake blur is
+orthogonal to camouflage (a still-frame appearance problem); it does not
+help zero-detection-on-a-sharp-frame failures at all.
+
+**Effort vs. payoff.** Medium effort, plausible but unverified payoff, and
+strictly a reimplementation exercise (no code to adapt). Effort: the core
+idea — sample a random 6-DOF camera trajectory, render or approximate the
+resulting per-pixel blur-kernel field, convolve — is more engineering work
+than the PSF entry's single directional kernel (spatially-varying
+convolution, not one crop-level operation, is the whole reason the paper
+needed the NMF trick to make it fast), but is still a data-augmentation
+script against existing training images, not a retraining-architecture or
+new-capture commitment. The NMF-efficiency trick specifically matters only
+at full-frame resolution and real-time budgets; if this project only needs
+an offline augmentation pass at training time (not on-device), a much
+simpler brute-force spatially-varying convolution may suffice without
+reimplementing the NMF step at all, lowering the real effort further.
+Payoff: directly addresses a gap this log has repeatedly flagged as
+unresolved (camera-shake blur, as opposed to object-motion blur) but every
+specific number behind "improves object detection" comes from an unread
+primary source, so treat as a promising, cheap-to-prototype idea worth a
+literature-verification pass by someone with Springer/ACM access, not yet
+as a validated result to build against.
+
+**Verification status.** Paper existence, title, authors, venue (ICPR 2024),
+and DOI: confirmed via two independent indexes (SpringerLink, ACM Digital
+Library) returning identical metadata. Method description (6-DOF camera
+trajectory, per-pixel blur field, NMF kernel-basis decomposition) and
+evaluation datasets (RealBlur/GoPro/REDS): from search-result summaries
+only, not the paper text — flagged as such, not independently confirmed.
+No code/repository found by search.
