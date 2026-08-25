@@ -3955,3 +3955,111 @@ two independent fetches. DINOv2 pretraining-scale claim: from DINOv2's own
 published material, not independently re-verified this run. On-device
 latency: **not found, not verified — flagged explicitly as the open
 question above**, not glossed over.
+
+---
+
+## 2026-08-25 (second run) — EdgeTAM: a CoreML-exportable, real-time on-device SAM2 variant that reopens a category this log previously closed
+
+**What it is.** EdgeTAM (Zhou et al., CVPR 2025, Meta) is a distilled,
+mobile-optimized variant of Segment Anything Model 2 (SAM2) for promptable
+video segmentation and tracking: given a mask/box/point prompt on one
+frame, it propagates a segmentation mask of that specific object through
+subsequent frames using the same memory-attention temporal mechanism SAM2
+uses, but with a much lighter encoder distilled for on-device speed. It is
+not a detector — it does not find a class of object on its own — it tracks
+whatever object it is told about across frames it has not seen labels for.
+Reference implementation (PyTorch, official Meta Research repo, README and
+LICENSE fetched directly from `github.com/facebookresearch/EdgeTAM`, not
+search-indexing) includes exported-model instructions for iOS/macOS:
+three separate CoreML models (Image Encoder ~9.6MB, Prompt Encoder ~2MB,
+Mask Decoder ~8MB, ~20MB total) with reported on-device numbers of 16 FPS
+on an iPhone 15 Pro Max for full video segmentation-and-tracking without
+quantization (22x faster than SAM2), and 40.4 FPS for single-frame
+Segment-Anything-style inference.
+
+**URL.** https://github.com/facebookresearch/EdgeTAM (paper: CVPR 2025 /
+arXiv:2501.07256 — arxiv.org remains blocked by this sandbox's egress
+proxy, same restriction noted in every prior run of this log; claims below
+come from the repo's own README and LICENSE file, fetched directly, plus
+one independent web search corroborating the FPS/parameter figures against
+the paper's own announcement thread, not from the PDF itself).
+
+**Licence (verbatim, from the repo's `LICENSE` file, fetched directly).**
+"Apache License, Version 2.0, January 2004." The README states explicitly:
+"The EdgeTAM model checkpoints and code are licensed under Apache 2.0" —
+i.e. this is one of the few entries in this log where the pretrained
+*weights*, not just the code, are confirmed under a commercially-permissive
+licence in the project's own words, not inferred from a generic repo
+licence badge. **Commercial use: permitted**, standard Apache-2.0
+conditions (retain notices, state changes).
+
+**Which failure mode.** Primarily camouflage — this is a genuine, tested
+route to answering the "camera-motion research spike" this log has flagged
+as unresolved since the very first camouflage entries (TrackNetV4,
+2026-08-13): instead of building a bespoke temporal-attention module into
+YOLO11n's architecture, run YOLO11n as the primary per-frame detector and,
+on a frame where it returns zero candidates even at low confidence, seed
+EdgeTAM with the last confident prior detection's mask/box and let it
+propagate a track through the camouflaged frames until YOLO reacquires.
+Unlike the 2026-08-17 InpaintNet entry (pure trajectory interpolation, no
+visual signal at all), this actually re-examines the pixels each frame
+using real spatio-temporal attention, so it should degrade more gracefully
+when the club changes direction under camouflage (e.g. top of backswing
+against foliage) than a straight-line or spline interpolation would.
+Secondary, weaker relevance to motion blur: propagating a mask through a
+blurred frame doesn't need per-frame anchor-box regression to guess the
+elongated streak shape the way YOLO11n's head does, but this is unverified
+speculation, not something the sources below demonstrate.
+
+**Why it helps this model specifically — and the real reason it's worth
+logging.** The 2026-08-19 SAM-PM entry explicitly closed off "SAM/SAM2-
+based video-camouflaged-object-detection" as a practical line of
+investigation for this deployment target, on the specific grounds that a
+SAM-sized encoder (ViT-B alone ~91M params) "cannot run per-frame on an
+iPhone at video-capture rate" versus YOLO11n's ~2.6M total parameters —
+and flagged that conclusion as applying to the whole category, including
+future SAM2-based papers, "unless the project's deployment target changes."
+EdgeTAM is the first candidate this log has found that actually reopens
+that closure on its own terms: it's the same SAM2 mechanism, official
+Meta code, with a genuinely small on-device footprint (~20MB across three
+CoreML models, real reported FPS on an iPhone 15 Pro Max) rather than a
+foundation-model encoder. That doesn't make it a fit by default — it means
+the "already known to be no" from 08-19 needs to be downgraded back to
+"actually worth a spike," which is itself the useful finding, independent
+of whether EdgeTAM specifically turns out to work.
+
+**Honest caveat that keeps this from being an easy win.** A companion
+search this run surfaced "Benchmarking SAM2-based Trackers on FMOX"
+(arXiv:2512.09633, a Fast-Moving-Objects tracking benchmark), whose
+findings (read via search-result summary only — arxiv.org itself blocked,
+so this is second-hand and explicitly flagged as such) state that SAM2-
+family trackers "struggle with accurately tracking objects with very thin
+or fine details especially when they are fast-moving," with reported
+"error propagation and tracking instability... in challenging scenarios
+involving fast-moving objects." A golf clubhead at impact speed is close
+to the worst case this describes — thin, fast, exactly where this project
+needs the recovery to work. EdgeTAM's own materials do not report FMO-style
+benchmarks, so whether its distilled encoder is better or worse than full
+SAM2 on this specific failure pattern is unknown either way, not just
+untested by this project.
+
+**Effort vs. payoff.** Medium effort, uncertain-but-real payoff. This is a
+tracking/recovery layer bolted onto the existing detector, not a
+replacement for it or a retraining exercise — the spike is: export the
+three CoreML models from the official repo (documented, no custom
+conversion work needed), feed it one of the existing camouflage-failure
+clips seeded with a manually-drawn box on the last good frame, and see
+whether the propagated mask stays on the clubhead through the failure
+region or drifts. That's an afternoon, not a training run. The honest risk
+is the FMOX caveat above: if EdgeTAM inherits SAM2's known weakness on
+fast thin objects, the recovery may not survive exactly the frames where
+camouflage most needs it (the same frames tend to be higher-speed swing
+frames), and this would be discovered only by running the spike, not by
+further literature search.
+
+**Verification status.** README description, CoreML export section, and
+FPS/parameter figures: read directly from the repo, quoted/paraphrased
+above. LICENSE file: fetched and quoted directly. FMOX/SAM2-on-fast-objects
+weakness claim: from a search-result summary of arXiv:2512.09633, not the
+paper itself (blocked) — flagged as second-hand, not independently
+confirmed.
