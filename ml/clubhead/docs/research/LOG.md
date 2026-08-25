@@ -4180,3 +4180,101 @@ trajectory, per-pixel blur field, NMF kernel-basis decomposition) and
 evaluation datasets (RealBlur/GoPro/REDS): from search-result summaries
 only, not the paper text — flagged as such, not independently confirmed.
 No code/repository found by search.
+
+---
+
+## 2026-08-25 (fourth run) — D-FINE: an ICLR 2025 Spotlight real-time DETR with Apache-2.0 code, and a genuine gap it has that RF-DETR doesn't
+
+**Area covered.** Architecture (this log's bullet touching small/low-contrast
+detection capacity). Before picking this, two other leads were tried and
+dropped: (1) `mamoonik/golf-swing`, a GitHub repo claiming 38-keypoint
+body+club tracking built on the already-logged GolfPose architecture — its
+README and code are real and it does produce club-keypoint output (LSD-based
+hosel-keypoint correction, reported pixel-error improvement over an HRNet
+baseline), but the repository ships **no LICENSE file at all**, which under
+default copyright means no rights are granted for reuse, commercial or
+otherwise — the same dead end this log already hit with `dj_masters`
+(2026-08-14). Not logged as a separate entry since it adds no new pattern
+beyond what that entry already established (unlicensed GolfPose-derivative
+student repos). (2) A repeat check of `universe.roboflow.com` for the
+"golf-club-tracking" dataset (6,750 images, surfaced by search) — still
+`EGRESS_BLOCKED`, same standing wall as every prior run's Roboflow attempts;
+not logged, since Roboflow-domain inaccessibility is already an established
+fact in this file (e.g. 2026-08-18 second run, 2026-08-22 second run).
+
+**What it is.** D-FINE ("Redefine Regression Task of DETRs as Fine-grained
+Distribution Refinement," Peterande et al., **ICLR 2025 Spotlight**). Fetched
+directly from `github.com/Peterande/D-FINE` (not just search summaries).
+It reframes DETR-style bounding-box regression: instead of predicting a
+single box offset, it predicts a probability distribution over fine-grained
+bins for each box edge and refines that distribution iteratively across
+decoder layers (Fine-grained Distribution Refinement, FDR), paired with a
+self-distillation scheme (Global Optimal Localization Self-Distillation,
+GO-LSD) that transfers the final, most-refined layer's localization
+knowledge back to earlier layers at no extra inference cost. This is a
+mechanistically distinct lever from every architecture entry already logged:
+RF-DETR (2026-08-25, first run) swaps in a DINOv2 backbone for stronger
+features; YOLO26 (2026-08-17) changes small-object label assignment
+(STAL); the P2/4 head entry (2026-08-23) adds a higher-resolution detection
+head; FastViT (2026-08-23) is a backbone swap. D-FINE instead changes *how
+box coordinates themselves are regressed*, which is a plausible lever for
+this project's problem shape: a clubhead's box is often ambiguous at its
+edges even when the model fires at all (blurred streaks especially), and a
+distributional-regression head is built exactly to handle boundary
+ambiguity better than a single point-estimate offset.
+
+**Reported numbers.** Five scale variants — Nano (4M params, D-FINE-N:
+42.8% COCO AP), Small (10M, 48.5%), Medium (19M, 52.3%), Large (31M, 54.0%
+at 124 FPS on a T4), X (62M, 55.8% at 78 FPS) — all read directly from the
+repo's own README table, not a search summary. D-FINE-N at 4M params is in
+the same rough capacity class as YOLO11n (this project's current model,
+~2.6M params), making it a realistic like-for-like swap candidate rather
+than a jump to a much heavier model. No small-object-specific AP breakdown
+(e.g. COCO AP-small) is published in the README; this project's failure
+mode is specifically small/low-contrast objects, and the headline AP
+numbers do not tell us how D-FINE-N does on that slice specifically.
+
+**Licence.** Apache License 2.0 — fetched `LICENSE` directly from
+`raw.githubusercontent.com/Peterande/D-FINE/master/LICENSE` and confirmed
+the file is the genuine Apache 2.0 text (matched header: "Apache License,
+Version 2.0, January 2004... TERMS AND CONDITIONS FOR USE, REPRODUCTION,
+AND DISTRIBUTION"). Commercial use permitted, same posture as RF-DETR.
+
+**The gap RF-DETR doesn't have.** RF-DETR's entry (2026-08-25, first run)
+noted it shipped a *native* CoreML export path. D-FINE's own README and
+repo only document ONNX export (with simplification) and TensorRT
+conversion — no CoreML or other mobile-format export is mentioned anywhere
+in the repo, and a targeted search for a community CoreML conversion of
+D-FINE (`"D-FINE" coreml export ios`) turned up nothing specific to this
+model, only generic PyTorch→ONNX→coremltools guidance that applies to any
+model. DETR-family architectures (deformable attention, custom ops) are
+known in practice to be more failure-prone through coremltools than plain
+convolutional YOLO-style nets, though this project has not attempted the
+conversion itself to confirm or refute that for D-FINE specifically.
+
+**Why this matters for this model specifically.** If D-FINE-N's
+distributional box-regression genuinely produces tighter, more confident
+edges on ambiguous (blurred or low-contrast) small objects, it is a direct
+lever on this project's core measured problem — but that benefit is
+unconfirmed for this exact shape (single small elongated object, not COCO's
+general object mix) and comes bundled with a real, unquantified CoreML
+export risk this project would have to absorb itself, unlike RF-DETR where
+that risk is already retired upstream.
+
+**Effort vs. payoff.** Medium-high effort, uncertain payoff, and strictly
+higher-risk than the RF-DETR entry already logged today because of the
+missing export path. Honest ordering: if this project spikes one DETR-family
+architecture, RF-DETR (native CoreML export, DINOv2 features, already
+logged) is the lower-risk first attempt; D-FINE is worth a second look only
+if RF-DETR's CoreML export or accuracy disappoints, and even then the first
+step would have to be a from-scratch ONNX→coremltools conversion spike
+before any training investment, since that step alone could kill the whole
+idea.
+
+**Verification status.** Repo, method description, license text, and all
+AP/parameter numbers: fetched and read directly from
+`github.com/Peterande/D-FINE` and its raw `LICENSE` file, not from search
+summaries. The "no CoreML export exists" claim is a search-derived
+negative (absence of evidence), not a certainty — a conversion may be
+technically possible but undocumented; that uncertainty is stated plainly
+above, not hidden.
