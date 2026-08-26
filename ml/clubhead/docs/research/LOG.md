@@ -4278,3 +4278,106 @@ summaries. The "no CoreML export exists" claim is a search-derived
 negative (absence of evidence), not a certainty — a conversion may be
 technically possible but undocumented; that uncertainty is stated plainly
 above, not hidden.
+
+---
+
+## 2026-08-26 — YOLOV / YOLOV++: multi-frame feature aggregation for video object detection (AAAI 2023 / IJCV 2026), Apache-2.0, built on YOLOX not YOLO11
+
+**Area covered.** Small/low-contrast/camouflaged object detection via
+multi-frame and temporal methods — the category the brief calls out
+specifically ("motion is what separates a moving clubhead from static
+foliage when appearance cannot"). Rotating away from architecture
+(RF-DETR, D-FINE) and blur-synthesis (6-DOF camera motion), the last two
+areas this log touched on 2026-08-25.
+
+**What it is.** YOLOV and YOLOV++, from `github.com/YuHengsss/YOLOV`
+(PyTorch implementation, original YOLOV at AAAI 2023, the newer YOLOV++
+paper "Practical Video Object Detection via Feature Selection and
+Aggregation" published in *International Journal of Computer Vision*,
+2026 — venue confirmed via its `link.springer.com` and `researchgate.net`
+listings). Unlike single-frame detectors, YOLOV treats a short video clip
+as the unit of inference: it runs a base detector (YOLOX) per frame,
+selects a small set of candidate features per frame, then computes
+affinity between the current frame's candidates and candidates from
+neighboring frames in the clip and aggregates them before the final
+classification/box refinement. This is mechanistically distinct from
+every temporal method already logged: TrackNetV4 (2026-08-13) fuses a
+motion-attention map, Motion-Informed Enhancement (2026-08-18) channel-
+encodes motion into an ordinary 3-channel image, DTUM (2026-08-14)
+direction-codes a temporal difference module, and SLT-Net/EMIP/SAM-PM
+(camouflage-specific VCOD) use short-term motion or optical flow as an
+auxiliary appearance cue — YOLOV instead aggregates *detector-level
+candidate features* across frames via a learned affinity/attention
+mechanism, closer in spirit to video object detection literature
+(Flow-Guided Feature Aggregation, Zhu et al. 2017) than to the VCOD or
+sports-tracking papers already in this log.
+
+**Reported numbers.** From the repo's own README table (fetched and read
+directly, not from a search summary): YOLOV-s reaches 77.3 AP50 at 11.3 ms
+on a 2080Ti (batch 1); YOLOV-x reaches 85.5 AP50 at 22.7 ms. YOLOV++
+(adds the "selection" half on top of aggregation) reaches up to 92.9 AP50
+with a Focal-Large backbone, and 78.7 AP50 at 5.3 ms for its smallest "s"
+variant (batch-32 throughput on a 3090, so not directly comparable to a
+single-stream on-device latency number). All figures are on ImageNet VID
+— a 30-category general-object video benchmark, not sports footage and
+not a small/low-contrast-specific slice, so there is no direct evidence
+these gains transfer to a single small elongated fast object like a
+clubhead.
+
+**Licence.** Apache License 2.0. Verified two ways: the GitHub blob view
+of `LICENSE` and a direct fetch of
+`raw.githubusercontent.com/YuHengsss/YOLOV/master/LICENSE`, which returned
+the genuine text starting "Apache License / Version 2.0, January 2004 /
+http://www.apache.org/licenses/ ... TERMS AND CONDITIONS FOR USE,
+REPRODUCTION, AND DISTRIBUTION". Commercial use is permitted.
+
+**Why this matters for this model specifically, and the real gaps.**
+The mechanism is a plausible fit for the camouflage failure mode: a dark
+clubhead against dark clothing or foliage produces zero detections in a
+single frame precisely because appearance alone gives the detector
+nothing to key on, and aggregating candidate features across several
+consecutive frames is a direct, architecturally-native way to let motion
+compensate — closer to what the brief is asking for than bolting a motion
+channel onto a single-frame YOLO. But three real gaps stand between this
+and a usable fix: (1) it is built on YOLOX, an anchor-free detector with
+a different backbone/head than YOLO11n — adopting the technique means
+either porting the aggregation module onto YOLO11n from scratch (not
+something the repo does or documents) or replacing the base detector
+entirely, either of which is a substantial engineering project, not a
+config change; (2) no CoreML, ONNX, or any mobile/edge export path is
+mentioned anywhere in the README — this is a research codebase targeting
+GPU batch inference, and the multi-frame aggregation step itself (cross-
+frame attention over a buffered clip) is an architecture shape
+coremltools and the Neural Engine have not been shown to handle well;
+(3) the benchmark domain (ImageNet VID's 30 everyday object categories)
+gives no evidence either way for a single small, often-blurred, often-
+camouflaged golf club head — the accuracy numbers above cannot be read as
+predicting anything about this project's failure modes.
+
+**Effort vs. payoff.** High effort, uncertain payoff. This is a bigger
+lift than any temporal-fusion entry already logged (TrackNetV4's motion-
+attention map or Motion-Informed Enhancement's channel-encoding are both
+adaptable to YOLO11n with modest changes; this is not) — it would need a
+from-scratch reimplementation of the aggregation idea against a YOLO11n
+backbone plus an unproven CoreML export path before any training
+investment could be evaluated at all. Worth logging as a genuinely
+different mechanism and a good conceptual reference for *how* to build a
+multi-frame aggregation head, but not something to prototype directly;
+if this project pursues multi-frame camouflage fixes, the already-logged,
+lower-effort options (TrackNetV4-style motion-attention fusion or
+Motion-Informed Enhancement's channel encoding, both YOLO-compatible) are
+the ones to try first.
+
+**Verification status.** Repository, README performance table, and
+licence text: fetched and read directly from `github.com/YuHengsss/YOLOV`
+and its raw `LICENSE` file. The paper's own abstract could not be fetched
+directly — `arxiv.org` is blocked by this sandbox's egress proxy, the same
+standing block this log has hit on every prior arxiv attempt (e.g.
+SloMoDeblur 2026-08-19, ReynoldsFlow 2026-08-24). A search-engine snippet
+for the paper claimed it targets "degenerated object appearances... such
+as motion blur, video defocus, and rare poses," but that phrasing is
+generic boilerplate shared across the video-object-detection literature
+(it traces to the original 2017 FGFA paper's motivation section) and is
+not confirmed as YOLOV/YOLOV++-specific — the GitHub README does not
+repeat or substantiate it, so it is deliberately left out of the claims
+above rather than reported as fact.
