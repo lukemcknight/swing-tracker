@@ -4381,3 +4381,129 @@ generic boilerplate shared across the video-object-detection literature
 not confirmed as YOLOV/YOLOV++-specific — the GitHub README does not
 repeat or substantiate it, so it is deliberately left out of the claims
 above rather than reported as fact.
+
+---
+
+## 2026-08-26 (second run) — Temporal-YOLOv8: stacking grayscale frames from different timesteps into the RGB channels of an *unmodified* YOLOv8, CC BY licensed, zero architecture change
+
+**Area covered.** Small/low-contrast/camouflaged object detection via
+multi-frame and temporal methods — same category as this morning's
+YOLOV/YOLOV++ entry, chosen again deliberately because it turned up a
+mechanism materially cheaper than anything already logged in it. A first
+attempt this run to find something in the golf-dataset category (bullet 1)
+searched specifically for indoor/simulator-bay/low-light golf footage with
+a commercial licence; it surfaced only golf-simulator hardware marketing
+pages, an unrelated capstone OpenPose repo
+(`personableduck/GolfSwing` — 2016-era body pose, not club-specific, no
+licence found), and CaddieSet (already ruled out 2026-08-18, no imagery
+released) — nothing new and verifiable, so this run pivoted to the
+temporal-methods bullet instead.
+
+**What it is.** "Toward Versatile Small Object Detection with
+Temporal-YOLOv8" (van Leeuwen et al., TNO Defence, Safety and Security,
+The Hague — *Sensors* (MDPI) 24(22):7387, November 2024, DOI
+10.3390/s24227387, PMID 39599163, PMCID PMC11598073). The core method,
+Temporal-YOLOv8: instead of feeding a standard YOLOv8 a single RGB frame,
+feed it three **grayscale** frames sampled at three different timesteps
+(e.g. t, t-1, t-2), one per input channel, in place of R, G, and B. The
+network architecture, weights shape, and compute cost are all identical to
+stock YOLOv8 — this is purely a change to what goes into the existing
+3-channel input tensor, not a model change. The paper also reports two
+higher-capacity variants that do need an input-layer change: Color-T-YOLO
+(9 channels — three full RGB frames stacked, keeping colour *and* time)
+and Manyframe-YOLO (11 stacked grayscale frames, for more motion context).
+This is mechanistically the same family of idea as this log's
+already-logged Motion-Informed Enhancement (2026-08-18) — recolor an
+ordinary image with temporal history, feed an unmodified detector — but a
+different, independently-arrived-at implementation, validated on YOLOv8
+specifically (the direct predecessor, same Ultralytics lineage, to this
+project's YOLO11n) rather than YOLOv5, and with no GPL entanglement (see
+Licence below).
+
+**Reported numbers.** On the authors' in-house evaluation set of civilian
+and military objects (not sports footage — looks to be long-range/aerial
+surveillance imagery from the TNO defence-research context, based on the
+paper's stated affiliation and object categories; the primary source could
+not be read directly to confirm capture conditions, see Verification
+status), baseline YOLOv8 mAP of 0.465 improved to 0.839 combining the
+temporal input with small-object-tailored augmentation. This is a large
+jump, but on a domain and object-size distribution that has no demonstrated
+relationship to a single elongated golf clubhead against foliage — treat it
+as evidence the general mechanism works, not as a predictor of the size of
+gain here.
+
+**Licence.** Sensors is an MDPI open-access journal; multiple independent
+search-result snippets state the article is "distributed under the terms
+and conditions of the Creative Commons Attribution (CC BY) license" and
+that "any part of the article may be reused without permission provided
+the original article is clearly cited" — MDPI's standard CC BY posture,
+consistent with every other MDPI Sensors article this log has checked.
+**Commercial use is permitted**, attribution required. This is a licence on
+the *paper*, not on any code — no official code repository was found for
+Temporal-YOLOv8 despite a dedicated search (TNO is a defence-research
+institute, not a typical open-source publisher); using the technique means
+reimplementing the (simple) input-recoloring step ourselves, which has the
+practical benefit of leaving no third-party licence to track at all — a
+strictly better position than the already-logged Motion-Informed
+Enhancement entry, whose reference implementation is GPL-3.0 and explicitly
+flagged as not shippable without legal review.
+
+**Why this matters for this model specifically.** This is the cheapest
+genuinely-new idea this log's temporal/multi-frame category has surfaced.
+Every other multi-frame mechanism logged so far — TrackNetV4's motion-
+attention fusion, DTUM's direction-coded temporal module, YOLOV's cross-
+frame candidate aggregation, Motion-Informed Enhancement's GPL-encumbered
+recolor step — requires either a new architecture block, a ported module,
+or accepting a copyleft dependency. The 3-grayscale-frame variant here
+requires none of that: the exported CoreML model already takes a 3-channel
+image; swapping which three planes fill it (three grayscale timesteps
+instead of single-frame R/G/B) touches only the data-engine's frame sampler
+at train time and the iOS capture pipeline's frame-buffering at inference
+time. No retraining architecture change, no new CoreML export path to
+validate, no Neural Engine compatibility risk. That directly targets the
+camouflage failure mode the brief describes: a visually sharp, static-
+looking frame gives the detector nothing when the clubhead's appearance
+blends into clothing or foliage, and three timesteps of grayscale motion
+history is a cheap, load-bearing signal the model currently never sees.
+Two honest limits: (1) it does not obviously help the motion-blur failure
+mode — if all three sampled sub-frames are themselves already blurred,
+stacking three blurred grayscale planes does not recover a sharp box, so
+this should be read as a camouflage-mode fix, not a blur-mode one; (2) it
+is an incremental variant of an idea already in the log (Motion-Informed
+Enhancement), not a new category — its value here is specifically removing
+that entry's GPL blocker and confirming the recipe transfers to the
+Ultralytics YOLOv8/YOLO11 family rather than only YOLOv5.
+
+**Effort vs. payoff.** Low-to-moderate effort, moderate-but-uncertain
+payoff. Effort is genuinely small relative to everything else in this
+category: no architecture work, no export-path risk, and the change is
+confined to two places already under this project's control (the
+data-engine's frame sampling and the iOS capture buffer). Payoff is
+unproven for this specific domain — the reported mAP jump comes from
+aerial/surveillance imagery with no demonstrated bearing on a single fast
+clubhead against foliage, and the underlying idea already has a logged
+precedent (Motion-Informed Enhancement) that reached a similar conclusion.
+Given the low cost, this is a reasonable candidate for an actual small
+prototype (train YOLO11n on the existing dataset with a 3-grayscale-frame
+input swap, on a held-out slice, and compare to the single-frame baseline)
+rather than a documentation-only wait for legal review, which is the
+Motion-Informed Enhancement entry's practical status today.
+
+**Verification status.** The paper's existence, exact title, authors,
+venue, DOI/PMID/PMCID, and the CC BY licence line were confirmed via
+multiple independent search-result snippets (search-engine-rendered
+excerpts of the PMC, PubMed, and MDPI listing pages), consistent across
+three separate searches. The primary source itself could not be fetched
+directly: `www.mdpi.com`, `pmc.ncbi.nlm.nih.gov`, `www.ncbi.nlm.nih.gov`,
+`europepmc.org`, and `api.semanticscholar.org` were all rejected by this
+sandbox's egress proxy with `EGRESS_BLOCKED` on direct fetch attempts —
+the same standing block this log has hit on `arxiv.org` in prior runs
+(e.g. YOLOV/YOLOV++ above, SloMoDeblur 2026-08-19), now confirmed to extend
+to several other scholarly-publishing domains as well. The method
+description (three grayscale frames into RGB channels, zero architecture
+change, the Color-T-YOLO/Manyframe-YOLO variants) and the reported mAP
+figures are therefore sourced from consistent search-snippet excerpts
+rather than a directly-read PDF or HTML body — one notch below full
+verification, the same caveat this log has applied to other arxiv-blocked
+entries, but corroborated across independent searches rather than resting
+on a single snippet.
