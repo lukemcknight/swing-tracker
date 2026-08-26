@@ -4507,3 +4507,148 @@ rather than a directly-read PDF or HTML body — one notch below full
 verification, the same caveat this log has applied to other arxiv-blocked
 entries, but corroborated across independent searches rather than resting
 on a single snippet.
+
+---
+
+## 2026-08-26 (third run) — OC-SORT: a training-free Kalman-filter tracker built specifically to survive multi-frame detection gaps, as the zero-cost counterpart to the logged InpaintNet recovery entry
+
+**Area covered.** Rotated to bullet 3 (small/low-contrast/camouflaged
+object detection, temporal methods), specifically the "recovery" sub-thread
+this log opened on 2026-08-17 with TrackNetV3's InpaintNet (a trained
+network that inpaints trajectory gaps after detection fails) and has not
+revisited since. Searched first for newer video-camouflaged-object-
+detection papers (YUV20K, a Mamba-based spatio-frequency method, CamoSAM2)
+— all real and recent, but every one is a heavier learned architecture in
+the same family already covered five times over (TrackNetV4, DTUM, SLT-
+Net, SINet-V2, SAM-PM, CamDiff, EMIP), so none was logged as a new finding.
+Pivoted instead to asking a narrower question the log had not yet asked:
+is there a *classical, zero-training* way to bridge a run of zero-
+detection frames, as a cheaper alternative to InpaintNet's small trained
+U-Net? That search surfaced OC-SORT.
+
+**What it is.** "Observation-Centric SORT: Rethinking SORT for Robust
+Multi-Object Tracking" (Cao, Pang, Weng, Khirodkar, Kitani — CVPR 2023,
+pp. 9686–9696, arXiv:2203.14360) is a Kalman-filter tracking-by-detection
+wrapper that sits on top of *any* off-the-shelf per-frame detector's
+output boxes — it needs no image input at all, only the (x, y, w, h,
+confidence) the detector already emits. Plain SORT-style Kalman trackers
+degrade badly across a gap with no observations: the filter keeps
+propagating its last-known velocity with nothing to correct it, so its
+predicted position drifts away from the truth, and when a real detection
+reappears the association fails. OC-SORT's fix is Observation-Centric
+Re-Update (ORU): when a track resumes after a gap, it retroactively
+re-updates the filter's state using a virtual straight-line trajectory
+built between the last observation before the gap and the first
+observation after it, instead of trusting the drifted, no-correction
+extrapolation the gap produced. This is architecturally the single-object
+special case of the exact "camouflage causes a run of zero-candidate
+frames, then detection resumes once framing or lighting changes" symptom
+the brief describes — a golf swing clip has exactly one clubhead to track,
+which is a strict simplification of the crowded multi-object scenes
+(MOT17/MOT20/DanceTrack) OC-SORT was built and benchmarked for.
+
+**URL.** Code: https://github.com/noahcao/OC_SORT (`master` branch;
+`README.md` and `LICENSE` both fetched directly via `raw.githubusercontent.com`,
+HTTP 200, confirmed live — not a stub: the repo ships training/inference
+scripts, reported benchmark tables for MOT17/MOT20/DanceTrack/KITTI, and
+ONNX/TensorRT/C++ deployment variants). Paper: CVF Open Access page
+`openaccess.thecvf.com/content/CVPR2023/html/Cao_Observation-Centric_SORT_...`
+and arXiv:2203.14360 — both `openaccess.thecvf.com` and `export.arxiv.org`
+returned `EGRESS_BLOCKED` from this sandbox, the same standing restriction
+prior runs have hit on scholarly hosts, so the paper's title, authors,
+venue, page numbers, and arXiv ID are sourced from consistent search-engine
+listings (the CVF page title, the arXiv abstract-page title, and a Medium
+technical write-up all agree), not a directly-read PDF. The *mechanism*
+description (ORU, the drift problem it fixes) is corroborated identically
+across an independent technical summary and the repo's own README/pipeline
+diagram, so the mechanism itself is treated as verified; the benchmark
+numbers below come directly from the repo's README table, not the paper.
+
+**Licence (verbatim, from the repo's `LICENSE` file, fetched directly via
+`raw.githubusercontent.com`, HTTP 200).** MIT License. "Permission is
+hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the \"Software\"), to deal in
+the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software... subject to the following conditions: The above
+copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software." **Commercial use:
+permitted.** (The copyright line reads "Copyright (c) 2021 Yifu Zhang" —
+OC-SORT's repo is built on the ByteTrack codebase and retains ByteTrack's
+original MIT notice; this does not weaken the grant, since MIT permits
+reuse regardless of whose name is on the notice, and the README itself
+states "OC-SORT, filterpy and ByteTrack are available under MIT License.")
+Reported benchmark numbers (README table, not independently reproduced
+here): MOT17 HOTA 63.2 / MOTA 78.0; DanceTrack-test MOTA 89.4; KITTI-cars
+MOTA 90.3; association-only speed "700+ FPS on a single CPU" when
+detections are pre-provided — the relevant number for this use case, since
+the app would run its own YOLO11n detector and hand OC-SORT only the
+resulting boxes, not run OC-SORT's own detector.
+
+**Which failure mode.** Primarily camouflage, in the same "recovery, not
+appearance" sense already logged for InpaintNet (2026-08-17) — it does not
+touch *why* a frame produces zero candidates (colour-similarity to
+background), it only bridges the resulting gap using motion continuity.
+It offers little for motion blur specifically: a blurred-but-visible
+clubhead usually still yields a real (if imprecise) detection for the
+Kalman filter to condition on, so the gap-bridging mechanism this entry is
+about simply doesn't activate for most blur frames the way it does for
+true zero-candidate camouflage frames.
+
+**Why it helps this model specifically, and how it differs from the
+already-logged InpaintNet entry.** Same target as InpaintNet — the
+whole-swing 77% and 85.9% selection-ceiling numbers, not the per-frame
+82% — but a meaningfully cheaper mechanism to get there. InpaintNet is a
+separately trained small U-Net that must be fit on this project's own
+labelled trajectory sequences before it can be used. OC-SORT needs no
+training data and no training run at all: it is closed-form Kalman-filter
+arithmetic (predict, associate, re-update) applied to the sequence of
+boxes the existing on-device YOLO11n already produces per clip. For a
+single-object, single-class problem like this one, the "multi-object"
+half of OC-SORT's design (Hungarian-algorithm association across several
+candidate tracks) is unnecessary complexity that can be dropped entirely —
+what's left is essentially "a constant-velocity Kalman filter, plus the
+specific ORU correction for handling gaps without drift," which is a
+small, self-contained piece of arithmetic straightforward to port natively
+into the iOS app's existing per-frame inference loop, with zero CoreML
+re-export and zero change to the shipping detector. This is a strictly
+lower-effort, zero-training alternative to InpaintNet for the same
+recovery problem, at the cost of being a simpler, less expressive
+correction (a straight-line virtual trajectory across the gap, vs.
+InpaintNet's learned, potentially non-linear inpainting).
+
+**Important honest caveats.** (1) OC-SORT's benchmark numbers are entirely
+from crowded multi-object pedestrian/vehicle tracking (MOT17/20, KITTI,
+DanceTrack) — none of that transfers as an accuracy estimate for a single
+golf clubhead, only the *mechanism* (ORU's gap-correction) transfers by
+inspection, not the reported HOTA/MOTA figures. (2) Like InpaintNet, this
+degrades to open-loop extrapolation for long gaps: if the camouflage
+stretch spans many consecutive frames, the "virtual straight-line
+trajectory" ORU corrects onto is a worse approximation of the true
+(non-linear, accelerating) clubhead path during a downswing than it would
+be for the more ballistic motion OC-SORT's benchmarks are drawn from — the
+same honest limitation the InpaintNet entry raised about ballistic vs.
+swing motion, applying here too and for the same reason. (3) This produces
+a *smoothed position estimate* for display/path purposes, not a
+retroactively higher true per-frame detection rate — it should not be
+conflated with an appearance-side fix, and should be framed as a UX/
+selection-layer mitigation exactly like InpaintNet, not a substitute for
+any already-logged appearance or architecture fix.
+
+**Effort vs. payoff.** Low effort, plausible-but-narrow payoff — lower
+effort than every other "recovery" entry logged so far because it requires
+no training data, no training run, and no new model artifact of any kind,
+only porting a well-documented, ~100-line Kalman-filter update rule into
+the existing per-clip inference loop. A v0 (single-object constant-
+velocity Kalman filter with plain SORT-style prediction, no ORU) is close
+to a day's work reusing the eval harness's existing per-frame output. Full
+ORU adds a small, well-specified re-update step on top of that v0 once a
+detection resumes after a gap. Payoff is capped by the same ceiling
+InpaintNet's entry already named honestly: this is a whole-swing/selection
+-layer mitigation, not a per-frame accuracy fix, and its real value
+depends on whether the app's downstream path-drawing logic benefits more
+from gap-smoothing than from raw per-frame recall — unconfirmed from the
+docs available. Given it is strictly cheaper than InpaintNet for
+functionally the same target, the reasonable next step is to try this
+before investing in a trained InpaintNet-style model, not in addition to
+it as a separate effort.
