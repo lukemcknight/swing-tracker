@@ -4858,3 +4858,92 @@ neither the architecture nor the dataset -- a reasonable first experiment
 would be a single ablation training run (stock CIoU vs. blended NWD+CIoU,
 same data, same eval harness) before investing in any of the
 heavier architecture or data-synthesis entries already logged.
+
+---
+
+## 2026-08-27 (third run) — Albumentations' `MotionBlur` transform is the cheapest way to inject directional blur into the existing Ultralytics pipeline, but its actively-maintained successor is now AGPL, not MIT
+
+**Area covered.** Ways to synthesise/augment training data for the blur
+failure mode, at the training-pipeline level rather than the dataset-
+capture or architecture level -- distinct from this log's existing
+blur-synthesis entries (frame-averaging 2026-08-12, PSF-based box expansion
+2026-08-14, 6-DOF camera blur 2026-08-25, BlenderProc 2026-08-18), all of
+which manufacture new source imagery/video offline. This is instead an
+in-training augmentation already one `pip install` away from the exact
+framework this project uses (Ultralytics YOLO11n), which none of those
+entries checked.
+
+**What it is.** Ultralytics' `ultralytics/data/augment.py` has a built-in
+`Albumentations` wrapper class that auto-activates during training if the
+`albumentations` package is importable -- confirmed by fetching the file
+directly from the `ultralytics/ultralytics` `main` branch. Its default
+transform set is `A.Blur(p=0.01)`, `A.MedianBlur(p=0.01)`, `A.ToGray(p=0.01)`,
+`A.CLAHE(p=0.01)`, plus three transforms disabled at `p=0.0`
+(`RandomBrightnessContrast`, `RandomGamma`, `ImageCompression`) -- all
+isotropic/generic, none directional. The class's `__init__` signature is
+`(p=1.0, transforms: list | None = None, flip_idx=None)`: passing a custom
+`transforms` list is an officially supported, documented override, not a
+monkey-patch, and this is exactly where `A.MotionBlur(blur_limit=..., p=...)`
+(a directional-kernel convolution simulating camera-shake/subject-motion
+streaks) would go. This is the same mechanism the Albumentations project's
+own `example-ultralytics` doc demonstrates.
+
+**URL and licence, verified directly, including a real trap.** Two
+different packages exist and are easy to conflate:
+- `albumentations` (PyPI, `github.com/albumentations-team/albumentations`):
+  MIT licence, confirmed via the PyPI JSON API (`license: MIT License`,
+  latest version `2.0.8`) and via the repo's own `LICENSE` file (MIT,
+  copyright Iglovikov/Buslaev/Parinov). The GitHub README states, fetched
+  directly: **"This repository is no longer actively maintained. The last
+  update was in June 2025, and no further bug fixes, features, or
+  compatibility updates will be provided."** It still installs and works
+  today (Ultralytics only requires `albumentations>=1.0.3`, checked via
+  `check_version` in the same source file) -- it is frozen, not broken.
+- `AlbumentationsX` (PyPI package name `albumentationsx`,
+  `github.com/albumentations-team/AlbumentationsX`): the actively developed
+  successor, advertised as a "100% drop-in replacement" with the same API.
+  Its licence is **dual AGPL-3.0 / commercial**, confirmed via the fork's
+  own blog post ("AlbumentationsX: A Fork with Dual Licensing") and its
+  GitHub `LICENSE` file. Its own docs are explicit: "If your project uses
+  MIT, Apache 2.0, or BSD licenses -- even if it's open source -- you
+  cannot use AlbumentationsX under AGPL and you need a commercial licence."
+  AGPL's network-service copyleft clause is a real risk for a shipped app
+  build pipeline, not just a server.
+
+**Which failure mode it addresses.** Motion blur. It does not touch
+camouflage at all -- flagging that explicitly since this run's brief asks
+for an honest per-mode read, and there is no plausible mechanism by which a
+blur transform helps a zero-detection-confidence camouflage failure.
+
+**Why it helps this model specifically, and the real caveat.** The
+labeling spec already instructs annotators to box the full motion-blur
+streak, but the brief's own elongation stats (median 1.60, p90 3.01) show
+that instruction is rarely exercised because genuinely blurred training
+examples are scarce -- this is a pipeline-level lever to manufacture more
+of them for free, with zero new dependency risk (the MIT-frozen package is
+enough; AlbumentationsX is not needed) and zero architecture/export risk
+(training-time only, same as the NWD entry logged just above this one).
+**But**: `A.MotionBlur` convolves a directional kernel over the *entire*
+frame uniformly -- it does not selectively blur only the clubhead region.
+For clubhead boxes, which are small in absolute pixel terms, even a modest
+kernel (Albumentations' default `blur_limit` range is roughly 3-7px) could
+smear the head's true extent past its original tight label box, silently
+reintroducing the exact box/visual-extent mismatch this log's PSF and
+frame-averaging entries were designed to fix correctly -- global blur is a
+cruder, unlabelled approximation of what those entries do with correct box
+expansion. This needs a visual sanity pass (render augmented samples,
+check the label box still tightly bounds the now-blurred head at the kernel
+sizes actually used) before trusting it, not blind enablement.
+
+**Effort vs. payoff.** Very low effort: no new dataset, no architecture
+change, no export change -- a `YOLODataset` subclass overriding
+`build_transforms` to construct `Albumentations(transforms=[..., A.MotionBlur(...), ...])`
+is a few lines, using the already-MIT-licensed `albumentations==2.0.8`
+pin (do not let this or any future entry casually recommend "upgrading
+albumentations," since the currently-promoted upgrade path is the AGPL
+fork). Payoff is unverified and likely modest on its own: it is a coarse,
+whole-frame proxy for real per-object blur, not a substitute for the
+correctly-elongated synthetic examples this log has already logged, but it
+is cheap enough to run as a quick ablation (default augmentations vs.
++MotionBlur, same data/eval harness, visually spot-checked) before or
+alongside the heavier data-synthesis entries.
