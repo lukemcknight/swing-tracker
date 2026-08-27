@@ -4652,3 +4652,103 @@ docs available. Given it is strictly cheaper than InpaintNet for
 functionally the same target, the reasonable next step is to try this
 before investing in a trained InpaintNet-style model, not in addition to
 it as a separate effort.
+
+---
+
+## 2026-08-27 — JFD3: a dual-branch, feature-consistency blur-robust detector for small/fast infrared targets (AAAI 2026), real partial code but no licence and not YOLO-based (existence-with-caveats result)
+
+**Area covered.** Motion blur -- blur-robust detection architectures. Checked
+this log's existing entries in this sub-area first (DFRCP, MoSA-Det, DTUM,
+TrackNetV4, channel-stacked multi-frame YOLO, RT-Focuser, Deblur-YOLO) to
+avoid a repeat; JFD3 is a distinct mechanism from all of them (see below).
+
+**What it is.** "Blur-Robust Detection via Feature Restoration: An
+End-to-End Framework for Prior-Guided Infrared UAV Target Detection"
+(IVPLabs, AAAI 2026, arXiv:2511.14371) proposes **JFD3** (Joint
+Feature-Domain Deblurring and Detection), aimed at exactly this project's
+symptom: motion blur degrading contrast between a small fast-moving target
+and its background until detection fails. Mechanism, per the paper's
+abstract text as surfaced consistently across independent search snippets:
+a dual-branch architecture with **shared weights**, where a "clear" branch
+(trained/run on sharp images) supervises a "blurred" branch via a **feature
+consistency self-supervised loss**, driving the blurred branch's features
+toward the clear branch's representations without needing paired
+blurred/sharp ground truth at inference time. A second component, a
+**frequency structure guidance module**, extracts a structure prior from a
+restoration sub-network and injects it into the detector's shallow layers
+to re-inject high-frequency edge information a blur kernel destroys. This
+is a different mechanism from every blur entry already logged: DFRCP is a
+single-frame pyramid-internal "fuzzy feature" fusion; MoSA-Det conditions
+dynamic convolution on inter-frame motion state; DTUM is a direction-coded
+temporal module; RT-Focuser and Deblur-YOLO both do explicit image-domain
+deblurring as a separate step. JFD3's distinguishing idea is *training-time*
+feature-domain supervision from a clear/blurred pair, with no explicit
+deblurred image ever produced or needed at inference.
+
+**URL.** Code: https://github.com/IVPLabs/JFD3 -- fetched directly, HTTP
+200, real content (not a stub). Paper: arXiv:2511.14371 and an OpenReview
+PDF mirror -- both `arxiv.org` and `openreview.net` hit this sandbox's
+standing egress block (same recurring failure as `arxiv.org`,
+`researchsquare.com`, `scirp.org`, `openaccess.thecvf.com` in prior
+entries), so the method description above is search-snippet synthesis, not
+a directly-read paper -- treat it at the same verification tier as the
+DFRCP and MoSA-Det entries. The repo itself, by contrast, *was* read
+directly, and is the source for everything in the next two paragraphs.
+
+**Code and licence status (verbatim from the repo, fetched directly).**
+The README states: "We have first compiled the relevant code for the
+core contribution points, and the complete code is currently being
+compiled." This is genuinely partial, in-progress code, not a full release.
+**No LICENSE file and no licence statement of any kind is present in the
+repository.** Under default copyright law that means all rights reserved --
+**commercial use is NOT permitted** absent an explicit grant, and none
+exists here. The repo is built on the **DEIM** codebase
+(`github.com/Intellindust-AI-Lab/DEIM`) for non-core components, not on
+YOLO -- porting this into the project's YOLO11n/CoreML pipeline would mean
+reimplementing the two core modules (feature-consistency loss, frequency
+structure guidance) against a different base detector, not dropping in a
+compatible checkpoint.
+
+**Dataset (IRBlurUAV) -- not usable for this project regardless of the code
+question.** The paper introduces IRBlurUAV, described in search snippets as
+30,000 simulated plus 4,118 real infrared UAV target images with motion
+blur, released via a Baidu Netdisk link (the Google Drive mirror is marked
+"TODO" in the README, not yet live) with no licence -- only an informal
+citation request ("If you utilize this dataset in your research, please
+consider citing our paper"), which is not a usage grant. Separately and
+more fundamentally, it is **infrared**, not RGB -- the sensor modality
+mismatch alone would rule it out as training data for a phone-camera RGB
+clubhead detector even if the licence were clean.
+
+**Which failure mode.** Motion blur only. The mechanism (restoring
+blur-degraded discriminative features via a clear-image-supervised branch)
+targets exactly the "small, fast, motion-blurred target loses contrast
+against background" symptom this project's blur gap describes -- it does
+not address camouflage's static-appearance zero-detection frames, since a
+clear/blurred training pair presupposes a moving target, not a
+static-looking one hidden by colour and texture alone.
+
+**Why this cannot be logged as a usable finding yet, and what would change
+that.** Three independent blockers, any one of which is disqualifying on
+its own: (1) no licence on the code -- all rights reserved by default; (2)
+no licence on the dataset, and the dataset is the wrong sensor modality
+regardless; (3) the code is explicitly incomplete per the authors' own
+README, so even a permissive licence today would not yield a working
+reference implementation to port from. If the "complete code" the README
+promises lands with a permissive licence, this becomes a genuine
+architecture lead -- the feature-consistency mechanism is conceptually
+portable to any detector (it operates on paired clear/blurred training
+images and does not depend on DEIM specifically), so a future run should
+re-check this exact repo URL for a licence file and a completed codebase
+before reimplementing anything from the paper text alone.
+
+**Effort vs. payoff.** Not assessable yet, same category as this log's
+DFRCP and TinyDark-YOLO entries -- zero actionable effort right now because
+there is nothing legally or functionally complete to build on. If it
+matures (permissive licence + finished code), the effort would be
+moderate-to-high: reimplementing a dual-branch training scheme requires
+generating this project's own clear/blurred paired training data first
+(the exact gap this log's frame-averaging, PSF, and 6-DOF blur-synthesis
+entries already aim to close), so this is better read as a second
+consumer of that data-synthesis work than as a standalone fix to pursue in
+isolation.
