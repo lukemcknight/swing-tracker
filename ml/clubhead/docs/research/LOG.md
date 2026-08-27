@@ -4752,3 +4752,109 @@ generating this project's own clear/blurred paired training data first
 entries already aim to close), so this is better read as a second
 consumer of that data-synthesis work than as a standalone fix to pursue in
 isolation.
+
+---
+
+## 2026-08-27 (second run) — Normalized Wasserstein Distance (NWD) loss: an IoU replacement for tiny/elongated box regression, verified absent from stock Ultralytics YOLO11
+
+**Area covered.** Motion blur -- blur-robust detection architectures /
+training-side fix, but at the loss-function level rather than the backbone
+or head level, which is a layer this log had not yet checked. Grepped this
+log's 71 prior entries for "Wasserstein," "Gaussian" (bounding-box sense),
+and the paper's own repo name/author before starting: no hits. Every
+architecture entry so far (JFD3, DFRCP, MoSA-Det, D-FINE, RF-DETR, YOLOV,
+Temporal-YOLOv8, the P2/4-head entry, etc.) changes the network; this is
+the first to check whether the *training objective itself* is well-matched
+to this model's box geometry.
+
+**What it is.** "A Normalized Gaussian Wasserstein Distance for Tiny Object
+Detection" (Wang, Xu, Yang, Yu, arXiv:2110.13389, 2021; expanded journal
+version in *ISPRS Journal of Photogrammetry and Remote Sensing*, 2022;
+conference version at ICPR 2021 on the authors' AI-TOD benchmark). It
+models each bounding box as a 2D Gaussian distribution (center = mean,
+width/height = variance) and measures similarity between predicted and
+ground-truth boxes via the Wasserstein distance between their Gaussians,
+normalized into a bounded [0,1] similarity score (NWD) that can substitute
+for IoU in label assignment, NMS, and the box regression loss.
+
+**URL and licence, verified directly.** Official code:
+https://github.com/jwwangchn/NWD — fetched directly: the repo is built on
+MMDetection (not Ultralytics/YOLO), includes configs/tools/model code, and
+carries an **Apache-2.0 LICENSE file** confirmed by direct fetch. Apache-2.0
+permits commercial use. It is not a drop-in dependency for this project
+(different framework entirely), but the loss itself is a small, closed-form
+formula (compute a 2x2 covariance-style representation per box, Wasserstein
+distance between two 2D Gaussians has a known closed form, then
+exponential-normalize by a constant C) -- unlike a backbone or attention
+module, this is realistically portable by hand into Ultralytics' own loss
+code, not something that needs the MMDetection dependency itself.
+
+**Verified this is a real gap in the exact codebase this model already
+runs on, not a config flag already available.** Fetched
+`ultralytics/utils/loss.py` and `ultralytics/utils/metrics.py` directly
+from the `main` branch: `BboxLoss` computes box regression loss via
+`bbox_iou(..., CIoU=True)` plus DFL; `bbox_iou`'s signature only exposes
+`GIoU`, `DIoU`, `CIoU` boolean flags. There is no NWD, no SIoU, no WIoU, and
+no Wasserstein/Gaussian code path anywhere in either file -- confirmed by
+reading the actual current source, not inferred from a search-engine
+summary (an earlier search this run had claimed YOLO11 already ships
+CIoU/SIoU together, which the direct source fetch shows is wrong -- only
+GIoU/DIoU/CIoU exist). No maintained, licence-clear NWD patch for
+Ultralytics YOLOv8/v11 turned up either -- what exists are Chinese-language
+tutorial blog posts (CSDN) walking through a manual `BboxLoss` patch, not a
+shipped package -- so this would be a from-scratch implementation against
+the NWD paper's formula and the official MMDetection repo as a reference,
+not a fork-and-pull.
+
+**Which failure mode it addresses.** Motion blur, specifically the box-shape
+problem this log has been assembling data-synthesis fixes for since
+2026-08-12 (frame-averaging), 2026-08-14 (PSF-based box expansion), and
+2026-08-25 (6-DOF camera-motion blur synthesis) -- all three manufacture
+correctly elongated blur-streak training boxes, but none of them touch
+*how the loss reacts* to those boxes once they exist. IoU-based losses are
+known to be disproportionately unstable for small absolute box sizes (a
+few-pixel positional error collapses IoU much faster than the same error on
+a large box), and that instability compounds with elongation: for a fixed
+pixel offset, a thin/long box loses IoU faster than a square box of equal
+area because the offset eats a larger fraction of the box's short axis.
+The brief's own numbers describe exactly this shape -- median labelled-box
+elongation 1.60, p90 3.01, i.e. genuinely elongated boxes already exist in
+the tail of the current 1,308-frame set, before any of the synthesis
+entries above even add more. If CIoU's regression signal degrades sharply
+on that elongated tail today, training may already be quietly
+under-weighting or destabilizing on exactly the examples that matter most
+for the blur failure mode, independent of how much more blurred data gets
+added. This is orthogonal to camouflage: NWD does not help a network find a
+target with zero signal at any confidence threshold, it only changes how
+cleanly the network can learn box *shape* once some detection signal
+exists.
+
+**Why it helps this model specifically.** It is a training-time-only change
+-- the loss function does not touch the model graph, so it carries zero
+CoreML export risk, unlike almost every architecture entry in this log
+(YOLOV/YOLOX-based, D-FINE/RF-DETR transformer-based, JFD3 DEIM-based, etc.,
+all flagged with export-path uncertainty). It is also the natural
+complement to this log's own already-logged blur-synthesis entries: those
+manufacture more elongated boxes; NWD (or a blended NWD+CIoU loss, which
+the original paper itself recommends -- keep IoU for well-sized objects,
+blend in NWD for tiny ones) is what would let the model actually learn from
+that data cleanly, rather than fighting a loss metric that penalizes
+elongated tiny boxes harshest exactly where the training signal is already
+sparsest.
+
+**Effort vs. payoff.** Low-moderate effort: this is a self-contained
+addition to `BboxLoss`/`bbox_iou` inside the project's own installed
+Ultralytics copy (a few dozen lines -- Gaussian-encode a box, compute the
+closed-form 2D Wasserstein distance, normalize, blend with existing CIoU by
+some ratio per the paper's own ablation), verifiable via reading the
+official MMDetection repo's loss implementation as a reference and unit-
+testing against known box pairs before touching training. No new data, no
+new dependency, no export changes. Payoff: genuinely unverified for this
+model -- the NWD paper's own reported gains are on aerial-imagery tiny
+objects (AI-TOD), not golf clubheads, and the mechanism has not been tested
+here. It is, however, the cheapest and lowest-risk item in this log's
+entire motion-blur bucket to try, and the only one that requires touching
+neither the architecture nor the dataset -- a reasonable first experiment
+would be a single ablation training run (stock CIoU vs. blended NWD+CIoU,
+same data, same eval harness) before investing in any of the
+heavier architecture or data-synthesis entries already logged.
