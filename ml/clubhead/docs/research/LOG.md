@@ -4947,3 +4947,71 @@ correctly-elongated synthetic examples this log has already logged, but it
 is cheap enough to run as a quick ablation (default augmentations vs.
 +MotionBlur, same data/eval harness, visually spot-checked) before or
 alongside the heavier data-synthesis entries.
+
+## 2026-08-27 (fourth run) — `VNDetectTrajectoriesRequest`: Apple's own on-device parabolic-motion tracker, and a verified reason it likely does not fit a golf swing
+
+Rotating out of the motion-blur-heavy run of architecture/augmentation entries
+(JFD3, NWD, Albumentations MotionBlur, all logged earlier today) into the
+temporal/multi-frame category, since the brief flags motion as the thing
+that separates a moving clubhead from static camouflage when appearance
+can't. This is a different kind of entry: not a paper or dataset, but a
+first-party iOS API already sitting in every build of this app, checked
+directly against its own stated constraints rather than assumed to fit.
+
+**What it is.** `VNDetectTrajectoriesRequest`, part of Apple's Vision
+framework since iOS 14, introduced at WWDC20 session 10099 ("Explore the
+Action & Vision app"). It runs on a live `AVFoundation` frame stream,
+tracks a moving shape's centroid across frames, and fits the path to a
+model the framework calls a parabola. It exposes `frameAnalysisSpacing`
+(how often to run), `trajectoryLength` (how many points to require before
+accepting a trajectory), and `minimumObjectSize`/`maximumObjectSize` (to
+filter noise by expected object scale). It is on-device, real-time, and
+ships in the OS -- zero training data, zero export step, zero new
+dependency.
+
+**URL.** https://developer.apple.com/documentation/vision/vndetecttrajectoriesrequest
+and https://developer.apple.com/videos/play/wwdc2020/10099/ (WWDC session,
+fetched directly for the transcript quotes below -- the reference doc page
+itself is a JS-rendered SPA that would not return body text through this
+sandbox's fetch tool).
+
+**Licence.** Not applicable in the usual sense: this is part of the iOS
+SDK covered by the standard Apple Developer Program / Xcode license, the
+same terms already covering every other Vision/CoreML API this app uses.
+No separate licence risk, no AGPL-style trap to check.
+
+**Which failure mode it addresses, and the verified reason to be skeptical.**
+Aimed at both (temporal recovery for camouflage zero-detections; a possible
+cross-check for blur-degraded frames), but the WWDC transcript itself
+states the hard constraint, quoted directly: *"Objects have to travel on
+some kind of a parabola. Now, a straight line is a parabola. That allows us
+to filter out spurious movements."* A golf clubhead's path through the
+backswing and downswing is a circular arc pivoting around the shoulders --
+centripetal, not the constant-one-directional-acceleration motion a
+parabola models -- and a follow-up search for prior art applying this API
+to swung/rotational sports objects (golf, tennis) returned nothing: no
+blog post, sample project, or paper describes anyone using it for a swing
+rather than a thrown or kicked object (the WWDC demo itself is a thrown
+bean bag). The transcript's second constraint, *"It requires a stable
+scene... the phone stabilized on a tripod or otherwise fixated,"* is
+probably already satisfied by this app's typical down-the-line/face-on
+static camera placement (per `eval/test_set_sources.md`), so that part is
+not the blocker -- the motion-model mismatch is.
+
+**Why it might still be worth a look.** The one place a short window of
+the swing plausibly *does* look locally straight-ish is the moment right
+around impact, which is also exactly where blur and phantom-detection
+failures cluster -- if `trajectoryLength` is set very short, the fit only
+needs local linearity, not a true global parabola. But this is a guess,
+not a finding: nothing found here confirms it works, and Apple's own
+framing (ballistic objects, not rotational ones) argues against it holding
+up outside that narrow window.
+
+**Effort vs. payoff.** Effort to find out is very low -- add the request
+alongside the existing CoreML inference on a handful of already-recorded
+swing clips (no new data, no training, no export) and see whether any
+accepted trajectory actually tracks the clubhead near impact, or whether
+it never fires / fires on the wrong object. Payoff is speculative and,
+given the absence of any prior art for rotational motion, more likely
+negative than positive -- this is a half-day spike to rule in or out, not
+a plan to build on yet.
