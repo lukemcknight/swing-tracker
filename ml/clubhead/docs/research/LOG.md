@@ -5176,3 +5176,97 @@ similar camera-based launch-monitor projects (GSPro/E6-compatible units,
 etc.).
 
 ---
+
+## 2026-08-28 (third run) — `VNGenerateOpticalFlowRequest`: Apple's own on-device dense optical-flow API, and the specific reason it does not share the previous entry's motion-model problem
+
+Rotating back into the temporal/multi-frame category (bullet 3) rather than
+a fourth dataset or golf-tracking run today (badminton close-out and PiTrac
+already covered those areas this run-cycle). This is a direct follow-up to
+this log's most recent entry (2026-08-27 fourth run,
+`VNDetectTrajectoriesRequest`), which was ruled out mainly because Vision's
+trajectory tracker fits a *parabola* to the moving object's path and a golf
+swing is circular/centripetal, not ballistic. Before discarding "first-party
+Vision motion APIs" as a category on one data point, this run checked
+whether the *other* first-party Vision motion API has the same problem.
+
+**What it is.** `VNGenerateOpticalFlowRequest`, also part of Apple's Vision
+framework since iOS 14, introduced in the same WWDC20 cycle as the
+trajectory API but in a different session (session 10673, "Explore Computer
+Vision APIs" — verified by direct transcript fetch, not search-indexed).
+Unlike the trajectory request, it does not track a shape or fit any motion
+model at all: it computes **dense, per-pixel optical flow** between two
+frames and returns a `VNPixelBufferObservation` — a floating-point image
+with interleaved X/Y displacement for every pixel. Quoted directly from the
+session transcript: *"Optical Flow... gives me a per pixel flow between X
+and Y."* The transcript also explains why this is a meaningfully different
+tool than simple frame-differencing or global image registration: *"The
+registration will give me the alignment between the two images by telling
+me how much the image has moved up and to the right. But I can use the
+Optical Flow, because it's going to tell me, for each pixel, how they have
+moved"* — i.e. it separates camera motion from independent object motion at
+the pixel level, which is exactly what a static down-the-line/face-on
+camera (this app's typical setup, per `eval/test_set_sources.md`) needs to
+isolate a moving clubhead from a static camouflaged background. A second
+revision, `VNGenerateOpticalFlowRequestRevision2`, is documented (per
+Apple's top-level API reference page, fetched directly) to use "modern
+machine learning under the hood" instead of a classical algorithm, and a
+`ComputationAccuracy` option exists to trade speed for precision — but this
+run could not fetch that sub-page's actual content (same JS-rendered-SPA
+limitation the previous entry hit on its own reference sub-pages) or the
+revision-1-vs-2 comparison page, so which revision or accuracy level is
+appropriate for real-time on-device use is **not verified**, only known to
+be configurable.
+
+**URL.** https://developer.apple.com/documentation/vision/vngenerateopticalflowrequest
+(top-level page content fetched directly) and
+https://developer.apple.com/videos/play/wwdc2020/10673/ (WWDC session
+transcript, fetched directly for the quotes above).
+
+**Licence.** Not applicable in the usual sense, same as the prior Vision-API
+entry: part of the iOS SDK under the standard Apple Developer Program /
+Xcode license already covering this app's other Vision/CoreML use. No
+separate licence risk.
+
+**Which failure mode it addresses.** Primarily camouflage — the zero-candidate-detection
+failure. The proposed use is as a fallback trigger, not a replacement for
+the CoreML detector: when the appearance-based YOLO model returns no boxes
+above threshold on a frame where its neighbours did fire, run optical flow
+between that frame and an adjacent one, and treat the pixel region with flow
+magnitude/direction inconsistent with the (near-zero, static-camera)
+background flow as a candidate ROI — either fed back into the detector as a
+crop/zoom or used directly as a bounding region. This is a plausible fix
+for exactly the camouflage cases described in the brief (dark clubhead
+against dark clothing or foliage, sharp frame, zero detections even at
+confidence 0.05) because it does not depend on appearance contrast at all,
+only on the clubhead moving relative to a static background — and unlike
+the previously-logged trajectory API, it makes no assumption about the
+*shape* of that motion (no parabola-fitting, no minimum trajectory length),
+so the circular-swing objection that ruled out `VNDetectTrajectoriesRequest`
+does not apply here. Secondary, unverified relevance to motion blur: the
+magnitude of per-pixel flow could in principle help flag which frames/regions
+are blur-streak candidates for labeling QA (similar in spirit to the
+already-logged DeFMO entry), but this run found no prior art applying
+Vision's optical flow to that purpose and is not claiming it as a finding.
+
+**Effort vs. payoff.** Low-to-moderate effort to try, higher and less
+certain effort to productionize. Effort to test: identical shape to the
+prior entry's spike — add the request alongside existing CoreML inference
+over a handful of already-recorded swing clips, run it only on frames where
+the detector abstains, and visually check whether the flagged high-flow
+region actually sits on the clubhead or on something else moving (arms,
+shirt fabric, background foliage in wind — all plausible false triggers
+for a pure-motion signal with no appearance check). That confound is the
+main verified risk: dense optical flow will happily flag *any* moving
+pixel, and this run found no evidence one way or the other about how
+cleanly a swinging clubhead's flow separates from a swinging body's flow at
+phone-camera resolution and frame rate. Payoff, if it does separate
+cleanly: a zero-training, zero-export, on-device rescue path for exactly
+the failure class the brief calls out as producing zero candidates even at
+very low confidence — something no architecture change in this log fixes,
+since architecture changes still operate on single-frame appearance.
+Unverified and not to be assumed: real-time performance of dense per-pixel
+flow at this app's target frame rate/resolution, and which
+`ComputationAccuracy`/revision setting that requires — both sub-pages
+needed to answer that were not fetchable from this sandbox.
+
+---
