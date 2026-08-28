@@ -5015,3 +5015,81 @@ it never fires / fires on the wrong object. Payoff is speculative and,
 given the absence of any prior art for rotational motion, more likely
 negative than positive -- this is a half-day spike to rule in or out, not
 a plan to build on yet.
+
+---
+
+## 2026-08-28 — Closing the 2026-08-17 dead end: "One-Shot Badminton Shuttle Detection for Mobile Robots" now has a public repo, and it is a negative result (AGPL code, no working dataset link)
+
+**What it is.** The 2026-08-17 (third-run) entry flagged this paper
+(arXiv:2603.06691v2) as a promising-sounding lead — a 20,510-frame,
+11-background indoor/outdoor shuttlecock dataset explicitly stratified by
+difficulty, with a badminton-analogue of both this project's failure modes
+(small fast object, motion blur mentioned in the abstract) — but could not
+find any code or dataset host and explicitly declined to log it. This run
+found the code repo (`leggedrobotics/shuttle_detection` on GitHub, fetched
+directly) and closes that open thread: it is real and live, but the
+dataset itself is not actually obtainable, and the code's licence would be
+a problem even if it were.
+
+**URL.** https://github.com/leggedrobotics/shuttle_detection (paper:
+arXiv:2603.06691v2, still unreadable directly — arxiv.org is blocked by
+this sandbox's egress proxy, the same standing restriction every prior run
+has hit; everything below is sourced from the GitHub repo itself, fetched
+directly, not the paper).
+
+**Licence — verbatim, from the repo's own `LICENSE` file (fetched via
+`raw.githubusercontent.com`, not just the README's claim).** GNU Affero
+General Public License, Version 3, 19 November 2007. The README states the
+reason directly: "Due to the use of Ultralytics YOLOv8, this project is
+licensed under GNU AFFERO GENERAL PUBLIC LICENSE v3.0." **Commercial use
+is not flatly prohibited, but AGPL-3.0 is copyleft**: shipping a derivative
+of this code (or of Ultralytics YOLOv8 itself, which carries the same
+licence) inside a closed-source iOS app would obligate releasing the
+app's corresponding source. This is the same licence-shape problem this
+log already flagged for AlbumentationsX (2026-08-27, third run) and is
+disqualifying for direct reuse in this project without a separate
+commercial Ultralytics licence.
+
+**Dataset availability — checked and it does not exist today.** The
+README's dataset section reads: "Download the dataset from
+[here](https://example.com) to your desired `<DATASET_DIR>/processed`" —
+the link is a literal `example.com` placeholder, not a real host. The
+repo's Releases page was also checked directly and returns "There aren't
+any releases here." So the 20,510-frame dataset the abstract describes is
+not downloadable from the one place a reader would expect to find it, and
+no mirror, Hugging Face/Kaggle/Zenodo listing, or alternate link was found
+by search. This is a stronger and more specific version of the 08-17
+entry's "no dataset host found" — it's not that no one has looked, it's
+that the authors' own repo ships a dead placeholder.
+
+**Which failure mode.** Motion blur and camouflage, in principle (indoor
+badminton is a small, fast, occasionally low-contrast object against
+variable backgrounds) — but moot, since nothing here is usable.
+
+**Why it helps this model specifically.** It doesn't, beyond closing an
+open question cheaply. The abstract's framing (indoor/outdoor split,
+explicit difficulty stratification, semi-automatic annotation from
+stationary camera footage) is exactly the shape of dataset this project's
+biggest gap (real indoor/low-light footage with genuine motion blur) needs
+an analogue of — which is why the 08-17 entry flagged it — but a dataset
+that cannot be downloaded and code under a licence incompatible with a
+closed-source app contribute nothing actionable. The one reusable idea is
+the paper's own method, not its artifacts: "semi-automatic annotation from
+stationary camera footage" (per the abstract, not independently verified
+beyond the phrase itself) is a labeling-cost technique, not a licensable
+asset, so it isn't logged here as a separate finding — it would need its
+own verification pass against the actual paper text, which remains
+unreadable from this sandbox.
+
+**Effort vs. payoff.** Effort spent: low (one repo fetch, one releases-page
+check, one LICENSE fetch — all direct, no speculation). Payoff: zero as a
+usable asset, but real as log hygiene — it prevents a future run from
+re-discovering the same GitHub repo, getting excited about the abstract
+again, and re-spending a cycle before hitting the same placeholder link
+and the same AGPL wall. Recommendation: do not pursue this further unless
+the actual arXiv PDF becomes reachable and reveals a real dataset link the
+GitHub repo omits; low prior on that changing the licence problem either
+way, since AGPL is a repo-level declaration independent of where the data
+ends up hosted.
+
+---
