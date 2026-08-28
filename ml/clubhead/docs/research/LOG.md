@@ -5093,3 +5093,86 @@ way, since AGPL is a repo-level declaration independent of where the data
 ends up hosted.
 
 ---
+
+## 2026-08-28 (second run) — PiTrac: real open-source golf launch monitor, but a separately-licensed non-commercial YOLO model and, as far as verified, ball-only rather than club-head
+
+**What it is.** `github.com/PiTracLM/PiTrac` (moved from the original
+`jamespilgrim/PiTrac`), an actively developed, real open-source DIY golf
+launch monitor built on Raspberry Pi + camera hardware, independently
+documented on Hackaday.io and at docs.pitrac.org. It determines ball
+launch speed, angle, and spin from camera images. Chosen for this rotation
+(golf-specific pose/club-tracking open-source implementations) because it
+is a working, shipping computer-vision pipeline aimed at fast-moving golf
+equipment — a different category from the pose-estimation papers (GolfPose,
+CADDIE) and the dataset-only projects (GolfDB, CaddieSet) already logged.
+
+**Verification performed.** Fetched the GitHub repo listing directly (not
+search snippets): confirmed a real, current, non-stub repo with `LICENSE`,
+`LICENSE.MODEL.md`, `LICENSE.ED_LIB.md`, `LICENSE.RPICAM-APPS.md`,
+`LICENSE.SHEDSKIN.md` at the root plus `Software/`, `Hardware/`, and
+`3D Printed Parts/` directories. Fetched `LICENSE` and `LICENSE.MODEL.md`
+verbatim via `raw.githubusercontent.com`. `docs.pitrac.org` and
+`hackaday.io` both hit this sandbox's standing egress block (same failure
+mode noted for other domains throughout this log), and the `Software/`
+subtree did not render enough detail through this sandbox's fetch tool to
+inspect the model's class names directly — those two gaps are called out
+below rather than papered over.
+
+**Licence — verified; two different licences cover two different things,
+and both rule this out.** Code (`LICENSE`): GNU General Public License
+Version 2, June 1991 — copyleft, the same commercial-incompatibility shape
+already flagged in this log for AGPL projects (the 2026-08-17 badminton
+entry, the 2026-08-27 AlbumentationsX entry). Model weights
+(`LICENSE.MODEL.md`), separate and explicitly proprietary: it covers
+"Model Materials" — trained weights in `.onnx`, `.pt`, `.pth`, `.engine`,
+`.tflite`, `.bin`, `.param`, `.safetensors` formats — and explicitly names
+"all YOLO-based object detection model weights and ncnn model files
+distributed with PiTrac." It grants only a "limited, non-exclusive,
+non-transferable, non-sublicensable, revocable, royalty-free license" for
+personal, non-commercial "Authorized Use" of the assembled PiTrac system.
+Section 3(f) states verbatim that licensees shall NOT "Use the Model
+Materials in any commercial product or service... without prior written
+permission from PiTracLM," and the same section separately forbids
+redistribution, extraction from the PiTrac software, and any derivative
+work including "fine-tuning" or "quantization." So even setting the GPL
+code licence aside, the model weights carry a harder, more specific block
+than ordinary copyleft: not just "your app must also be GPL," but "you may
+not fine-tune, quantize, or redistribute this model at all, for any use
+outside running stock PiTrac."
+
+**Which failure mode.** Neither directly — like the GolfDB/CaddieSet/
+badminton entries, this is a dataset/model-reuse question, not a technique.
+Checked because PiTrac is a real, shipping YOLO-based CV system pointed at
+fast-moving golf equipment, i.e. exactly the kind of adjacent project that
+might have already solved, or at least captured training data for, this
+project's motion-blur-at-impact-speed problem.
+
+**Why it helps this model specifically.** It doesn't, as a source of
+weights or data — commercial use is explicitly forbidden, and
+fine-tuning/extraction are explicitly forbidden even under the personal-use
+licence. It is also very likely the wrong target object: every
+independent description of PiTrac checked (its own repo description, and
+the search-surfaced framing of its Hackaday page and docs site) describes
+ball launch speed/angle/spin only; club-head tracking is never mentioned in
+any of them, consistent with the 2026-08-18 CaddieSet entry's finding that
+launch-monitor systems are typically ball-focused, with any club data
+coming from a separate swing sensor rather than vision. This run could not
+positively confirm the YOLO model's class list excludes the club (the
+`Software/LMSourceCode` tree did not render through this sandbox's fetch
+tool), so "very likely wrong domain" is stated as a strong inference from
+three independent descriptions, not a confirmed fact. Either way, the
+licence terms make the domain question moot for this project.
+
+**Effort vs. payoff.** Low-moderate effort: three direct fetches (repo
+root, `LICENSE`, `LICENSE.MODEL.md`), two blocked/unreadable follow-ups
+(`docs.pitrac.org`, the `Software/` subtree) called out rather than
+guessed around. Payoff: zero as a data or model source, but real as log
+hygiene — it closes off "adjacent open-source golf CV hardware projects"
+as a place to look for reusable YOLO weights or club imagery, and it
+surfaces a licensing pattern this log has not seen before (a separate,
+stricter, explicitly anti-fine-tuning "Model Materials" licence layered on
+top of GPL code) worth watching for before spending another cycle on
+similar camera-based launch-monitor projects (GSPro/E6-compatible units,
+etc.).
+
+---
