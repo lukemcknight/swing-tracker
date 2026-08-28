@@ -5270,3 +5270,111 @@ flow at this app's target frame rate/resolution, and which
 needed to answer that were not fetchable from this sandbox.
 
 ---
+
+## 2026-08-28 (fourth run) — YOLO11-OBB: native oriented-box detection, plus a geometric explanation for why axis-aligned boxes understate blur elongation
+
+**Area covered.** Motion blur, architecture/box-representation layer.
+Grepped this log's 88 prior entries for "OBB" and "oriented" before
+starting: no hits. Every prior architecture entry (JFD3, DFRCP, MoSA-Det,
+D-FINE, RF-DETR, YOLOV, Temporal-YOLOv8, the P2/4-head entry, NWD loss)
+changes the network or the loss while keeping the box representation
+itself axis-aligned. This is the first entry to question the box
+representation.
+
+**What it is.** Oriented Bounding Box (OBB) detection is a standard
+Ultralytics YOLO task (alongside detect/segment/pose/classify) that
+predicts a rotated rectangle — center, width, height, plus an angle — instead
+of an axis-aligned box. It ships in the same repo this project's YOLO11n
+already comes from, with official pretrained nano weights
+(`yolo11n-obb.pt`, 2.7M params, pretrained on DOTAv1) confirmed present in
+`ultralytics/docs/en/models/yolo11.md` (fetched directly from
+`raw.githubusercontent.com/ultralytics/ultralytics/main`, HTTP 200). Label
+format is four corner points per box (`class x1 y1 x2 y2 x3 y3 x4 y4`),
+internally represented as `xywhr`. OBB is Ultralytics' standard answer for
+elongated objects photographed at arbitrary angles (its usual use cases are
+ships, aerial imagery, rotated text) — a description that fits a
+motion-blur streak more literally than it fits this project's current
+axis-aligned clubhead box.
+
+**Why an axis-aligned box is the wrong representation for a blur streak —
+verified by direct derivation, not by a citation.** For a true streak of
+length L and width w rotated by angle θ from horizontal, its axis-aligned
+bounding box has width = L·cosθ + w·sinθ and height = L·sinθ + w·cosθ (both
+terms standard trig for a rotated rectangle's AABB). At θ=0° or 90° this
+recovers the true L/w elongation. At θ=45°, width = height = (L+w)/√2 —
+**the measured aspect ratio collapses to exactly 1.0 regardless of how
+elongated the real streak is.** So an annotator who follows
+`labeling-spec.md`'s rule perfectly (box the *full* visible streak) will
+still produce a near-square axis-aligned box whenever the streak's
+image-plane angle is near 45°, purely from AABB geometry — no under-boxing
+required. This is a plausible, previously unstated third explanation for
+the brief's median-elongation-1.60 finding, alongside "annotators are
+under-drawing" and "blur genuinely is minimal in this test set." It is
+**not verified against this project's own data** — the per-frame streak-angle
+distribution needed to confirm it was not available to this research task —
+but the geometry itself is exact and independently checkable, and a golf
+downswing sweeps through a wide range of image-plane angles around impact,
+so some fraction of frames landing near the collapse angle is expected on
+priors alone.
+
+**URL, verified directly.** Task docs:
+`raw.githubusercontent.com/ultralytics/ultralytics/main/docs/en/tasks/obb.md`
+(HTTP 200) — confirms the label format and that `yolo26n-obb.pt` (the
+YOLO26 generation) is the currently-documented default, with YOLO11's own
+`yolo11n-obb.pt` still listed on the YOLO11 model page. CoreML/OBB
+interaction confirmed by reading
+`ultralytics/engine/exporter.py` directly (HTTP 200, `main` branch, not
+inferred from a blog post): CoreML export itself does not exclude the OBB
+task, but the exporter's own warning states `"'nms=True' is only supported
+for detect, segment and pose models. Forcing 'nms=False'."` — i.e. **OBB
+models cannot use Ultralytics' embedded CoreML NMS pipeline.** The `NMSModel`
+wrapper class explicitly branches on `model.task == 'obb'` with different
+(8x) box-decoding multiplier logic, confirming OBB decoding is
+structurally different from the detect-task path this project's current
+CoreML pipeline presumably relies on.
+
+**Licence.** Same repository, same **AGPL-3.0** licence as the YOLO11
+detect task this project already trains against (verified from
+`ultralytics/LICENSE` on `main`, HTTP 200) — OBB is not a separately
+licensed feature, so this introduces no new licensing question beyond
+whatever terms already govern this project's use of Ultralytics YOLO11.
+
+**Which failure mode.** Motion blur only. OBB changes how a *detected*
+box is shaped and oriented; it does nothing for the camouflage failure
+mode's actual problem (zero candidate detections at any confidence), and
+is a different, complementary layer to the already-logged BlurBall entry
+(2026-08-16 — an explicit center+length+orientation heatmap auxiliary
+head, custom architecture surgery) and NWD-loss entry (2026-08-27 — a
+better IoU-replacement loss that still assumes an axis-aligned box).
+
+**Why it helps this model specifically.** Two independent benefits, if the
+angle hypothesis above holds even partially: (1) it would let the model
+and any downstream loss see the streak's *true* elongation and orientation
+instead of an angle-collapsed AABB, which the brief's own p90-of-3.01
+figure suggests is already being lost for streaks that happen to fall near
+axis-aligned angles too; (2) box orientation is itself a free, physically
+meaningful signal (the swing plane at that instant) that the current
+axis-aligned pipeline discards entirely — a byproduct with no
+extra-labeling cost beyond what OBB annotation itself requires.
+
+**Effort vs. payoff.** High effort, uncertain but structurally sound
+payoff. Effort: every training image needs re-annotation in the OBB corner
+format (this is not a schema tweak on top of existing axis-aligned labels —
+a real rotation angle has to be drawn or recovered, and the existing
+54%-Roboflow-sourced boxes almost certainly are not recoverable to OBB
+without re-drawing from the original frames); the on-device iOS pipeline
+loses Ultralytics' built-in CoreML NMS and needs custom rotated-box
+decoding and NMS written by hand, a real engineering cost the confirmed
+`exporter.py` warning makes concrete, not hypothetical. Payoff: the
+per-streak-angle elongation-collapse mechanism is exact math, not a
+guess, but its *practical* contribution to the measured 1.60 median is
+unverified — it could be a large fraction of the gap or a minor one,
+and this run had no access to per-frame streak-angle data to tell which.
+Recommended next step before committing to a relabel is cheap and
+falsifiable: from the existing axis-aligned dataset, estimate streak angle
+per blurred box (e.g. via a quick optical-flow or gradient-orientation
+pass over the labeled crop) and check whether low-elongation boxes cluster
+near 45° — that single analysis, not a relabel, is what should decide
+whether this entry's hypothesis is worth acting on.
+
+---
