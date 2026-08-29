@@ -5533,3 +5533,83 @@ degradation directly from this project's own phone footage, which owns its
 license outright.
 
 ---
+
+## 2026-08-29 (third run) — Vcamba: a Mamba/state-space video camouflaged-object-detection network with explicit dual-domain motion perception — real working code, but unlicensed and CUDA-kernel-locked
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object detection,
+temporal methods specifically). This log has logged nine prior VCOD/COD
+mechanisms (SLT-Net, SINet-V2, EMIP, SAM-PM, CamDiff, Motion-Informed
+Enhancement, DTUM, Channel-stacked multi-frame YOLO, TrackNetV4). Vcamba is
+a tenth, and mechanically distinct from all of them: it is the first in
+this log built on a Mamba/selective-state-space backbone rather than a
+transformer or plain CNN, and the first to fuse motion perception in both
+the spatial domain *and* the frequency domain in one network rather than
+picking one (the 2026-08-29 first-run MS-YOLOv11 entry today did frequency
+only, appearance-only, no motion).
+
+**What it is.** "Video Camouflaged Object Detection via Mamba-based
+Spatial-and-Frequency Motion Perception" (Vcamba), Xin Li, Keren Fu, Qijun
+Zhao, arXiv:2507.23601 (posted Feb 2026 per search-result metadata; arXiv
+itself is blocked from this sandbox's egress, consistent with prior runs'
+notes, so the abstract's own performance numbers could not be read
+directly — sourced from secondary summaries only, one notch below full
+verification). Architecture: a VMamba (vssm1) backbone with three
+published variants (tiny/small/base, embed dims 96/128, depths
+[2,2,15,2]), plus four VCOD-specific modules confirmed present in the
+actual code (not just the abstract) — an adaptive frequency-component
+enhancement (AFE) module, space- and frequency-based long-range motion
+perception modules (SLMP/FLMP), and a fusion module (SFMF) that combines
+them. Evaluated on MoCA-Mask and CAD2016 per `mypath.py`'s dataset
+registry — the same MoCA-Mask benchmark this log's 2026-08-15 SLT-Net entry
+already found to be a licensing dead end for the *dataset*, which is a
+separate question from the *code's* license here.
+
+**Verification.** Cloned `https://github.com/BoydeLi/Vcamba` directly
+(`git clone`, not just viewing the page). Confirmed it is a real, working,
+non-trivial repo: `train_video_long_term.py` (18KB), a `models/` directory
+with `vcamba.py`, `vmamba.py`, `vssblock.py`, etc., and a `kernels/`
+directory containing a full custom CUDA extension for the selective-scan
+operation (`csrc/selective_scan/`, with separate forward/backward `.cu`
+kernels) — this is not an empty or placeholder release like the 2026-08-29
+first-run MS-YOLOv11 entry earlier today. Searched the repo for any
+`LICENSE`/`LICENCE`/`COPYING` file at any depth: **none exists.** The
+`README.md` is two lines (title and authors only) with no license section.
+**No license is granted — default copyright applies, meaning no use,
+commercial or otherwise, is legally permitted without contacting the
+authors.**
+
+**Which failure mode.** Camouflage (primary). Not motion blur — this
+detects a camouflaged object across frames using its motion signature, a
+different problem from recovering an elongated blur streak within one
+frame.
+
+**Why it helps this model specifically, in principle.** The brief's
+camouflage frames are described as producing *zero* candidate detections
+even at confidence 0.05 on visually sharp footage — an appearance-domain
+dead end this log has repeatedly noted motion can solve where texture
+cannot (foliage doesn't move with the swing; the clubhead does). Vcamba's
+specific contribution over the log's other motion-based entries (DTUM,
+Channel-stacked multi-frame YOLO, TrackNetV4) is doing that motion
+comparison in the frequency domain as well as the spatial domain in a
+single fused representation, which is a mechanically different way of
+extracting the same "moving-thing-against-static-background" signal this
+model's zero-detection frames need.
+
+**Effort vs. payoff.** Currently zero payoff: the license blocks all use,
+so nothing here is buildable today regardless of the model's actual
+performance. Even setting the license aside, the architecture itself is a
+poor practical fit for this project's deployment target — a Mamba
+selective-scan layer needs a custom CUDA kernel to run efficiently (that is
+what `kernels/selective_scan/` exists for), and there is no CoreML or
+Metal Performance Shaders equivalent shipped or implied anywhere in this
+repo; porting a working VMamba backbone to on-device Apple Neural Engine
+inference would be a substantial research effort on its own, independent
+of this specific paper. Net: interesting confirmation that frequency+motion
+fusion is an active, real research direction for exactly this model's
+camouflage symptom, but not an actionable lead — the same "get the
+authors' permission or don't use it" conclusion as several prior VCOD
+entries, compounded here by a genuine mobile-deployment gap the CNN/YOLO
+alternatives already logged (Channel-stacked multi-frame YOLO,
+Motion-Informed Enhancement) don't have.
+
+---
