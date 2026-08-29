@@ -5465,3 +5465,71 @@ were scoped as concrete, buildable changes. Until that reading happens, this
 entry should be treated as a lead, not an actionable recommendation.
 
 ---
+
+## 2026-08-29 (second run) — LOL-Blur / Real-LOL-Blur: a real, verified dataset that pairs low light AND motion blur in the same frames — confirms the joint regime exists, but is non-commercial (S-Lab License 1.0)
+
+**Area covered.** Bullet 1 (commercial-licensable footage, especially low
+light / indoor / older phones, where real motion blur appears). This log
+has separately logged low-light datasets (Zero-DCE, DEN) and blur datasets
+(RealBlur, SloMoBlur, GoPro/REDS, iPhoneBlur), but every one of those treats
+low light and blur as independent axes. This is the first entry to check a
+dataset that pairs them in the same image — exactly the "overcast, evening
+light, older phones" regime the brief flags as where real blur is expected
+and has never been measured for this model.
+
+**What it is.** LOL-Blur, from "LEDNet: Joint Low-light Enhancement and
+Deblurring in the Dark" (Zhou, Li, Chen, Loy — ECCV 2022). Two parts: (1) a
+synthetic set — 200 dynamic dark-scene videos (170 train / 30 test, 60
+frames each, 12,000 paired low-light-blurry / normal-light-sharp frames,
+indoor and outdoor); (2) Real-LOL-Blur — 1,354 *real* night-time blurry
+images (482 from RealBlur-J plus 872 shot on a Sony RX10 IV) with no sharp
+ground truth. Code, pretrained weights, and both dataset splits are
+confirmed live on GitHub/Google Drive/BaiduPan at
+`github.com/sczhou/LEDNet`, not a dead or empty link.
+
+**Verification.** Fetched the LEDNet GitHub repo directly and its `LICENSE`
+file. The repo — code, weights, and by the README's own framing the
+dataset release alongside it — is under **S-Lab License 1.0**, quoted
+verbatim: "Redistribution and use for non-commercial purpose in source and
+binary forms, with or without modification, are permitted... In the event
+that redistribution and/or use for commercial purpose in source or binary
+forms, with or without modification is required, please contact the
+contributor(s) of the work." This is an explicit non-commercial license,
+same family as several prior ruled-out entries (Zero-DCE original,
+CaddieSet-adjacent research licenses) — not silence on commercial use, an
+active prohibition without the copyright holder's separate permission.
+
+**Which failure mode.** Both, jointly — this is exactly the caveat in the
+brief's evidence section: a dataset built specifically because low light
+lengthens exposure and lengthened exposure causes blur, so the two
+co-occur in real footage even though this project's 3-clip outdoor test set
+(fast shutter, good light) structurally cannot show that.
+
+**Why it helps this model specifically.** Not as training data — it's
+licensed out. Its value here is diagnostic and architectural, not a data
+source: it confirms the joint low-light/blur regime is real and studied
+enough to have 1,354 *real* (not synthetic) paired night images, which is
+independent evidence the brief's caveat is right to worry about, and it
+names LEDNet's own architecture (a joint enhance-then-deblur pipeline) as a
+prior-art shape for a preprocessing stage if this project ever measures
+indoor performance and finds blur-in-the-dark is the dominant failure —
+which it cannot yet do, since the indoor test set is quarantined per the
+README. The synthetic-generation *method* (pairing sharp long-exposure
+frames with a physically-modeled dark+blur degradation) is describable from
+public summaries and not itself copyrighted, unlike the shipped weights —
+so a from-scratch reimplementation of the synthesis pipeline against this
+project's own footage would sidestep the license, at the cost of building
+it.
+
+**Effort vs. payoff.** Low effort to date (one repo, one license file, both
+confirmed quickly) and the payoff is informational, not a usable asset:
+this closes off "just use LOL-Blur" as an option, and re-confirms (a third
+time, after Zero-DCE and the RealBlur/SloMoBlur entries) that the
+recurring blocker in this whole research area is non-commercial licensing
+on exactly the real-world dark/blurred imagery this project needs most.
+The actionable next step isn't this dataset — it's what the 2026-08-14 PSF
+entry and 2026-08-25 6-DOF entry already proposed: synthesize the
+degradation directly from this project's own phone footage, which owns its
+license outright.
+
+---
