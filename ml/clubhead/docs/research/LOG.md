@@ -5613,3 +5613,90 @@ alternatives already logged (Channel-stacked multi-frame YOLO,
 Motion-Informed Enhancement) don't have.
 
 ---
+
+## 2026-08-29 (fourth run) — YOLO-Ball (tennis, 2026): independent empirical evidence that combining this log's already-logged P2 head and NWD loss gives a real gain on a directly analogous small/blurred/occluded ball-in-sport problem
+
+**Area covered.** Motion blur architectures, with a secondary read on small-
+object detection. Two other leads were checked first and discarded before
+this one: (1) the Kaggle mirror of GolfDB's raw source videos
+(`marcmarais/videos-160`) — not re-checked in depth, since the 2026-08-13
+GolfDB entry already establishes the underlying licence (CC BY-NC-4.0,
+non-commercial) and curation bias (blur explicitly filtered out) apply
+regardless of which mirror serves the files; a different host does not
+change either dealbreaker. (2) The HUE Dataset (event-camera + frame
+sequences for low-light vision, arXiv:2410.19164) — has genuine indoor/
+dim-light sequences, but is built around event-camera sensor data phones
+don't have, so it doesn't transfer to this project's RGB-only capture
+pipeline; not worth a full entry over that mismatch.
+
+**What it is.** "YOLO-Ball: Real-time tennis ball detection under occlusion
+and motion blur" (Ding, Fan, Zhao; SAGE, 2026;
+DOI 10.1177/17543371261423768, indexed under *Proceedings of the
+Institution of Mechanical Engineers*). Three stated contributions, per
+consistent search-engine-indexed abstract excerpts (the DOI resolves to
+`journals.sagepub.com`, which — like every SAGE/arXiv/IEEE host checked in
+every prior run of this log — returned `EGRESS_BLOCKED` from this sandbox,
+so nothing below is a primary-source read): (1) a multi-branch occlusion-
+aware attention mechanism for dynamic multi-scale feature fusion; (2) a
+"dual-flow shallow fusion pyramid combining P2 features with bidirectional
+fusion to enhance small target and blur handling" — mechanically the same
+lever as this log's 2026-08-23 P2/4-head entry (add a finer, stride-4
+detection head), described independently by a different team on a
+different sport; (3) a "dynamic balance loss integrating Normalized
+Gaussian Wasserstein Distance (NWD) and IoU with learnable alignment
+weights" — the same NWD mechanism as this log's 2026-08-27 entry, here
+blended adaptively rather than at a fixed ratio. Reported results on their
+own constructed tennis dataset: 82.2% precision, mAP@0.5 70.9%,
+"outperforming YOLOv8/v10/v11 by up to 12.5%," with stated generalization
+to volleyball and football detection.
+
+**Verification.** Existence of the paper and its abstract is confirmed
+across four independent search passes with consistent detail (title,
+authors, DOI, contribution list, and result numbers all matched every
+time). What is **not** verified: the paper's full text, its actual dataset
+composition, and — critically — no GitHub repository, code release, or
+dataset download link surfaced in any search performed this run. This is
+an existence-only result in this log's established sense: real paper,
+plausible and internally consistent claims, zero shippable artifact.
+
+**Which failure mode.** Motion blur (primary, via the P2-pyramid and NWD-
+loss combination) and, secondarily, occlusion — which this entry is
+careful **not** to conflate with camouflage. Occlusion (a ball hidden
+behind a player or racket, needing to be found once it re-emerges) and
+camouflage (an object fully visible but blending into background texture)
+are different problems with different fixes; the "occlusion-aware
+attention" contribution here is closer in spirit to this log's 2026-08-17
+InpaintNet and 2026-08-26 OC-SORT entries (recovering identity across a
+gap) than to the appearance/motion-based camouflage entries (SINet-V2,
+SAM-PM, DTUM, etc.). Only the P2+NWD half of this paper speaks to this
+model's brief.
+
+**Why it helps this model specifically.** Neither the P2/4-head entry nor
+the NWD-loss entry in this log carried any evidence beyond "well-motivated,
+untested on this model" — both closed with an explicit "genuinely
+unverified for this model, try it as a first experiment" caveat. YOLO-Ball
+is the first thing this log has found that combines both levers together
+and reports a result on a problem shape genuinely close to this one: a
+small, fast, occasionally-blurred ball-sized object filmed at
+sport-action speed, evaluated against the same YOLOv8/v10/v11 family this
+project already trains on. A +12.5% lift over stock YOLO baselines, even
+on a different sport and an unverified/unreleased dataset, is a real
+independent data point in favor of the specific combination (finer
+detection head + Wasserstein-based tiny/elongated-box loss) this log
+already recommended on first-principles grounds — it doesn't replace
+running the ablation on this project's own data, but it raises the prior
+that the combination is worth prioritizing over other still-untested
+architecture entries in this log's backlog.
+
+**Effort vs. payoff.** Low effort (search-and-verify only; the usual
+sandbox egress block prevented a primary-source read of methodology or
+dataset details). Payoff is informational, not a usable asset: there is no
+code, no dataset, and no camouflage-relevant content here, and the result
+is unreplicated outside the authors' own unreleased tennis set. Its value
+is narrow and specific — it modestly de-risks running the P2+NWD ablation
+this log already proposed, ahead of the heavier, still-more-speculative
+architecture entries (JFD3, DFRCP, MoSA-Det) further down the backlog. Not
+worth chasing further without a way to actually read the paper or find its
+code; a future run should not re-search this specific title again.
+
+---
