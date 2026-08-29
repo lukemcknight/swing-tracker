@@ -5378,3 +5378,90 @@ near 45° — that single analysis, not a relabel, is what should decide
 whether this entry's hypothesis is worth acting on.
 
 ---
+
+## 2026-08-29 — MS-YOLOv11: wavelet/frequency-domain small-object detection, a structurally new (non-appearance, non-motion) mechanism, but with an unverifiable, effectively empty code release
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object detection).
+Grepped this log's 89 prior entries for "wavelet", "frequency domain", and
+"Fourier" before starting: no hits. Every prior camouflage-adjacent entry in
+this log (TrackNetV4, DTUM, SLT-Net, SINet-V2, Motion-Informed Enhancement,
+CamDiff, SAM-PM, TOTNet, CAMotion, EMIP, channel-stacked YOLO) attacks the
+zero-candidate-detection problem via appearance features, motion/optical
+flow, or generative data synthesis. This is the first entry to attack it via
+a frequency-domain decomposition of the image instead.
+
+**What it is.** "MS-YOLOv11: A Wavelet-Enhanced Multi-Scale Network for
+Small Object Detection in Remote Sensing Images" (Sensors 2025, 25(19),
+6008; authors credited to Space Engineering University, Beijing, per
+search-indexed abstract). It modifies a YOLOv11 backbone — the same model
+family this project's detector is built on — with three additions: (1) a 2D
+Haar wavelet decomposition that splits feature maps into frequency
+sub-bands to explicitly preserve high-frequency edge/texture detail that
+plain convolutional downsampling loses; (2) a lightweight receptive-field
+expansion module; (3) adaptive cross-scale feature fusion. Reported mAP50 on
+four public remote-sensing benchmarks (DIOR, TGRS-HRRSD, RSOD, NWPU-VHR-10)
+ranges 89.0–99.4%, beating baseline YOLOv11 and several other SOTA
+detectors on those benchmarks — but note these are aerial/satellite imagery
+datasets, not sports or small dark-object-on-dark-background scenes, so the
+numbers themselves don't transfer as evidence for this project.
+
+**Verification, and where it stopped.** `arxiv.org`, `doi.org`,
+`www.mdpi.com`, and `www.ncbi.nlm.nih.gov` (PMC) are all blocked by this
+sandbox's egress proxy, so the paper's full text, methods section, and any
+data/code-availability statement could not be read directly — existence and
+the summary above rest on convergent search-indexed abstracts from PMC,
+NASA ADS, and ResearchGate (consistent title, journal, DOI, and author
+affiliation across all three, which is the same standard this log has used
+for other unreachable-full-text entries, e.g. iPhoneBlur's initial pass and
+the ReynoldsFlow entry). The claimed code release,
+`github.com/Axuewu/xuewu`, **was** directly checked via the GitHub API
+(`api.github.com/repos/Axuewu/xuewu`, HTTP 200): the repo is 2KB, created
+and last pushed on the same day (2026-04-21), `license: null`, and its only
+content is a single directory named "main code" that the API's own contents
+listing shows as empty. This is not a working implementation — it is, at
+best, a placeholder the paper's authors linked and never populated.
+
+**Licence.** None. GitHub reports `license: null` for `Axuewu/xuewu`
+directly from the API, and there is no separate LICENSE file to inspect
+(the repo has no other content to check). With no license and effectively
+no code, there is nothing here to use commercially or otherwise — this is
+not a "restrictive license" case, it's a "nothing was actually shipped"
+case, same shape as the 2026-08-18 TinyDark-YOLO and 2026-08-24 DFRCP
+existence-only entries.
+
+**Which failure mode.** Camouflage / low-contrast small-object detection,
+specifically — this is a still-frame, appearance-side (frequency-domain,
+not motion-domain) mechanism, structurally unrelated to the elongation/blur
+problem. Not motion blur: nothing in the indexed abstract claims blur
+robustness, and this entry should not be conflated with the separate,
+UAV-survey framing (from this run's own search results, not from this
+paper) that mentions motion blur as a generic UAV-imagery nuisance — that
+claim belongs to a different paper and is not being carried over here.
+
+**Why it helps this model specifically, in principle.** A dark clubhead
+against dark clothing or cluttered foliage is, by definition, a
+low-frequency-contrast problem in the RGB domain even when it's perfectly
+in focus — exactly the case the brief describes as "visually sharp frames"
+producing zero detections. A frequency-domain path that explicitly
+preserves high-frequency edge information before it gets smoothed away by
+ordinary strided convolution is a plausible, mechanically distinct
+complement to the eight-plus motion/appearance mechanisms already logged.
+It is also architecturally cheap to reason about in the abstract: it would
+insert into or ahead of the backbone of the same YOLO11n this project
+already trains, not require a video pipeline or auxiliary heads.
+
+**Effort vs. payoff.** Currently near-zero payoff, because there is nothing
+usable to spend effort on: the one code release found is empty and
+unlicensed, and the paper's actual implementation details (kernel sizes,
+where in the backbone the wavelet module is inserted, training recipe)
+could not be read past the abstract due to this sandbox's blocked access to
+arxiv/doi/mdpi/PMC. If this idea is worth pursuing, the correct next step is
+not to build against `Axuewu/xuewu` — it's to get the actual Sensors PDF
+(reachable from a normal network, unlike this sandbox) and check whether the
+method is describable well enough from the paper alone to reimplement the
+wavelet module as a drop-in addition to the existing Ultralytics YOLO11n
+training config, the same way this log's NWD-loss and P2/4-head entries
+were scoped as concrete, buildable changes. Until that reading happens, this
+entry should be treated as a lead, not an actionable recommendation.
+
+---
