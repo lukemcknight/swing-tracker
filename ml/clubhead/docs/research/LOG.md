@@ -5934,3 +5934,117 @@ CamDiff (licence-blocked) and BlenderProc (higher effort, unresolved
 sim-to-real risk on the object) — but still as a spike to validate, not a
 committed pipeline change.
 
+---
+
+## 2026-08-30 (third run) — RSBlur's licence blocker is resolved: naive frame-averaging blur synthesis is measurably wrong, and there's now a verified, CC BY 4.0 fix recipe
+
+**Area covered.** Bullet 2 (motion blur specifically) — rotated away from
+architecture (this log's first 2026-08-30 entry, YOLO12) and data synthesis
+for camouflage (the second 2026-08-30 entry), neither of which touched
+blur, and toward closing a gap this log already flagged rather than
+opening a new thread.
+
+**What changed.** The 2026-08-16 (second run) RealBlur entry logged an
+aside: RSBlur (`github.com/rimchang/RSBlur`, Rim et al., ECCV 2022 —
+the same POSTECH group and beam-splitter dual-camera lineage as RealBlur,
+ECCV 2020) was checked and explicitly **not** logged as usable because "its
+README states no licence and no LICENSE file exists in the repo, checked
+directly." That is no longer true. Re-fetching
+`raw.githubusercontent.com/rimchang/RSBlur/master/README.md` directly today
+(HTTP 200) shows the file now ends with an explicit license section:
+
+```
+## License
+
+The RSBlur dataset is released under CC BY 4.0 license.
+```
+
+There is still no separate `LICENSE` file in the repo (confirmed:
+`raw.githubusercontent.com/rimchang/RSBlur/master/LICENSE` → HTTP 404), but
+the grant is now stated inline in the authors' own words, in a directly
+fetched file — the same evidentiary bar this log has accepted for RealBlur
+and other CC BY 4.0 findings. **Commercial use: permitted**, subject to
+attribution. Whether the repo was edited sometime in the last two weeks or
+the 2026-08-16 run simply missed a section further down the README could
+not be determined (GitHub doesn't expose file history through this
+sandbox's reachable surface), but the current, verified state is
+unambiguous.
+
+**What RSBlur actually is.** Not a source of clubhead footage — it is a
+still-image deblurring benchmark. Paired real/synthetic blurred images with
+ground-truth sharp images (13,358 pairs), captured via a beam-splitter
+dual-camera rig identical in kind to RealBlur's: one sensor exposed long
+enough to blur, one short enough to stay sharp, same lens, same instant.
+The blur is again camera-shake / long-exposure blur of a scene, not a fast
+object streaking across an otherwise sharp frame — so, like RealBlur, it is
+not a stand-in for a blurred clubhead. What makes it a different, new
+finding rather than a restatement of RealBlur is its actual contribution:
+a **measured critique of naive frame-averaging blur synthesis** — exactly
+the technique this log's very first entry (2026-08-12, Brooks & Barron) and
+the 2026-08-14 PSF-synthesis entry propose for manufacturing synthetic
+blurred training examples. RSBlur's own README ablation table (read
+directly, not inferred) reports PSNR/SSIM on their real-blur test set for a
+deblur model trained on synthetic blur built with increasingly realistic
+synthesis steps:
+
+| Synthesis pipeline | PSNR / SSIM |
+|---|---|
+| Linear-space frame averaging (naive) | 30.12 / 0.7727 |
+| + sRGB gamma, + frame interpolation, + saturation-mask synthesis, + Poisson/read noise, + ISP re-application (their full pipeline) | 32.06 / 0.8322 |
+
+The gap is the point: naive averaging omits sensor saturation clipping
+(bright highlights streak differently once clipped than a pure linear
+average predicts) and photon/read noise, both of which real long-exposure
+capture always has and pure synthetic averaging never does by default.
+
+**Which failure mode.** Motion blur — specifically, a methodology warning
+for this project's own already-logged synthesis ideas, not a new
+architecture or dataset.
+
+**Why it helps this model specifically.** This project has no working
+motion-blur augmentation pipeline yet (per every prior run's caveats on the
+Brooks & Barron, PSF, and 6-DOF entries — all logged as ideas, none
+confirmed implemented). If and when one is built to manufacture blurred
+clubhead training examples from the sharp footage this project already
+has, RSBlur is direct evidence that the straightforward version of that
+idea — average or kernel-blur consecutive sharp frames and call it a
+blurred training example — will produce examples that are measurably too
+clean relative to real phone-camera blur: no highlight-streak clipping, no
+sensor noise. A detector trained on such examples risks learning a
+synthetic-blur "tell" (unnaturally smooth gradients, no noise floor) that
+does not transfer to the genuinely blurred frames this model actually
+needs to handle in dim/indoor light, which is exactly where noise and
+dynamic-range limits are worst. RSBlur supplies a concrete, already-coded
+correction (CRF → linear space → interpolate → synthesize saturation mask →
+inject Poisson/read noise → re-apply CRF/ISP) that any future blur-
+augmentation spike for this project should implement rather than the naive
+version, plus a paired real/synthetic benchmark to sanity-check the
+augmentation's realism against before trusting it on clubhead data.
+
+**Reachability, checked directly (same result as RealBlur on
+2026-08-16).** The GitHub repo and README are reachable
+(`raw.githubusercontent.com`, HTTP 200). The actual dataset hosts are not,
+from this sandbox: `cgdata.postech.ac.kr/sharing/kWA6K6J5G` → connection
+failure (curl exit, HTTP code `000`, `CONNECT tunnel failed, response
+403`), `cg.postech.ac.kr/research/RSBlur/` → HTTP 403, and the Google Drive
+mirror → the same tunnel failure. So: licence confirmed, code confirmed
+live, but the dataset itself is unverified as downloadable from this
+sandbox — a machine with unrestricted egress would need to confirm the
+link before anyone treats "download and use RSBlur's images" as
+actionable. (Nothing here requires downloading RSBlur's images to be
+useful, though — the synthesis-pipeline methodology and the ablation
+numbers are the payoff, not the images themselves.)
+
+**Effort vs. payoff.** Effort to verify: low — one README re-fetch, one
+LICENSE 404 check, three reachability probes on already-known URLs from
+the 2026-08-16 entry. Payoff: real but entirely conditional and not
+implementable today. It is a design note to attach to a future blur-
+augmentation spike (2026-08-12 and 2026-08-14 entries), not a standalone
+action — this project has not yet built the naive version RSBlur warns
+against, so there is nothing to fix yet. Recommend treating this as a
+checklist item to apply *when* that spike is scoped ("don't just average
+frames — model saturation and noise, per RSBlur"), not as work to schedule
+now. Logged primarily because it corrects a specific, previously-recorded
+"not usable" finding in this log with a direct, verified contradiction —
+log integrity matters as much as new leads.
+
