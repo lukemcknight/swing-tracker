@@ -6048,3 +6048,102 @@ now. Logged primarily because it corrects a specific, previously-recorded
 "not usable" finding in this log with a direct, verified contradiction —
 log integrity matters as much as new leads.
 
+---
+
+## 2026-08-30 (fourth run) — RefCOD / R2CNet: reference-exemplar-guided camouflaged object detection (TPAMI 2025) — a tenth camouflage mechanism, and the first that fits a single-class detector unusually well
+
+**What it is.** "Referring Camouflaged Object Detection" (Zhang, Yin, Lin,
+Zhang, Fan, Cheng — accepted TPAMI 2025), code at
+https://github.com/zhangxuying1004/RefCOD. It defines Ref-COD: instead of
+segmenting every camouflaged object in a scene from appearance alone, the
+network also takes a **reference image** — a salient, non-camouflaged
+example of the same object class — and uses it to guide detection of the
+camouflaged instance. The architecture (R2CNet) has a reference branch
+(pools a reference embedding from a saliency-detection backbone) and a
+segmentation branch that fuses that embedding into the target image's
+features via an RMG (Reference Matching Guidance) module before decoding,
+with further refinement in an RFE (Reference Feature Enrichment) module.
+Verified directly from the GitHub README and repo structure (train.py,
+test.py, infer.py, an RMG/RFE module layout matching the described
+architecture).
+
+**Licence — verified, commercial use permitted.** The repo's `LICENSE` file
+(fetched directly,
+`raw.githubusercontent.com/zhangxuying1004/RefCOD/main/LICENSE`) is the
+standard MIT License, copyright Xuying Zhang 2023: permission "to deal in
+the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software," with only the standard attribution and
+no-warranty conditions. This covers the code (training/inference scripts
+and model definition). **The R2C7K dataset (64 categories, camo + reference
+subsets) and the pretrained `r2cnet.pth` checkpoint are hosted on Baidu
+Netdisk only**, per the README's own download links — not on GitHub, not
+mirrored anywhere else found. Baidu Netdisk carries no separate licence
+statement reachable from here, and practically: `curl` against the Baidu
+share link from this sandbox returned `HTTP 000` (connection failure,
+same failure mode this log has hit repeatedly on China-hosted or
+university-hosted dataset mirrors — RSBlur's postech hosts, 2026-08-30
+third run). So: **code confirmed MIT and reachable; dataset and checkpoint
+unverified as downloadable from here, and their licence terms are whatever
+Baidu Netdisk's own hosting terms are, not stated by the authors.**
+
+**Which failure mode.** Camouflage — specifically the zero-candidate-
+detection frames (dark clubhead on dark clothing/foliage) this project's
+own failure analysis singles out, where the model currently has to infer
+"clubhead" purely from local appearance in that one frame and finds
+nothing above threshold.
+
+**Why it helps this model specifically — and why it's a better fit than
+the other nine logged camouflage mechanisms.** Every prior camouflage
+entry in this log (SLT-Net, SINet-V2, DTUM, Motion-Informed Enhancement,
+SAM-PM, EMIP, Vcamba, Copy-Paste, YOLO12 Area Attention) either relies on
+appearance alone (which is exactly what fails on genuinely low-contrast
+frames) or on cross-frame motion (which requires the object to actually be
+moving distinctly from the background — not guaranteed at address, in the
+backswing pause, or in a slow/deliberate practice swing). Ref-COD's
+reference branch is a third, structurally different lever: an explicit
+"here is what the object normally looks like" prior injected into the
+network, independent of that frame's local contrast or of motion. This
+project has an unusual advantage for adapting it: it detects exactly **one
+class**, so instead of needing a per-instance reference image at inference
+time (the original task's assumption — Ref-COD was built for a many-class,
+many-object setting), a single fixed canonical clubhead crop (or a small
+fixed set covering driver/iron/wedge head shapes) could serve as a
+constant reference embedding baked into the exported model, with no
+runtime reference-image lookup needed. That reframes "clubhead in dark
+clothing" from a one-shot appearance problem into a matching problem
+against a known template, which is a plausible lever specifically for the
+zero-detection frames the failure analysis flags as sharp but unmatched.
+
+**Why this is not close to actionable today.** This is an architecture
+change (a second, reference-branch input stream plus fusion modules), not
+a drop-in fix like a loss swap or an augmentation flag. The published
+checkpoint is trained on 64 generic COD categories (animals, objects) and
+not on clubheads, so it would need retraining from this project's own
+data, using this project's own clubhead crops as reference exemplars — an
+unproven adaptation, since Ref-COD's own evaluation never tests a
+class-wide fixed prototype in place of per-instance references, so there
+is no evidence yet that a single canonical clubhead image generalizes as a
+matching template across clubs, camera angles, and lighting the way a
+true per-instance reference would. There is also no evidence of a YOLO11n-
+compatible or CoreML-exportable version of this architecture; R2CNet is a
+dual-branch segmentation network with a ResNet/PVT-style backbone, not
+designed for on-device video inference. And the dataset needed to validate
+the generic-category baseline before attempting the golf-specific
+adaptation is unverified as downloadable (see licence section above).
+
+**Effort vs. payoff.** Effort to verify: low-medium (repo README, LICENSE
+file, and README download-link fetches, one Baidu reachability probe — all
+direct). Payoff: a genuinely new, structurally distinct camouflage
+mechanism worth a research spike (prototype a reference-embedding branch
+bolted onto an existing detector, using this project's own well-lit
+clubhead crops as fixed exemplars, evaluated only on the already-flagged
+zero-detection camouflage frames) — but not an implementation task yet.
+Recommend logging this as a candidate for a dedicated small experiment
+before any commitment to the full R2CNet architecture: the interesting,
+cheap-to-test claim is narrower than "adopt R2CNet" — it's "does
+conditioning detection on a fixed reference clubhead crop help on the
+frames that currently get zero candidates," which could be tested with a
+much smaller architecture change (e.g. a Siamese-style feature comparison
+branch) than reproducing R2CNet in full.
+
