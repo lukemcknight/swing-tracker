@@ -5806,3 +5806,131 @@ checkpoint choice to make once the project trains a real model, not a
 substitute for the higher-conviction, already-logged fixes.
 
 ---
+
+## 2026-08-30 (second run) — "Preserve the Hard, Regenerate the Rest": uncertainty-guided diffusion augmentation that keeps the real object and regenerates only the background — the inverse of CamDiff's licence problem, on the opposite side of what to synthesize
+
+**Area covered.** Rotated to bullet 5 (data synthesis/augmentation),
+deliberately avoiding bullet 3 (camouflage/small-object architecture),
+which the immediately preceding run (2026-08-30, first run — YOLO12) used.
+Checked and discarded first: CADDIE (2026-08-21's still-open golf-pose
+lead) — retried `openaccess.thecvf.com`, still `EGRESS_BLOCKED`, and a
+fresh search surfaced only the authors' affiliation (Fujitsu Research of
+America / Colorado State University) with no new code or licence
+information, so it stays exactly as open as before and was not re-logged.
+BlurBall's motion-blur-direction mechanism was independently re-surfaced
+by search but is already logged in full (2026-08-16). A golf-swing MIT
+thesis on markerless 3D body-pose tracking ("...Truncation-Robust
+Heatmaps", built on MeTRAbs) was checked and set aside: it tracks the
+golfer's body joints, not the club, `dspace.mit.edu` is
+`EGRESS_BLOCKED`, and "truncation-robust" there means joints leaving the
+video frame — nothing to do with clubhead camouflage or blur.
+
+**What it is.** "Preserve the Hard, Regenerate the Rest: Uncertainty-Guided
+Synthetic Training Data Augmentation with Diffusion Models" (Röhrich et
+al., XITASO GmbH, 2026, arXiv:2606.31603 — abstract/PDF unreachable,
+`arxiv.org` egress-blocked as in every prior run, so the mechanism below is
+sourced from the repo's own README, fetched directly and successfully via
+`raw.githubusercontent.com`, not the paper). The pipeline: train a baseline
+model on real images, run it to get per-pixel predictive entropy, aggregate
+that uncertainty per ground-truth class, and mark the most-uncertain
+classes as **preserved** until their combined area crosses a budget `τ`.
+An off-the-shelf diffusion inpainter (SDXL inpainting) then regenerates
+everything **outside** the preserved region — i.e. the *easy*,
+already-well-classified context — and the original pixels are pasted back
+over the preserved region with a feathered boundary. The model is
+fine-tuned on the mix of real and regenerated images, with the regenerated
+pixels excluded from supervision.
+
+The mechanism is the mirror image of this log's own already-logged CamDiff
+entry (2026-08-20, second run): CamDiff keeps the real **background** and
+diffusion-generates a new **object** into it; this technique keeps the
+real, hardest-to-fake **object region** untouched and diffusion-regenerates
+the **surrounding context** instead. For a golf clubhead specifically, that
+inversion matters: this project's own already-logged synthesis entries
+(BlenderProc, CamDiff) both carry an explicit, unresolved sim-to-real gap
+on the object itself — does a rendered or diffusion-generated clubhead look
+like a real one? This technique never answers that question because it
+never touches the clubhead pixels; it only diversifies what's *behind* the
+clubhead — the actual axis of the camouflage failure mode (dark clothing,
+foliage), not the object's own appearance.
+
+**URL.** Code: https://github.com/XITASO/Preserve-the-Hard-Regenerate-the-Rest
+(confirmed live — `README.md` and `LICENSE.md` both fetched directly via
+`raw.githubusercontent.com/.../main/...`, HTTP 200; note the file is
+`LICENSE.md`, not `LICENSE` — the bare filename 404s, `LICENSE.md` does
+not). Repository contains real, complete code: dataset adapters, an
+entropy-based sample-selection module (`guided_generation/sample_selection/`),
+a diffusion inpainting + paste-back pipeline (`guided_generation/diffusion/`),
+and a full segmenter training/eval harness (`vfm4ss/`) — not a paper
+landing page.
+
+**Licence (verbatim, from `LICENSE.md`, fetched directly).** "MIT License
+/ Copyright (c) 2026 XITASO GmbH / Permission is hereby granted, free of
+charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use, copy, modify,
+merge, publish, distribute, sublicense, and/or sell copies of the
+Software... " **Commercial use: permitted**, on the repo's own code — a
+real, direct advantage over CamDiff, whose repo this log already confirmed
+has no licence file at all (verified-absent, "forbidden by default").
+Two caveats the repo's own README states explicitly and this run did not
+independently re-verify beyond that: (1) none of the three benchmark
+datasets (Cityscapes, BDD100K, UAVID) are redistributed — irrelevant here
+since none would be used, this project has its own data; (2) the default
+inpainter is `diffusers/stable-diffusion-xl-1.0-inpainting-0.1`, whose
+Hugging Face model card lists its licence as CreativeML Open RAIL++-M — a
+permissive-with-use-restrictions licence that generally allows commercial
+use of the model and its generated outputs, but carries its own
+use-based restriction clauses that were not read in full this run and
+should be checked before relying on SDXL-generated pixels in a shipped
+training set.
+
+**Which failure mode.** Camouflage, specifically and only — same scope as
+CamDiff. Nothing in the mechanism (entropy-guided background regeneration)
+touches blur-streak geometry.
+
+**Why it helps this model specifically.** The camouflage failure mode this
+project has measured (a dark clubhead against dark clothing or cluttered
+foliage) is a background-diversity problem, not an object-appearance
+problem — the failing frames are described as "visually sharp," i.e. the
+clubhead itself is rendered fine by the camera, it just sits on a
+low-contrast background the training set under-represents. This technique
+is a closer mechanical match to that specific gap than either
+already-logged synthesis entry: unlike BlenderProc (a full 3D clubhead
+render, sim-to-real gap on the object itself, "a multi-week undertaking")
+or CamDiff (which requires solving the *inverted* task the paper never
+tested, plus building bespoke dark-clothing/foliage prompt and mask logic
+from scratch since CamDiff's own repo is unlicensed), this approach starts
+from **real clubhead crops already in the training set** and only
+generates new backgrounds behind them — a smaller, more bounded generation
+problem than synthesizing a whole plausible club head, and one with a
+directly reusable, permissively-licensed reference implementation for the
+entropy-selection and paste-back mechanics, even though the segmentation-
+specific parts (per-pixel masks, ignore-index supervision) would need
+translating into this project's box-labeled, YOLO11n training pipeline.
+
+**Effort vs. payoff.** Medium-high effort, plausible but unverified payoff.
+Effort: this is not a drop-in — the repo is built entirely around semantic
+segmentation (per-pixel entropy over Cityscapes/BDD100K/UAVID-style masks,
+a Cityscapes-style ignore-index convention) and would need real adaptation
+work to a box-labeled detector: computing an analogous "hard region" signal
+from YOLO11n's own per-frame confidence (the failing-frame set this
+project's brief already names — zero candidates even at confidence 0.05 —
+is a natural substitute for the paper's per-pixel entropy), defining what
+"preserve" means for a bounding box rather than a segmentation mask
+(plausibly: preserve the labeled clubhead box plus a small margin,
+regenerate the rest of the frame), and standing up the SDXL inpainting
+dependency with its own licence review. None of that is present in the
+repo as shipped. Payoff: a real, mechanism-grounded advantage over this
+log's other two synthesis entries (no sim-to-real risk on the object
+itself, no unlicensed-code blocker, an automatic hard-example-prioritization
+signal instead of manually curated "camouflage-like" background crops) —
+but zero evidence this specific technique works for detection rather than
+segmentation, and zero evidence for small/dynamic sports objects rather
+than static driving/aerial scenes; the paper's own benchmarks don't cover
+either. Recommend logging this as the leading candidate the *next* time
+this project actually scopes a camouflage data-synthesis spike, ahead of
+CamDiff (licence-blocked) and BlenderProc (higher effort, unresolved
+sim-to-real risk on the object) — but still as a spike to validate, not a
+committed pipeline change.
+
