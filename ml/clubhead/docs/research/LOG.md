@@ -5700,3 +5700,109 @@ worth chasing further without a way to actually read the paper or find its
 code; a future run should not re-search this specific title again.
 
 ---
+
+## 2026-08-30 — YOLO12 (Ultralytics): Area Attention gives a same-family, one-line-checkpoint camouflage lever, but its CoreML export path is not confirmed the way YOLO26's is
+
+**Area covered.** Rotated to bullet 3 (small/low-contrast/camouflaged
+object detection, architecture), deliberately avoiding bullet 2 (motion
+blur), which the immediately preceding run (2026-08-29, fourth run) used.
+Two other leads were checked and discarded before this one: (1) a fresh
+web search for golf clubhead/club tracking GitHub projects surfaced only
+already-logged dead ends (`onkar-99/Golf-Ball-Tracking`, checked again
+directly — still no LICENSE file and no released dataset, exactly as the
+2026-08-16 entry already found; not worth re-logging) plus patent filings
+and a golf-ball, not clubhead, tracker; nothing new. (2) Meta's CoTracker3
+(point tracking) looked promising for surviving detection gaps across
+frames, but a first pass found no license terms clearly stated for
+commercial use and no obvious way to graft point-tracking output into this
+project's frame-by-frame detection+export pipeline without first having a
+reliable initial detection to seed a track from — exactly the problem this
+model doesn't yet solve — so it was set aside rather than logged.
+
+**What it is.** YOLOv12 ("YOLOv12: Attention-Centric Real-Time Object
+Detectors," Tsinghua University, NeurIPS 2025) is now integrated as
+"YOLO12" directly into the `ultralytics/ultralytics` repo — the exact same
+repo this project's `YOLO11n` and the already-logged `YOLO26` (2026-08-17)
+come from, confirmed via `raw.githubusercontent.com/ultralytics/ultralytics/main/docs/en/models/yolo12.md`
+(fetched directly, HTTP 200). Two architecture changes, quoted from that
+doc: (1) **Area Attention (A2)** — "divides feature maps into *l*
+equal-sized regions (defaulting to 4), either horizontally or vertically,
+avoiding complex operations and maintaining a large effective receptive
+field," i.e. windowed self-attention that is cheaper than full
+self-attention but still sees much more of the frame than a local
+convolution kernel; (2) **R-ELAN** — adds block-level residual connections
+with scaling and a redesigned bottleneck-style feature-aggregation path,
+aimed at stabilizing training for the added attention layers in larger
+variants. Reported metric from the same doc: YOLO12n reaches 40.6% mAP on
+COCO val2017 ("+2.1%/-9%" relative to YOLOv10n). No YOLO12n-vs-YOLO11n
+accuracy comparison table was found anywhere in this run.
+
+**URL.** Original repo: https://github.com/sunsmarterjie/yolov12 (`LICENSE`
+fetched directly via `raw.githubusercontent.com`, HTTP 200). Ultralytics
+integration docs: https://github.com/ultralytics/ultralytics/blob/main/docs/en/models/yolo12.md.
+
+**Licence (verbatim, from the original repo's own `LICENSE`, fetched
+directly).** "GNU AFFERO GENERAL PUBLIC LICENSE / Version 3, 19 November
+2007." Same disposition as the already-logged YOLO26 entry: **commercial
+use is not simply "permitted"** — it is permitted only under AGPL-3.0's
+copyleft terms (source-disclosure obligations for anything served over a
+network, which a detector shipped inside an app arguably is) or by buying
+a separate paid Ultralytics Enterprise licence for closed-source
+commercial use. This is not a new licensing question — this project's
+current `YOLO11n` dependency and the already-logged YOLO26 both ship from
+the identical top-level `ultralytics/ultralytics` `LICENSE`, so YOLO12
+changes nothing about that already-open question, for better or worse.
+
+**Which failure mode.** Primarily camouflage, and honestly the argument is
+the same broad-context intuition already logged for DTUM, SLT-Net, and
+FastViT (2026-08-14, 2026-08-15, 2026-08-23): a low-contrast clubhead
+against cluttered foliage is easier to separate from its background with
+more spatial context than a local convolution kernel sees. What's actually
+new here is *where* that context comes from — windowed self-attention
+built natively into the same Ultralytics YOLO config this project already
+trains, rather than a full backbone swap (FastViT) or a motion-based
+signal (DTUM/SLT-Net). Secondarily, weakly, motion blur: an elongated blur
+streak spans more of the frame than a small kernel captures at once, so
+attention integrating across a wider region could register a streak more
+completely — but no author benchmark for blurred or elongated objects was
+found, so this is this log's own inference, not YOLO12's authors' claim.
+
+**Why it helps this model specifically, and the gap that limits it.** If
+CoreML export works, adopting YOLO12 would cost exactly what the already-
+logged YOLO26 checkpoint swap costs — changing `yolo11n.pt` to `yolo12n.pt`
+in the existing Ultralytics training config, no new architecture wiring,
+no lost COCO-detection pretraining (unlike FastViT, which requires a fresh
+backbone integration and loses that transfer-learning head start). That
+"if" is the catch this entry exists to flag: this project's own CoreML
+integration reference, `raw.githubusercontent.com/ultralytics/ultralytics/main/docs/en/integrations/coreml.md`
+(fetched directly this run), is written specifically around **YOLO26** as
+the export target, mentions YOLO11 only in a comparison aside about NMS
+embedding, and does not list YOLO12 anywhere as a supported CoreML export
+target. That is a materially weaker verification position than the
+already-logged YOLO26 entry, which confirmed CoreML as "a documented
+first-class export target" for that model family specifically. It is
+plausible the same generic `model.export(format="coreml")` path in the
+shared Ultralytics exporter still works for YOLO12 — the export code is
+task-generic, not model-specific, in every other family checked — but that
+is an inference, not something read from documentation, and should not be
+treated as confirmed.
+
+**Effort vs. payoff.** Low effort if CoreML export turns out to work (a
+one-line checkpoint substitution plus a re-run of the existing evaluation
+harness, exactly like YOLO26); non-trivial risk if it doesn't (this
+project has no confirmed path to get a YOLO12-trained model on-device at
+all, which would make the whole exercise a dead end before accuracy is
+even measurable). Payoff, even in the success case, is the same
+low-to-modest, unverified uplift already logged for YOLO26 and FastViT: a
+plausible-sounding broader-receptive-field argument for camouflage with no
+camouflage-specific benchmark behind it, and no accuracy delta vs. YOLO11n
+found anywhere in this run. Recommend: a five-minute smoke test — `yolo
+export model=yolo12n.pt format=coreml` — before spending anything further
+on this; if that fails, drop it without regret, since every actually-
+verified camouflage mechanism already in this log (DTUM, SAM-PM,
+Motion-Informed Enhancement) has no CoreML-export uncertainty attached at
+all. If it succeeds, treat it exactly like YOLO26: a free, opportunistic
+checkpoint choice to make once the project trains a real model, not a
+substitute for the higher-conviction, already-logged fixes.
+
+---
