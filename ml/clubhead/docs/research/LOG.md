@@ -6252,3 +6252,74 @@ footage" gap the two prior frame-averaging entries left open; recommend a
 small spike (5-10 clips, visually inspect the interpolated + averaged
 output before committing to using it as training data) rather than
 committing to a full pipeline.
+
+---
+
+## 2026-08-31 (second run) — ID-Blau: diffusion-based reblurring augmentation, checked and ruled out on licence (motion blur area)
+
+**Area covered.** Bullet 2 (motion blur specifically — blur augmentation
+techniques). Rotated away from this log's first 2026-08-31 entry (FILM,
+which fills the frame-supply gap for frame-averaging synthesis) toward a
+different synthesis mechanism entirely: a learned generative model of blur
+rather than combining real sub-frames.
+
+**What it is.** ID-Blau ("Image Deblurring by Implicit Diffusion-based
+reBLurring AUgmentation," Wu et al., CVPR 2024). URL:
+`https://github.com/plusgood-steven/ID-Blau` (paper:
+`https://arxiv.org/abs/2312.10998`, CVPR page:
+`https://cvpr.thecvf.com/virtual/2024/poster/30526`). It is a conditional
+diffusion model that takes a **sharp** image plus a sampled "blur condition
+map" (encoding a controllable motion trajectory) and generates a
+correspondingly, realistically blurred image — trained on GoPro
+(`GOPRO_Large`/`GOPRO_Large_all`) via optical-flow-derived blur conditions.
+Unlike this log's frame-averaging and PSF-synthesis entries (2026-08-12,
+2026-08-14), which combine *real* sub-frames or convolve a fixed kernel,
+ID-Blau samples diverse, varied blur trajectories from a learned
+distribution — the README states it "can generate various blurred images
+unseen in the training set." A pretrained diffusion checkpoint
+(`ID_Blau.pth`) ships in the repo's `weights/` directory, and the README's
+"Generating Reblur Dataset" section gives a direct command for running it
+over an arbitrary folder of sharp images to produce augmented blurry
+outputs — exactly the "feed it our own sharp clubhead crops" use this
+project would need.
+
+**Licence, verified directly.** Fetched
+`raw.githubusercontent.com/plusgood-steven/ID-Blau/main/README.md`
+directly (HTTP 200) and searched the full text for "license", "licence",
+"MIT", "Apache", "GPL", "BSD", "CC BY" — none appear anywhere. Fetched
+`raw.githubusercontent.com/plusgood-steven/ID-Blau/main/LICENSE` directly →
+HTTP 404, confirming no LICENSE file exists in the repo. Per GitHub's own
+default-copyright rule (the same bar this log has applied to JFD3, EMIP,
+DFRCP, and MS-YOLOv11), an unlicensed public repo grants no rights to use,
+modify, or redistribute the code or the pretrained weights — **commercial
+use is not permitted**, and neither is non-commercial reuse, technically:
+the code is visible on GitHub but not licensed for reuse at all. This is a
+straightforward, same-shape finding as those four prior entries, not a new
+kind of blocker.
+
+**Which failure mode.** Motion blur.
+
+**Why it would have helped this model, if usable.** A generative,
+condition-sampling blur augmenter would have been a genuinely different
+mechanism from this log's two prior blur-synthesis entries: it does not
+require slow-mo sub-frames (unlike frame-averaging/PSF) or a second real
+clip (unlike FILM-then-average) — it only needs the sharp clubhead crops
+this project already has in training data, and could synthesize varied
+blur trajectories directly onto them. That would attack the exact labeling
+statistic driving this failure mode (median box elongation 1.60, most
+labelled clubheads near-square) without touching capture logistics at all.
+The RSBlur entry (2026-08-30, third run) already warned that naive
+frame-averaging under-models sensor noise and highlight clipping; a
+learned diffusion model conditioned on real GoPro blur statistics is
+arguably a better-motivated fix for that exact gap than hand-engineering a
+noise model — which made this worth checking closely before ruling it out.
+
+**Effort vs. payoff.** Effort to verify: low — two direct file fetches
+(README, LICENSE 404), no blocked domains, result unambiguous. Payoff:
+zero, as things stand — this is a clean negative result, not a
+existence-only or "unverifiable" caveat like several prior entries in this
+log; the licence question here has a definitive no. Logged so that no
+future run re-discovers ID-Blau and re-spends the same verification effort
+assuming an unlicensed research repo with a pretrained checkpoint attached
+must be usable — a full CVPR-caliber method with real, shippable code is
+not a substitute for an actual grant of rights.
