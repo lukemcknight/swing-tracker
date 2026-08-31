@@ -6323,3 +6323,116 @@ future run re-discovers ID-Blau and re-spends the same verification effort
 assuming an unlicensed research repo with a pretrained checkpoint attached
 must be usable — a full CVPR-caliber method with real, shippable code is
 not a substitute for an actual grant of rights.
+
+---
+
+## 2026-08-31 (third run) — TSM (Temporal Shift Module, ICCV 2019): a channel-shift backbone mechanism, MIT-licensed, with a verified video-object-detection extension aimed at fast-moving objects — but no existing YOLO integration to reuse
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object detection,
+multi-frame and temporal methods). Deliberately rotated away from this
+log's first two 2026-08-31 entries (FILM, ID-Blau), both motion-blur
+synthesis, to avoid three consecutive same-area runs.
+
+**What it is.** TSM ("TSM: Temporal Shift Module for Efficient Video
+Understanding," Lin, Gan, Han — MIT, ICCV 2019). URL:
+`https://github.com/mit-han-lab/temporal-shift-module` (paper:
+`https://arxiv.org/abs/1811.08383`). The core idea: inside an ordinary 2D
+CNN, shift a fraction of each intermediate feature map's channels forward
+and/or backward along the temporal axis before each convolution — no
+extra parameters, no extra FLOPs, implemented as a tensor shift/slice
+operation. This lets a 2D backbone reason across a short window of frames
+with (per the paper and repo) close to 3D-CNN accuracy at 2D-CNN cost. Two
+variants: bi-directional (shifts both future and past channels in, offline
+only) and **uni-directional** (shifts only past frames' channels in — the
+online-capable, causal variant relevant to a live capture pipeline).
+
+**Licence, verified directly.** Fetched
+`raw.githubusercontent.com/mit-han-lab/temporal-shift-module/master/LICENSE`
+directly (HTTP 200): "MIT License / Copyright (c) 2021 MIT HAN Lab" plus
+the standard MIT permission grant, no additional restriction clauses.
+**Commercial use is permitted.**
+
+**Important scope caveat, verified directly.** Fetched the repo's own
+`README.md` directly (HTTP 200) and read it in full: the shipped code is
+for video **classification/action recognition** (Kinetics-400,
+Something-Something V1/V2, an NVIDIA Jetson Nano gesture-recognition demo)
+— there is no object-detection code in this repository, and no mention of
+"object detection" anywhere in the README. The video-object-detection
+result (below) comes from the original paper's own experiments section,
+not from shipped, reusable code. This is a materially different
+verification state than this log's Temporal-YOLOv8 and Motion-Informed
+Enhancement entries, both of which are directly reusable as a
+data-pipeline change with no new code to write.
+
+**The video-object-detection claim, corroborated but not directly read.**
+Because `arxiv.org` and `openaccess.thecvf.com` are both blocked by this
+sandbox's egress proxy (the same standing block prior entries in this log
+have hit), the paper itself could not be fetched. Two independent search
+queries returned consistent, matching numbers from different snippet
+sources: TSM reaches **76.3 mAP on ImageNet-VID** with an R-FCN detection
+head on a ResNet-101 backbone, versus 74.7 for plain R-FCN and 75.9 for
+FGFA (a purpose-built video-detection method); and injecting
+**uni-directional** TSM into the backbone for **online** video object
+detection improves mAP by **4.6 points specifically on fast-moving
+objects**, without changing the detection head or requiring optical flow.
+That "improves most on fast-moving objects, no optical flow needed" shape
+is the one that makes this worth logging over a generic backbone tweak —
+it is evaluated against exactly the regime (motion, not appearance, as the
+detection signal) this project's own camouflage failures point to. Two
+caveats stay attached: (1) the backbone tested is ResNet-101/R-FCN, not a
+YOLO-family single-stage detector, so the transferability of the exact
+mAP numbers to YOLO11n is unproven, not just untested; (2) this is a
+snippet-corroborated, not directly-read, result — one notch below full
+verification, consistent with how this log has flagged other arxiv-blocked
+entries (e.g. Temporal-YOLOv8, 2026-08-26).
+
+**How this differs from what's already logged.** This log already has
+three other temporal/multi-frame mechanisms for the camouflage failure
+mode: Temporal-YOLOv8 and Motion-Informed Enhancement both *recolor the
+existing 3-channel input* with temporal history and touch zero model
+architecture; YOLOV/YOLOV++ aggregate detection *candidates/RoI features*
+across frames *after* the backbone, as a post-hoc refinement stage. TSM is
+a third, structurally distinct mechanism: it modifies what happens
+*inside* the backbone's own convolutional layers, at every stage, not just
+at the input or after it — closer in spirit to DTUM's direction-coded
+temporal module, but implemented as a near-zero-cost shift instead of a
+new learned attention/correlation block. It is the most-cited, most
+independently-reproduced idea in this category (TSM has spawned known
+detection follow-ups per the ImageNet-VID numbers above), which is exactly
+why it is worth logging even without a ready YOLO port: it is a
+well-validated primitive to build from, not a one-off research trick.
+
+**Why it would help this model specifically.** The uni-directional
+(causal) variant fits a live capture pipeline — it only needs past frames,
+which the app already has buffered. Because a shifted channel is still
+just a channel (not a new input format), CoreML export of the shift
+operation itself is not obviously blocked (channel slicing/concatenation
+lowers cleanly through ONNX/coremltools) — but *feeding the backbone a
+rolling window of past-frame features at inference*, rather than one
+independent frame per call, is a real architectural and runtime change:
+either the app must keep a small ring buffer of intermediate feature
+tensors between calls (a stateful inference loop this project's current
+single-frame-per-call design does not have), or CoreML's newer stateful-
+model support would need evaluating for this specific op — a genuinely
+open question this log has not resolved for TSM or for any of its
+already-logged backbone-level competitors (YOLOV, DTUM).
+
+**Effort vs. payoff.** Moderate-to-high effort, uncertain-but-plausible
+payoff. Effort: unlike Temporal-YOLOv8/MIE (swap what fills an existing
+3-channel tensor, zero architecture change) this requires threading shift
+ops into YOLO11n's backbone blocks, building the ring-buffer/stateful
+inference path in the iOS app, and validating CoreML export end-to-end —
+a real engineering project, not a data-pipeline tweak. Payoff: the
+specific "+4.6 mAP on fast-moving objects, no optical flow" result is the
+best-targeted evidence this log has found for *why* a motion-only backbone
+signal should help exactly this project's camouflage cases, but it was
+measured on a different detector family and object domain, so the size of
+any gain on a single elongated clubhead against foliage is unproven.
+Recommend this only as a research spike (does a shift-augmented YOLO11n
+backbone measurably outperform stock YOLO11n on the existing camouflage
+failure frames, in an offline PyTorch experiment before touching the iOS
+capture pipeline or CoreML export at all) rather than a near-term
+shipping candidate — the stateful-inference question alone is enough to
+put this behind the input-recoloring entries (Temporal-YOLOv8, MIE)
+already in this log, which reach for the same camouflage signal at a
+fraction of the engineering cost.
