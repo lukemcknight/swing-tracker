@@ -6436,3 +6436,92 @@ shipping candidate — the stateful-inference question alone is enough to
 put this behind the input-recoloring entries (Temporal-YOLOv8, MIE)
 already in this log, which reach for the same camouflage signal at a
 fraction of the engineering cost.
+
+---
+
+## 2026-08-31 (fourth run) — Synthetic-to-Real Camouflaged Object Detection (CSRDA, ACM MM 2025): a domain-adaptation training recipe aimed at the gap this log's own synthetic-camouflage entries have never tested — existence-only result
+
+**Area covered.** Bullet 5 (ways to synthesise or augment training data),
+with direct implications for bullet 3 findings already in this log.
+Rotated away from bullet 3/temporal methods (this log's prior 2026-08-31
+entry, TSM) and away from motion blur (the first two 2026-08-31 entries,
+FILM and ID-Blau), to avoid three-in-a-row on the same bucket.
+
+**What it is.** "Synthetic-to-Real Camouflaged Object Detection" (Zhihao
+Luo, Luojun Lin, Zheng Lin — Fuzhou University), published in the
+**Proceedings of the 33rd ACM International Conference on Multimedia
+(ACM MM 2025)**, DOI `10.1145/3746027.3755461`, also posted as
+`arxiv.org/abs/2507.18911`. It defines a new task, **S2R-COD**
+(Syn(thetic)-to-Real Camouflaged Object Detection), and proposes **CSRDA**
+(Cycling Syn-to-Real Domain Adaptation), a student-teacher framework that
+trains on **labeled synthetic camouflage images plus a limited pool of
+unlabeled real images**, using pseudo-labeling combined with consistency
+regularization and a curriculum-learning schedule so pseudo-label
+generation and domain-adaptation training improve each other over
+training cycles — explicitly aimed at the fact that a model trained only
+on synthetic camouflage images does not generalize cleanly to real ones.
+
+**Verification, and its limits.** The paper's existence, venue, authors,
+task name, and method name are corroborated consistently across four
+independent sources found via search (the arXiv listing page, the ACM
+Digital Library page, a paper-tracking snippet site, and secondary
+citations) — not a single unconfirmed claim. What could **not** be
+verified: the abstract text, the quantitative synthetic-only-vs-CSRDA
+performance gap, and whether any code or data was released, because every
+host that could answer those questions was unreachable from this sandbox
+today — `arxiv.org` (HTTP block, consistent with this log's standing
+arXiv block, e.g. the 2026-08-31 TSM entry), `ar5iv.labs.arxiv.org`,
+`dl.acm.org`, `huggingface.co`, `api.semanticscholar.org`, and
+`paperreading.club` all returned `EGRESS_BLOCKED` on direct fetch. A
+targeted search for a companion GitHub repository (`CSRDA`, `S2R-COD`,
+author names) returned nothing. This is an existence-only result in the
+same evidentiary class as this log's CADDIE, ReynoldsFlow, and DFRCP
+entries — real and peer-reviewed, but unread past the title/task
+description, and with no code confirmed to exist.
+
+**A separately-verified fact that matters here.** Public COD benchmarks
+(COD10K, CAMO, and the rest of the standard evaluation suite) are
+overwhelmingly **segmentation-mask** labeled, not bounding-box — confirmed
+via a separate search on the benchmark literature, not this paper
+specifically. That is consistent with how every other COD-family entry
+already in this log (SINet-V2, SLT-Net, RefCOD, Vcamba, EMIP, SAM-PM) has
+had to be caveated: none of it is a drop-in fix for a YOLO detector
+without adaptation, and this paper is very likely the same, though its own
+task formulation was not readable to confirm directly.
+
+**Which failure mode.** Camouflage.
+
+**Why it matters to this project specifically.** This log already carries
+several entries that propose *generating* synthetic camouflage training
+data for the clubhead detector — CamDiff (2026-08-20, diffusion
+scene-inpainting), Preserve-the-Hard/Regenerate-the-Rest (2026-08-30,
+uncertainty-guided diffusion), and RefCOD's exemplar-guidance angle
+(2026-08-30) — all of which implicitly assume that adding synthetic
+camouflaged examples to the training mix straightforwardly helps. None of
+those entries, and no earlier entry in this log, has addressed whether a
+detector trained on synthetic camouflage actually transfers to real
+footage, or what training recipe that transfer needs. A dedicated ACM
+MM 2025 paper existing specifically to solve that generalization gap is
+itself evidence the naive version of that assumption is not automatically
+true in the wider COD literature. The task shape CSRDA targets — labeled
+synthetic data plus a pool of *unlabeled* real data — also happens to
+match this project's actual data asymmetry unusually well: the README
+already documents an abundance of the app's own real phone footage
+relative to how much of it is labeled (only ~29% of training data is own
+footage at all), so a semi-supervised recipe that puts unlabeled real
+clips to use is a plausible fit in principle. But none of that can be
+acted on without the paper's actual method details or code, neither of
+which this run could reach.
+
+**Effort vs. payoff.** Effort to find and corroborate existence: low.
+Effort to verify anything actionable: blocked entirely by sandbox egress,
+not by absence of effort. Payoff today: zero — nothing here can be
+implemented without the unread paper or unfound code. Payoff as a log
+entry: a caution flag on this log's own accumulating pile of synthetic-
+camouflage-generation ideas — CamDiff and Preserve-the-Hard should not be
+treated as "generate synthetic frames, mix into training set, done" until
+whichever of them is actually piloted is validated against genuinely held-
+out real camouflage frames, not just inspected qualitatively. Logged so a
+future run with better egress, or a human with a browser, can pull the
+actual abstract and check for a code release, rather than this log
+re-discovering the same paper from scratch.
