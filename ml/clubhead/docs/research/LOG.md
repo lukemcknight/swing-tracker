@@ -6147,3 +6147,108 @@ frames that currently get zero candidates," which could be tested with a
 much smaller architecture change (e.g. a Siamese-style feature comparison
 branch) than reproducing R2CNet in full.
 
+
+---
+
+## 2026-08-31 — FILM (Frame Interpolation for Large Motion, ECCV 2022): the missing piece to run this project's own frame-averaging blur-synthesis idea on standard-frame-rate phone footage instead of requiring slow-mo capture
+
+**Area covered.** Bullet 5 (synthesizing/augmenting training data for the
+blur regime), but framed as a *tool* rather than a dataset or architecture.
+This log's very first entry (2026-08-12, Brooks & Barron frame-averaging)
+and the 2026-08-14 PSF entry both propose synthesizing realistic elongated
+blur by combining several real sub-frames of the clubhead in motion — and
+both implicitly assume those sub-frames already exist, i.e. that the phone
+footage was shot at a high frame rate (240fps slow-mo, as GoPro/REDS were,
+per the 2026-08-20 entry). Nothing logged so far addresses the case where
+this project's own footage is standard 30/60fps and simply does not have
+enough real sub-frames between two consecutive frames to average into a
+convincing streak. FILM is a general-purpose tool built exactly to fill in
+those missing sub-frames.
+
+**What it is.** "FILM: Frame Interpolation for Large Motion" (Reda,
+Kontkanen, Tabellion, Sun, Pantofaru, Curless — Google Research / University
+of Washington, ECCV 2022). Code at
+`github.com/google-research/frame-interpolation`. A single feed-forward
+network (no auxiliary optical-flow or depth network, trainable from frame
+triplets alone) that synthesizes intermediate frames between two input
+frames, explicitly designed for **large inter-frame motion** rather than
+the small-motion regime most interpolation nets assume. It supports
+`--times_to_interpolate` for repeated bisection (2, 4, 8, ... intermediate
+frames) and `--block_height`/`--block_width` for tiling at high resolution.
+
+**Verification.** Cloned the repo directly
+(`git clone --depth 1 https://github.com/google-research/frame-interpolation`)
+— this succeeded, unlike the great majority of paper/dataset URLs this log
+has hit this month. Read the `LICENSE` file verbatim from the clone: it is
+the standard **Apache License, Version 2.0** (full text present, no
+modifications). Read `README.md` directly: confirms the ECCV 2022 venue and
+author list, confirms pretrained TF2 SavedModels are hosted on Google Drive
+(three variants: L1, Style, VGG — a live folder link in the README, not a
+placeholder), and confirms the "no auxiliary pretrained network" claim in
+the repo's own description. The repo shows as archived (read-only) on
+GitHub as of Oct 14, 2025, but archived is not deleted: the code, commit
+history, and Google-Drive-hosted weights are all still present and
+clonable/downloadable today, same "archived but still usable" situation
+this log has treated as usable in other entries.
+
+**Which failure mode.** Motion blur only. This does nothing for
+camouflage — it does not change appearance or add contrast, and it
+requires the clubhead to already be visible and trackable across the two
+real frames it interpolates between, so it is not a fix for zero-detection
+frames.
+
+**Why it helps this model specifically.** The project's own footage is the
+one training-data source this log has repeatedly noted has no licensing
+problem (unlike RealBlur, LOL-Blur, SloMoDeblur, RSBlur, GoPro/REDS, all of
+which are either non-commercial or unverified) — the blocker for using it
+to fix the blur gap has been that the frame-averaging technique needs
+several sub-frames of real sub-exposure motion to blend, which standard
+30/60fps capture does not provide. FILM removes that precondition: run it
+on this project's own ordinary-frame-rate phone clips to synthesize N
+intermediate frames between each real frame pair, then frame-average the
+real-plus-interpolated sequence (log entry #1's technique) to produce a
+motion-blur streak with a controllable, physically-motivated length — all
+from footage the project already owns outright, at any lighting condition
+it already has on hand (including, notably, whatever indoor/simulator
+footage exists even before the quarantined indoor_test set is resolved,
+since this is a data-synthesis step, not a re-use of that set as a labelled
+test asset). This directly targets the labeling-spec gap the brief
+highlights: median labelled elongation of only 1.60 despite the spec
+requiring the full blur streak be boxed, because there is too little
+genuinely blurred source material to label in the first place.
+
+**Honest limits.** (1) FILM is validated on natural scenes with photographic
+subjects moving at "large" but still bounded motion; a full-speed golf
+downswing between two 30fps frames (33ms apart) is an extreme case even by
+FILM's own "large motion" standard, and the paper does not test anything
+resembling a thin, fast, motion-blurred golf club — this is an untested
+extrapolation, not a validated fit. (2) The two real input frames it
+interpolates between may themselves already carry some blur at swing speed,
+and FILM's own training assumes relatively sharp inputs; feeding it two
+already-blurred frames is outside its documented operating conditions and
+could produce a plausible-looking but geometrically wrong clubhead position
+in the synthesized frames — this would need to be visually spot-checked
+per clip, not trusted blindly. (3) It is TensorFlow 2 with a GPU-oriented
+install path (CUDA/cuDNN or a provided Docker image) — an offline,
+training-time-only tool with no bearing on the on-device CoreML export, but
+a new dependency to stand up. (4) It only creates more blur examples for
+frames where the clubhead is already visible in both bracketing real
+frames; it cannot help label a frame where the club left the visible area
+entirely.
+
+**Effort vs. payoff.** Effort to verify: low (one clone, one LICENSE read,
+one README read — all direct, no blocked domains). Effort to use: medium —
+stand up a TF2/GPU environment, run the interpolator over existing project
+clips, then wire the frame-averaging step (already scoped in the
+2026-08-12 entry) on top of the interpolated sequence, and manually
+spot-check a sample of outputs for the geometric-artifact risk in limit
+(2) before trusting any resulting labels. Payoff, if it holds up: directly
+increases the supply of genuinely blurred, correctly elongated, fully
+license-clean clubhead training examples — the specific shortage this
+project's own labeling statistics show — without needing new slow-motion
+capture or any third-party dataset. This is the first entry in this log
+that is a concrete, licensed, immediately-runnable tool for the "no slow-mo
+footage" gap the two prior frame-averaging entries left open; recommend a
+small spike (5-10 clips, visually inspect the interpolated + averaged
+output before committing to using it as training data) rather than
+committing to a full pipeline.
