@@ -6738,3 +6738,81 @@ ablation showing which component matters most, before spending
 implementation time — and specifically check whether the paper's own
 results include a "zero detections" edge case, which would resolve the
 caveat above either way.
+
+---
+
+## 2026-09-01 (third run) — No new verified finding: Kornia's motion-blur augmentation checked and ruled out as redundant; every other lead blocked by sandbox egress
+
+**What was checked.** Rotating away from this run's earlier two entries
+(architecture, data-engine/active-learning), this run searched the
+dataset, blur-augmentation, temporal-camouflage, and golf-pose/tracking
+areas for something genuinely new. Leads found and their disposition:
+
+- **Kornia's `RandomMotionBlur` / `kornia.filters.motion_blur`**
+  (`github.com/kornia/kornia`) — confirmed real via direct fetch of the
+  repo page: **Apache-2.0**, commercial use permitted. But its mechanism
+  is a straight-line convolution kernel over a static frame — the same
+  "naive linear-kernel" approach this log's own 2026-08-27 Albumentations
+  entry logged (noting its actively-maintained successor went AGPL) and
+  the 2026-08-30 RSBlur entry explicitly flagged as **"measurably wrong"**
+  compared to physically-grounded blur (PSF-based or real
+  frame-averaging). Kornia is a different library with a real, permissive
+  licence, but it is not a *new* technique — it is the same
+  already-logged-and-criticized shortcut in a third implementation.
+  **Not logged as a standalone entry; ruled out as redundant.**
+- **YUV20K** (arXiv 2604.09985, Apr 2026) — a camouflaged-object-detection
+  benchmark explicitly targeting "Motion-Induced Appearance Instability"
+  under large-displacement/camera motion, which lines up unusually well
+  with this project's own camouflage-vs-motion framing. Could not be
+  verified beyond the search-indexed abstract: `arxiv.org` (both
+  `/abs/` and `/html/` paths) is blocked by this sandbox's egress proxy,
+  same as every prior run. No GitHub repo or licence could be found or
+  confirmed. Benchmark-only in any case (not training data), so payoff
+  would be indirect even if verified.
+- **ODGEN** (NeurIPS 2024, Apple + academic co-authors) — a diffusion
+  model that generates bounding-box-conditioned synthetic training images
+  for object detectors, reporting up to +25.3 mAP on domain-specific
+  detection benchmarks. Directly relevant to the "synthesize training
+  data" rotation bullet, but a GitHub code search
+  (`github.com/search?q=ODGEN...`) returned **zero repositories** — no
+  code release found anywhere — and `machinelearning.apple.com` and
+  `paperswithcode.com` are both blocked, so even the paper's own claims
+  couldn't be re-read past search snippets. Existence-only, and with no
+  code, not actionable regardless.
+- **HUE Dataset** (arXiv 2410.19164) — a low-light dataset with paired
+  event-camera and frame sequences including dim indoor content. Its
+  event-camera half doesn't apply to a phone-only capture pipeline, and
+  its project page (`ercanburak.github.io`) is blocked, so the
+  frame-only subset's licence and standalone usability couldn't be
+  checked. Not pursued further given the hardware mismatch.
+- **`sunholee1217/golf`** (Hugging Face) — search results describe an
+  MIT-licensed golf video dataset, which would be a genuinely useful,
+  cheap lead if confirmed. `huggingface.co` is blocked by this sandbox's
+  egress proxy, so neither the licence nor the actual content (clip
+  count, indoor/outdoor mix, resolution) could be verified. **Left
+  unconfirmed — worth a follow-up run with network access to
+  huggingface.co, not logged as a finding.**
+- Roboflow Universe golf-clubhead projects ("Golf Driver Tracker,"
+  "golf-club-tracking," etc., several thousand images each) — same
+  problem: `universe.roboflow.com` is blocked, so licence terms (Roboflow
+  Universe's per-project licence varies) and image content couldn't be
+  checked. Not logged.
+- A GitHub search for recently-updated golf-clubhead/YOLO repos and for
+  bounding-box motion-blur-synthesis repos hit an HTTP 429 (rate limited,
+  `Retry-After: 3600`) partway through this run, before any new
+  repository could be found or checked.
+
+**Which failure mode.** N/A — nothing here cleared this log's bar for a
+loggable finding.
+
+**Effort vs. payoff.** Moderate effort (roughly a dozen searches plus
+~10 fetch attempts across arxiv.org, huggingface.co,
+universe.roboflow.com, machinelearning.apple.com, semanticscholar.org,
+paperswithcode.com, and ercanburak.github.io — all blocked by this
+sandbox's egress proxy — plus two github.com fetches that succeeded
+before a third hit rate-limiting). Zero payoff this run: no new
+finding cleared verification. The two most promising unconfirmed leads
+for a future run with broader network access are **YUV20K**
+(camera-motion-instability VCOD benchmark) and **`sunholee1217/golf`**
+(claimed MIT-licensed golf video on Hugging Face) — both worth a direct
+check, not a fresh search, next time.
