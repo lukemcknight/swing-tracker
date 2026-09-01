@@ -6816,3 +6816,82 @@ for a future run with broader network access are **YUV20K**
 (camera-motion-instability VCOD benchmark) and **`sunholee1217/golf`**
 (claimed MIT-licensed golf video on Hugging Face) — both worth a direct
 check, not a fresh search, next time.
+
+---
+
+## 2026-09-01 (fourth run) — CaddieSet (CVPR 2025W): a real, MIT-licensed, indoor-captured golf swing dataset — verified, and verified to be useless for this model (no video, no clubhead annotation)
+
+**Area covered.** Golf-specific pose/tracking + golf dataset rotation
+areas (bullets 1 and 4), last touched 2026-08-28 (PiTrac) and 2026-08-29
+(YOLO-Ball) respectively. Rotated away from this run's own third-run
+predecessor (architecture/blur-augmentation, all blocked). Directly
+followed up the third run's own advice to check `sunholee1217/golf` next
+rather than re-searching — see Verification below for why that lead is
+still unresolved — and independently surfaced CaddieSet via a broader
+"golf swing dataset commercial license indoor simulator" search.
+
+**What it is.** CaddieSet — Jung et al. (Dami Lab), "CaddieSet: A Golf
+Swing Dataset with Human Joint Features and Ball Information," CVPR 2025
+Workshop (CVSPORTS). Per its own README, it covers **1,757 golf shots**
+(924 FACEON-view, 833 Down-The-Line-view) from 8 golfers of varying skill,
+captured on what the repository describes as a **camera-based launch
+monitor system** — i.e. genuinely indoor, controlled-bay footage, the
+exact capture regime this project's README flags as never measured. The
+published artifact is joint keypoints (extracted via CV across 8 swing
+phases), 22 derived biomechanical swing features (shoulder angle, hip
+rotation, spine angle, etc.), and ball-flight data (speed, carry, spin,
+direction). **No clubhead bounding boxes, and — critically — no
+raw video or image files are actually distributed.**
+
+**URL.** Code/data repo: https://github.com/damilab/CaddieSet. Paper (CVF
+listing, unreachable this run — see Verification):
+https://openaccess.thecvf.com/content/CVPR2025W/CVSPORTS/html/Jung_CaddieSet_A_Golf_Swing_Dataset_with_Human_Joint_Features_and_CVPRW_2025_paper.html.
+
+**Verification.** Fetched directly, successfully, three times this run:
+the repo root, the `LICENSE` file, and the `data/` subdirectory listing —
+all via `github.com`/`raw.githubusercontent.com`, which this log's prior
+runs have consistently found reachable where `arxiv.org`,
+`huggingface.co`, `openaccess.thecvf.com`, and `universe.roboflow.com` are
+not (true again this run: the CVF paper page for this exact dataset was
+`EGRESS_BLOCKED`). The repo's top level is exactly three items: `data/`,
+`LICENSE`, `README.md`. The **`data/` folder contains exactly one file:
+`CaddieSet.csv`** — no video, no images, no annotation files of any kind.
+The `LICENSE` file's full text was read directly and is the standard MIT
+License, `Copyright (c) 2024 damilab`, permitting commercial use,
+modification, and redistribution (only a copyright/permission-notice
+requirement). The README confirms the CSV-only, no-clubhead-annotation
+picture: it lists ball-flight fields and 22 biomechanical joint-derived
+features, with no field for clubhead position, bounding box, or any
+per-frame image reference. `sunholee1217/golf` (the third run's flagged
+follow-up) remains **unconfirmed**: `huggingface.co` is still blocked by
+this sandbox's egress proxy on this run too, and unlike CaddieSet it has
+no mirroring GitHub repo that a search surfaced, so it stays an open lead
+for a future run with different network access, not a finding here.
+
+**Licence.** MIT, quoted in full above from the primary source. Commercial
+use is unambiguously permitted — but the licence only covers a CSV of
+derived numeric features, not any of the underlying imagery, so the
+licence clearance is close to moot for this project's purposes.
+
+**Which failure mode.** Neither, in practice, despite matching the
+project's stated indoor-footage gap on paper. It was checked specifically
+against the "indoor/low-light/simulator footage where real motion blur
+appears" rotation bullet and the README's own note that indoor performance
+has never been measured — CaddieSet is exactly the right *kind* of source
+(indoor launch-monitor bay, real swings, permissive licence) but delivers
+none of the artifact this project could actually use: no frames to look
+at, let alone label a clubhead box on, so it does not help camouflage,
+motion blur, or the training-data imbalance.
+
+**Effort vs. payoff.** Low-moderate effort (three targeted GitHub fetches
+plus two searches, all successful — no egress fights this run once the
+CVF paper mirror was abandoned as blocked). Zero payoff for training or
+even qualitative frame review: this is a clean, verified negative result,
+not a padding entry — it forecloses a specific, plausible-sounding lead
+(the dataset's name and abstract both suggest exactly the indoor swing
+footage this project lacks) that a future run would otherwise be tempted
+to re-discover and re-chase. The one open thread worth another run's time
+is still `sunholee1217/golf` on Hugging Face, which — unlike CaddieSet —
+was described in search snippets as video content, not derived CSVs; it
+needs either direct `huggingface.co` access or a GitHub/other mirror to
+resolve.
