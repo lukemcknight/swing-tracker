@@ -6626,3 +6626,115 @@ confidence camouflage-side recommendation, and because closing the
 "is the compute cost actually a blocker" question the 2026-08-23 entry
 left open is worth a cheap follow-up read even without a primary-source
 verification yet.
+
+---
+
+## 2026-09-01 (second run) — PAL (Portable Active Learning for Object Detection, CVPR 2026 Highlight): a detector-agnostic labeling-prioritization framework for the data-engine gap, not a blur/camouflage fix (existence-only result)
+
+**Area covered.** Rotated to bullet 5 (synthesizing/augmenting training
+data) via its data-engine-efficiency angle, away from the last three runs
+which were all camouflage-architecture (TSM, CSRDA, Enhanced YOLOv11n on
+2026-08-31/09-01). Also touches the golf-dataset rotation area first this
+run: a sweep for new commercially-licensed indoor/low-light/simulator golf
+footage (Roboflow Universe listings, a SCIRP pose-estimation paper, a
+Hugging Face search) turned up nothing beyond what 2026-08-13/18/21 already
+logged and ruled out — not logged as its own entry per the no-padding rule,
+noted here only so a future run doesn't re-spend a cycle on the same dead
+ends.
+
+**What it is.** "Portable Active Learning for Object Detection" (PAL) —
+Rashi Sharma, Justin Timothy C. Bersamin, Karthikk Subramanian (Panasonic
+R&D Center Singapore), CVPR 2026, selected as a **Highlight** paper. PAL is
+described (consistently across independent sources — see Verification
+below) as **detector-agnostic and training-pipeline-agnostic**: it operates
+*solely on a trained detector's own inference outputs* on unlabeled
+imagery, not on model internals, gradients, or architecture-specific
+hooks. It couples two signals: **LIUS** (Logistic-based Instance
+Uncertainty Scoring) — lightweight, per-class logistic classifiers trained
+to distinguish true from false positives using only two detector-output
+features (pre-NMS box count and detection confidence) — with **GUIDE**
+(class-weighted image entropy + a rare-class diversity index + a
+rank-conditioned similarity penalty) to rank *unlabeled* images by how
+much a human label on them would be worth. Reported (via search-indexed
+excerpts, not read directly — see caveat) to match prior-SOTA accuracy
+while needing roughly 20% less annotation.
+
+**URL.** Paper: https://arxiv.org/abs/2605.10349 (also
+https://arxiv.org/html/2605.10349 and
+https://arxiv.org/pdf/2605.10349). CVF listing:
+https://openaccess.thecvf.com/content/CVPR2026/papers/Sharma_Portable_Active_Learning_for_Object_Detection_CVPR_2026_paper.pdf.
+CVPR poster page: https://cvpr.thecvf.com/virtual/2026/poster/38968.
+Panasonic press release naming it as one of two CVPR 2026 acceptances:
+https://news.panasonic.com/global/press/en260528-3.
+
+**Verification.** `arxiv.org` (all three paths), `cvpr.thecvf.com`,
+`openaccess.thecvf.com`, `news.panasonic.com`, and
+`api.semanticscholar.org` were all tried directly via fetch this run and
+**all five are blocked by this sandbox's egress proxy** — the same
+standing restriction every prior run of this log has hit for non-GitHub
+academic hosts. A targeted search for a code repository (author name +
+"Portable Active Learning" + "github", and independently for the specific
+mechanism "class-wise logistic classifier uncertainty diversity active
+learning object detection") found **no GitHub repository, project page, or
+any code release at all**. What's logged above is reconstructed from
+search-engine-indexed excerpts of the abstract/method that agree closely
+across multiple independently-worded search results (arXiv's own listing,
+the CVF PDF listing, the CVPR poster page, and Panasonic's own press
+release identifying the paper by name and authors) — that cross-source
+agreement is why this clears this log's bar for "confirmed to exist" (same
+standard as the CADDIE and Enhanced-YOLOv11n entries), but the exact
+numbers (the "~20% less annotation" figure) and every implementation
+detail beyond the two-paragraph summary above should be treated as
+unverified until someone with real network access reads the PDF.
+
+**Licence.** Not applicable in the usual sense — there is no dataset or
+pretrained model to license, and no code exists to license either. This is
+a *method* described in a paper; using it means reimplementing the LIUS/
+GUIDE scoring on top of this project's own YOLO11n outputs, which is an
+engineering task, not a licence question. (Standard academic norms mean
+the paper text itself is presumably all-rights-reserved by CVF/IEEE, but
+that restricts redistributing the paper, not implementing the described
+algorithm.)
+
+**Which failure mode.** Neither, directly — this is a **data-engine /
+labeling-efficiency** technique, not a detection fix. It is being logged
+under the "augment/synthesize training data" rotation bullet because its
+actual target is this project's stated 29%-own-footage-vs-54%-Roboflow
+imbalance: if the team is shooting more of its own phone footage (indoor,
+low light, real swings) to close that gap, PAL-style ranking would tell
+them which *raw, unlabeled* clips are worth a human annotator's time
+first, rather than labeling footage in capture order.
+
+**A specific, important caveat for this model.** The described mechanism
+(LIUS) needs the detector to *emit* a box, even a low-confidence one — it
+scores uncertainty from pre-NMS box count and confidence. This project's
+own camouflage failure mode, per the failure analysis this log's every run
+is required to read, is **zero candidate detections even at confidence
+0.05** on some genuinely hard frames. On a true zero-detection frame, LIUS
+has no per-instance signal to score at all; only the image-level GUIDE
+half (entropy/diversity, computed over whatever weak signal exists) could
+plausibly still flag such a frame as worth labeling, and that is a weaker,
+less-targeted signal than the paper's headline LIUS mechanism. This is not
+a reason to discard the idea, but it means PAL should not be assumed, sight
+unseen, to specifically solve the "which frames have a totally invisible
+clubhead" prioritization problem — that needs verifying against the actual
+paper (or a pilot) before relying on it for exactly the hardest camouflage
+frames this project cares about most.
+
+**Effort vs. payoff.** Low effort spent this run (search-and-verify only,
+~8 queries and 5 blocked fetches, no code found to inspect). Payoff is
+speculative but plausibly real and cheap to capture: if the team is
+already running the current on-device model over new raw phone footage
+before labeling (which the data-engine doc implies is roughly the
+workflow), computing two extra numbers per frame — pre-NMS box
+count/confidence and an image-entropy score — from outputs that already
+exist is a small addition, not a new pipeline. But there is no code to
+adopt, so "low effort" only holds for a rough reimplementation of the
+idea's spirit (rank unlabeled frames by detector uncertainty +
+diversity before sending them to annotators), not the paper's exact,
+tuned method. Recommended next step: whoever has real network access
+should read the actual PDF to get the precise LIUS/GUIDE formulas and the
+ablation showing which component matters most, before spending
+implementation time — and specifically check whether the paper's own
+results include a "zero detections" edge case, which would resolve the
+caveat above either way.
