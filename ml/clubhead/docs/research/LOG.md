@@ -6525,3 +6525,104 @@ out real camouflage frames, not just inspected qualitatively. Logged so a
 future run with better egress, or a human with a browser, can pull the
 actual abstract and check for a code release, rather than this log
 re-discovering the same paper from scratch.
+
+---
+
+## 2026-09-01 — Enhanced YOLOv11n (MSEAF + ScalCat/Scal3DC + P2 head + SRepD): a published, YOLO11n-native small-object recipe that extends this log's own P2-head entry (existence-only result)
+
+**Area covered.** Bullet 3 (small/low-contrast object detection), the
+architecture sub-thread. Rotated away from the last four 2026-08-31 runs
+(blur preprocessing/FILM, blur-augmentation-licence/ID-Blau,
+temporal-architecture/TSM, camouflage-domain-adaptation/CSRDA), none of
+which touched bare YOLO11n architecture surgery — the last entry to do
+that was the 2026-08-23 P2/4 head finding.
+
+**What it is.** "Enhanced YOLOv11n for small object detection in UAV
+imagery: higher accuracy with fewer parameters" (Zhu, H. & Xie, X.),
+*Scientific Reports* (Springer Nature), article `s41598-026-35301-2`,
+published 18 January 2026 (preprint on Research Square, 15 October 2025,
+`10.21203/rs.3.rs-7553905/v1`; also indexed at IEEE Xplore, document
+`11196626`). It proposes a four-part, YOLOv11n-native recipe evaluated on
+VisDrone2019 (small, low-contrast objects seen from a moving camera —
+architecturally the closest published analogue this log has found to a
+dark clubhead against cluttered foliage): (1) **MSEAF** (Multiscale
+Edge-Feature Adaptive Selection), a backbone module aimed at weak-edge,
+small-object signal; (2) **ScalCat** and **Scal3DC**, neck-reconstruction
+modules that add a P2 (stride-4) detection head — the same P2 addition
+this log already logged 2026-08-23, but here as one piece of a larger,
+empirically-tested recipe rather than a bare config edit; (3) **SRepD**, a
+shared, reparameterized lightweight detection head meant to offset the
+P2 head's extra compute. Reported result (from search-indexed abstract/
+summary text, not a primary-source read — see verification limits below):
+**+4.6% mAP50 and +4.6% Precision over the YOLOv11n baseline, with ~8.5%
+fewer parameters** — i.e. this is offered as evidence the P2-head compute
+cost this log flagged as a risk in the 2026-08-23 entry (~2x GFLOPs for
+YOLOv8n-p2) can be substantially offset by pairing it with a lighter head,
+not just accepted as a tax.
+
+**Verification performed, and its limits.** This is an existence-only
+result, same disposition as this log's DFRCP, ReynoldsFlow, and
+TinyDark-YOLO entries. Every primary host attempted this run returned
+`EGRESS_BLOCKED` or was unreachable from this sandbox on direct fetch:
+`www.nature.com` (the article itself), `assets-eu.researchsquare.com` (the
+preprint PDF), `ieeexplore.ieee.org`, `api.semanticscholar.org`, and
+`sciety-labs.elifesciences.org` (DNS failure, not a proxy block — a
+distinct failure mode from every other host tried). This is consistent
+with every prior run's standing restriction on academic-publisher hosts
+(arXiv, HuggingFace, ResearchGate, Research Square all previously
+blocked); `nature.com` and `ieeexplore.org` are new hosts added to that
+observed blocklist by this run. What is corroborated across multiple
+independent search results (title, exact author names, journal, article
+number, DOI, publication date, and the module names/numbers above) is
+consistent and specific enough to treat the paper's **existence** as
+solid; the **quantitative claims, the actual architecture diagrams, and
+any code/data availability statement are not independently verified** —
+no GitHub repository for this specific paper could be found by search,
+and unlike the 2026-08-23 P2-head entry (which verified the config file
+directly from `raw.githubusercontent.com`), nothing here was read from a
+primary source. **Licence: not verified**, but flagged as a reasonable
+expectation rather than a confirmed grant — *Scientific Reports* publishes
+exclusively open-access under CC BY 4.0 by default (Springer Nature's
+standing policy for that journal, not specific to this article), which
+would permit commercial use with attribution if the article follows that
+default; this was not confirmed against the article's own licence
+statement and must not be treated as established.
+
+**Which failure mode.** Camouflage / small-object-primary, same
+classification as the 2026-08-23 P2-head entry it extends — MSEAF and the
+P2 head target detectability of a small, low-contrast object with weak
+edges, not motion elongation. No blur-specific claim is made anywhere in
+what could be verified.
+
+**Why it helps this model specifically.** This project already has a
+concrete, low-effort candidate experiment logged (2026-08-23: add a P2
+head to YOLO11n, retrain, re-export) with one open risk flagged at the
+time — roughly doubled on-device compute, unconfirmed against this
+project's own latency headroom. This entry is independent, empirical
+(if unverified) evidence that a P2 head plus a lightweight reparameterized
+head (SRepD) and a small-object-tuned backbone module (MSEAF) recovers
+accuracy *and* cuts parameters, on the same base architecture, on a task
+that shares this model's core symptom (small, low-contrast, cluttered-
+background target). If the numbers hold up under a primary-source read,
+this reframes the 2026-08-23 experiment from "P2 head alone, pay the
+compute tax" to "P2 head plus the head-side savings this paper reports,"
+which is strictly more attractive and directly answers that entry's own
+flagged open question. It does not, on its own, change the recommended
+next step — the P2-head experiment is still the actionable one — but it
+raises the ceiling worth testing for once that experiment is run.
+
+**Effort vs. payoff.** Effort so far: low (search only; five primary hosts
+attempted and blocked, consistent with this sandbox's established
+limitation rather than a sign the paper is unreal). Effort to actually use
+this: someone with unrestricted network access reading the Nature or
+Research Square page directly to confirm module details, the exact
+ablation numbers, and the licence — a same-day check, per this log's usual
+convention for egress-blocked academic sources. Payoff if confirmed:
+moderate — it strengthens rather than replaces the already-logged,
+already-actionable P2-head experiment; it is not a new independent
+direction. Not logged as a strong standalone finding on its own; logged
+because it is new information tightly coupled to this log's own highest-
+confidence camouflage-side recommendation, and because closing the
+"is the compute cost actually a blocker" question the 2026-08-23 entry
+left open is worth a cheap follow-up read even without a primary-source
+verification yet.
