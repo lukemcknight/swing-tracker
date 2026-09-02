@@ -7072,3 +7072,110 @@ time. The one remaining open thread from this log's rotation is
 block on every run that has tried it; it needs either a Hugging Face mirror
 on GitHub or a session with different network access, not another identical
 retry.
+
+---
+
+## 2026-09-02 (third run) — `onkar-99/Golf-Ball-Tracking`: independent, golf-specific confirmation that motion blur breaks YOLO clubhead detection at inference, plus a training-free optical-flow/tracker fallback — no licence, so it corroborates rather than supplies reusable code
+
+**Rotation note.** The two prior 2026-09-02 runs (DoveNet/iHarmony4, YUV20K)
+were both camouflage/VCOD-area findings. This run deliberately switched to
+the golf-specific pose/club-tracking rotation slot, which this log's last
+few runs had left for datasets and architecture leads instead.
+
+**What it is.** A small, real, MIT-free (see below) GitHub repo,
+misleadingly named "Golf-Ball-Tracking" but — verified directly from its own
+raw README, fetched via `raw.githubusercontent.com`, not a search snippet —
+actually about **clubhead** tracking: "we found the golf head locations in
+the video using YOLOv5. The model was trained on custom data... However,
+since the golf swing was very fast, the golf club was blurred in most of the
+frames and difficult to detect." The author's stated fix is two training-free
+fallbacks for frames where the YOLOv5 detector fails: (1) **optical flow**
+— threshold the frame-difference image, then pick the contour nearest (by
+centroid distance) to the club's last known location; (2) a **Dlib
+correlation tracker** seeded from the last confirmed detection, carried
+forward while detection keeps failing. The author's own honest conclusion,
+quoted verbatim: "Although both these approaches were implemented correctly,
+they were not as promising as were expected to be," and under "Areas of
+Improvement": "Since the golf club is blurred while downswing, the tracking
+and detection fails."
+
+**URL.** https://github.com/onkar-99/Golf-Ball-Tracking (README fetched
+directly and verbatim via
+`raw.githubusercontent.com/onkar-99/Golf-Ball-Tracking/master/README.md`;
+the file listing — `Dlib/`, `Optical Flow/`, `README.md`,
+`golf_club_tracking.PNG` — was confirmed by loading the GitHub repo page
+itself, not a search index. `api.github.com` is blocked by this sandbox's
+egress proxy, same restriction prior runs hit, so repo metadata like
+star count and last-push date could not be pulled, but the two content
+fetches above did not depend on that endpoint.)
+
+**Licence.** None. There is no `LICENSE` file in the repo's file listing and
+no "License" entry in GitHub's sidebar — confirmed by direct inspection of
+the repo page, not inferred. The YOLOv5 weights themselves are hosted
+externally on Google Drive with no licence terms stated on that link either.
+**Commercial use of this repo's code or weights is not established as
+permitted** — GitHub's default-licence rule means "no licence" is
+all-rights-reserved by the author, not public domain. That rules this out
+as a source of code or weights to actually pull into this project's
+pipeline. What it is not blocked from being used as: a public, verifiable
+fact pattern — the empirical result an independent developer hit and wrote
+down, not the specific lines of Python.
+
+**Which failure mode.** Motion blur, primarily, and it is independent
+evidence rather than a new mechanism: this project's own repo does not yet
+have a measured indoor/low-light blur failure rate (the indoor test set is
+quarantined per the README), so this is the first source in this log that
+is a *second, unrelated team* independently hitting the identical failure
+this project's caveat already predicts — a from-scratch YOLO clubhead
+detector failing specifically on the fast-downswing frames where the club is
+blurred, described by someone with no connection to this project or its
+labeling spec. It is a second, cheap-and-shipped-looking data point for the
+recovery-not-appearance tracker mechanism this log already logged from
+`OC-SORT` (2026-08-26, training-free Kalman recovery from detection gaps)
+and `InpaintNet` (2026-08-17) — but golf-specific and inference-only, not a
+generic mechanism from an unrelated sport.
+
+**Why it helps this model specifically.** Two things, neither of which
+requires touching this repo's code. First, it is a second confirmation,
+from a source with zero incentive to agree with this project's own failure
+analysis, that a from-scratch YOLO-family clubhead detector's dominant
+failure is exactly what this project's brief already flags: the club
+"blurred in most of the frames" during the downswing, not edge cases or
+rare poses. That should raise, not lower, confidence in prioritizing the
+motion-blur regime over further camouflage-mechanism mining, which is where
+this log's last several runs have concentrated. Second, the two fallback
+techniques described (optical-flow contour-nearest-centroid; last-detection
+correlation tracking) are simple enough to reimplement from the README's
+description alone in an afternoon, with no need for the unlicensed code —
+they're the same training-free "keep going after a missed detection" idea
+as the already-logged OC-SORT entry, just concretely golf-shaped. Combined
+with OC-SORT's own citation and MIT licence, that gives a two-source basis
+for building a small on-device recovery tracker without touching training
+data or the CoreML model at all.
+
+**Important caveats.** (1) The author's own conclusion is negative — both
+fallbacks under-performed expectations, and no quantitative before/after
+detection-rate numbers are given, only the qualitative "not as promising as
+expected." This is corroboration of the *problem*, not evidence that *this
+particular fix* works; OC-SORT's own (also unquantified, per this log's
+2026-08-26 entry) recovery mechanism is the more rigorously-sourced
+candidate to actually build from. (2) No licence means the code itself
+cannot be adapted or copied into this project; only the described technique
+(optical flow + nearest-centroid; correlation-tracker carry-forward) is
+reusable, and it would need to be written from scratch. (3) It is a single
+anonymous hobby project — one data point, not a benchmark or paper, and its
+own YOLOv5 model and training data are unverified and inaccessible (Google
+Drive link, not checked, and out of scope even if it were, given the
+licence gap). (4) It says nothing new about camouflage, indoor/low-light
+capture, or licensed datasets — it only reinforces the motion-blur framing
+already in this project's brief.
+
+**Effort vs. payoff.** Very low effort (two direct GitHub content fetches,
+no blocked hosts this run). Payoff is evidentiary, not a ready-to-use asset:
+it does not hand this project a dataset, a licensed model, or a novel
+technique beyond what OC-SORT already logged — its value is narrowly that
+it is independent, real-world confirmation (not this project's own
+assumption) that motion blur, not edge-case appearance, is the dominant
+failure mode for a YOLO-family clubhead detector once a downswing gets
+fast, which is a useful cross-check before committing further research
+cycles to camouflage-only leads.
