@@ -7179,3 +7179,147 @@ assumption) that motion blur, not edge-case appearance, is the dominant
 failure mode for a YOLO-family clubhead detector once a downswing gets
 fast, which is a useful cross-check before committing further research
 cycles to camouflage-only leads.
+
+---
+
+## 2026-09-02 (fourth run) — Motion-vector-guided, patch-selective blur synthesis (Bright et al., "Mitigating Motion Blur for Robust 3D Baseball Player Pose Modeling for Pitch Analysis," ACM MMSports 2023): the missing "where to blur" piece for this log's own flagged gap
+
+**Area covered.** Rotated away from golf-specific pose/tracking (this run's
+predecessor, `onkar-99/Golf-Ball-Tracking`, was the third run today) back to
+bullet 5, "ways to synthesise or augment training data for either failure
+regime" — specifically the motion-blur regime. Before settling on this, I
+tried the dataset bullet again (a fresh `universe.roboflow.com` fetch for
+`club-head-tracking/golf-club-tracking` still returns `EGRESS_BLOCKED`,
+same standing wall as every prior run — not logged as new, since Roboflow
+inaccessibility is already an established fact per the 2026-08-23 entry)
+and a VCOD-mechanism candidate (CamoSAM2, a SAM2-based prompt-refinement
+paper with real code at `github.com/zhangxin06/CamoSAM2`) that I ruled out
+before writing it up: it uses the full, un-distilled SAM2 encoder, which
+the 2026-08-19 SAM-PM entry already closed off as a category for this
+on-device deployment target ("cannot run per-frame on an iPhone... unless
+the project's deployment target changes") — EdgeTAM is still the only
+member of that family this log has found that reopens it, so a ninth
+full-SAM2 VCOD paper adds nothing SAM-PM didn't already establish.
+
+**What it is.** Bright, Ilic, Kim, Wu, Poitras, Dickey & Clausi (University
+of Waterloo VIP Lab), "Mitigating Motion Blur for Robust 3D Baseball Player
+Pose Modeling for Pitch Analysis," presented at the 6th International
+Workshop on Multimedia Content Analysis in Sports (MMSports '23, co-located
+with ACM Multimedia 2023). The paper's stated problem is, near verbatim
+from search-indexed summaries: accessible **broadcast video at 30fps**
+produces **partial motion blur during fast athletic action** (a pitcher's
+arm/wrist through the delivery), which degrades 2D/3D pose-keypoint
+estimation. Their fix is a "motion blur learning module": a synthetic-blur
+augmentation pipeline that (1) estimates dense motion-flow vectors between
+consecutive frames of already-existing, otherwise-sharp training video, (2)
+uses that flow field to identify which **patches/regions** show
+significant motion, and (3) synthesizes blur **selectively in those
+regions only**, rather than uniformly over the whole frame. Reported
+result (search-summary only): a 54.2% and 36.2% loss reduction on 2D and
+3D pose estimation respectively versus the un-augmented baseline.
+
+**Why this is a different mechanism from what's already in this log.**
+Every existing blur-synthesis entry here is either (a) object-local but
+needs a hand-picked or fixed-direction kernel (PSF box-expansion,
+2026-08-14: one directional kernel per cropped clubhead), (b) needs real
+high-frame-rate/slow-mo source footage to average into a blur (Brooks &
+Barron frame-averaging, 2026-08-12; FILM as the standard-frame-rate
+enabler for it, 2026-08-31), (c) models whole-frame *camera* shake, not
+subject motion (6-DOF, 2026-08-25), or (d) is a whole-frame, generic,
+non-selective kernel already flagged as a known problem in this exact log
+— the 2026-08-27 (third run) Albumentations `MotionBlur` entry states
+explicitly: "`A.MotionBlur` convolves a directional kernel over the
+*entire* frame uniformly — it does not selectively blur only the clubhead
+region... even a modest kernel... could smear the head's true extent past
+its original tight label box, silently reintroducing the exact
+box/visual-extent mismatch this log's PSF and frame-averaging entries were
+designed to fix." This paper's flow-guided, patch-selective step is a
+direct, purpose-built answer to that exact flagged problem: use per-region
+motion magnitude (not a hand-set direction/kernel, not a whole-frame
+uniform pass) to decide *where* and *how strongly* to blur, on ordinary
+30fps footage this project already has — no slow-mo capture requirement at
+all, unlike frame-averaging/FILM.
+
+**URL.** https://arxiv.org/abs/2309.01010 (also indexed identically at
+`dl.acm.org/doi/10.1145/3606038.3616163`, matching title/authors/venue —
+independent-index corroboration of existence). **No primary source was
+read.** `arxiv.org`, `dl.acm.org`, `www.researchgate.net`,
+`api.semanticscholar.org`, and `paperswithcode.com` were all tried directly
+this run and all returned `EGRESS_BLOCKED`, the same standing restriction
+noted in nearly every prior entry in this log. Everything above is
+reconstructed from search-engine result summaries (three independent
+queries, consistent details across all of them: broadcast 30fps → partial
+blur → flow-guided patch-selective synthetic augmentation → 54.2%/36.2%
+loss reduction), which this log treats as one notch below a directly-read
+source — plausible and internally consistent, not independently confirmed.
+
+**Licence — no code or repository found.** I checked the paper's own
+GitHub account (`github.com/jerrinbright`, the first author) directly via
+fetch: no repository related to motion blur, baseball, or pose estimation
+exists there, only unrelated visual-odometry/SLAM/robotics projects. The
+author's personal site (`jerrinbright.github.io`) is itself
+`EGRESS_BLOCKED`, so it could not be checked for a separate release. One
+search result described the arXiv listing's page licence as CC BY 4.0,
+which (per this log's established posture on the PSF and 6-DOF entries) is
+a statement about the paper text, not a grant over any implementation —
+moot here regardless, since no implementation to license was found. The
+*idea* (flow-guided, region-selective synthetic blur augmentation) is an
+ordinary image/video-processing technique with no original-expression
+claim attached; reimplementing it from the description above carries no
+licensing exposure, same reasoning this log already applied to the 6-DOF
+entry. **Commercial use: not a licensing question** — nothing of the
+authors' is being redistributed or run verbatim, but also nothing
+shippable exists to save engineering time; this is a from-scratch build.
+
+**Which failure mode.** Motion blur, specifically and only — it says
+nothing about camouflage and there's no plausible mechanism by which
+region-selective blur synthesis would help a zero-detection frame that is
+already sharp.
+
+**Why it helps this model specifically.** This project's own brief already
+flags the central gap: median labelled-box elongation of only 1.60 (p90
+3.01) despite a labeling spec that instructs annotators to box the full
+blur streak, because genuinely blurred training examples are scarce. This
+log has three prior routes to manufacturing them (PSF, frame-averaging,
+6-DOF) plus one already-flagged-broken shortcut (uniform Albumentations
+MotionBlur). This paper adds a fourth route with a property none of the
+other three have: it needs no slow-mo capture, no hand-tuned kernel
+direction, and — critically — it targets *where* blur should go using
+actual per-frame motion rather than a human guess or a uniform pass. Since
+the failure symptom in this project is specifically the clubhead (a small,
+fast-moving region against a much larger, mostly-static body/background),
+a flow-guided selective pass would naturally concentrate synthetic blur
+exactly there, which is exactly the region this project's ground-truth
+boxes need to grow correctly around. Applied to this project's own
+existing sharp, correctly-labelled 29% first-party phone footage, it could
+generate additional correctly-elongated training examples without new
+capture sessions.
+
+**Effort vs. payoff.** Medium effort, unverified-but-well-motivated payoff.
+Effort: this is not a "pip install" like the Albumentations entry — the
+paper's own description implies a small standalone pipeline (per-frame
+optical flow via any standard method, e.g. OpenCV Farneback or RAFT;
+patch/region motion-magnitude thresholding; localized blur-kernel
+application; box re-expansion to match, reusing the box-growth logic the
+PSF entry already established) with no reference code to start from, so
+budget a few days, not an afternoon. Payoff: this is the only blur-
+synthesis entry in this log so far that answers "where" as well as "how
+much," directly closing the specific gap the Albumentations entry flagged
+as unresolved — but every number behind the reported 54.2%/36.2%
+improvement comes from an unread source, on a different sport, different
+model (3D pose regression, not object detection), and different failure
+metric (loss reduction, not mAP or per-frame detection rate), so treat the
+mechanism as a promising, well-targeted engineering pattern to prototype
+against this project's own eval harness, not as evidence of a specific
+expected gain here.
+
+**Verification status.** Paper existence, title, authors, venue (MMSports
+'23 / ACM MM 2023 workshop), and problem statement (30fps broadcast video →
+partial motion blur → degraded pose estimation): confirmed via two
+independent indexes (arXiv listing, ACM DOI record) with matching
+metadata. Method description (flow-vector computation → patch-selective
+region identification → localized blur synthesis) and the 54.2%/36.2%
+figures: from search-engine result summaries only, not the paper text —
+flagged as such, not independently confirmed. Code/repository: actively
+checked (author's GitHub fetched directly, personal site attempted and
+blocked) and confirmed absent, not merely unsearched.
