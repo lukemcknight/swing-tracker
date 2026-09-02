@@ -6895,3 +6895,102 @@ is still `sunholee1217/golf` on Hugging Face, which — unlike CaddieSet —
 was described in search snippets as video content, not derived CSVs; it
 needs either direct `huggingface.co` access or a GitHub/other mirror to
 resolve.
+
+---
+
+## 2026-09-02 — DoveNet / the bcmi iHarmony4 repo: an MIT-licensed image-harmonization codebase that fixes the exact realism gap this log's own copy-paste entry flagged
+
+**Area covered.** Bullet 5 (ways to synthesize/augment training data), specifically
+a direct follow-up to this log's 2026-08-14 Copy-Paste augmentation entry rather
+than a fresh area. That entry logged `conradry/copy-paste-aug` (MIT, verified) as
+the cheapest camouflage-directed data synthesis idea in this log, but flagged one
+concrete, named weakness in its own effort/payoff section: the pasted clubhead
+crop is blended with only a feathered-edge alpha mask (Gaussian smoothing), not
+gradient-domain or learned harmonization, so "composited realism is inherently
+imperfect (lighting/shadow/scale mismatch between the crop's original scene and
+the new background)." This run searched specifically for a permissively-licensed
+fix to that named gap rather than starting a new area, per this log's own
+"first check whether this log's existing entries already cover it" convention.
+`sunholee1217/golf` (the open thread from the prior run) was re-attempted first —
+`huggingface.co` is still `EGRESS_BLOCKED` this run, consistent with every prior
+run's finding, so that thread remains unresolved and is not re-logged here.
+
+**What it is.** `github.com/bcmi/Image-Harmonization-Dataset-iHarmony4` — the
+official code release for "DoveNet: Deep Image Harmonization via Domain
+Verification" (Cong et al., CVPR 2020), maintained by the BCMI lab that has
+produced most of the image-harmonization literature. Image harmonization takes a
+composited image (foreground pasted onto a new background, exactly copy-paste
+augmentation's output) and adjusts the foreground's color/lighting statistics to
+match the background — i.e. it is a direct, purpose-built answer to the
+lighting/shadow mismatch the copy-paste entry named as its open weakness, not a
+generic image-editing tool. The same repo's README benchmark table also lists
+several newer, faster alternatives trained on the same task (HDNet, CDTNet,
+PCTNet) with their own repos linked, so DoveNet is a verified entry point into
+an actively maintained family, not a single dead-ended model.
+
+**URL.** https://github.com/bcmi/Image-Harmonization-Dataset-iHarmony4 (code at
+its `DoveNet/` subdirectory: `train.py`, `test.py`, `models/`, `options/`,
+`scripts/`, `util/`, plus a pretrained checkpoint linked from the README).
+
+**Verification.** Fetched the repo's raw `LICENSE` file directly (not a badge or
+README claim): full MIT License text, BCMI, 2022 — "Permission is hereby granted,
+free of charge... without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies," with only the copyright/permission-notice condition and an "as is"
+disclaimer. Also fetched the `DoveNet/` subdirectory listing directly and
+confirmed it contains real training/inference code, not just documentation:
+`train.py`, `test.py`, model definitions under `models/`, plus a pretrained
+checkpoint (`latest_net_G.pth`) linked from the README with reported MSE/PSNR
+numbers per source dataset. Separately checked the README for what iHarmony4's
+*images* are built from (Microsoft COCO, MIT-Adobe FiveK, Flickr, a "day2night"
+set) — those source images carry their own separate licences and are *not*
+needed for this project's use case, since the intended use here is running the
+harmonization code on this project's own already-permissively-labelled crops and
+its own negative-frame backgrounds, not redistributing iHarmony4 itself. The
+alternative harmonization model checked first, `ZHKKKe/Harmonizer` (ECCV 2022,
+lighter-weight at 20MB with a real-time/mobile-oriented claim) was ruled out:
+its README states the license verbatim as "Creative Commons Attribution
+NonCommercial ShareAlike 4.0" — non-commercial, so DoveNet (or one of the
+MIT-covered faster successors in the same repo) is the one to use, not
+Harmonizer.
+
+**Licence.** MIT, quoted in full above from the primary source (the code repo).
+Commercial use of the code is unambiguously permitted. (`ZHKKKe/Harmonizer`,
+checked as the more lightweight alternative, is CC BY-NC-SA 4.0 and therefore
+commercially blocked — logged here as a ruled-out alternative, not as a separate
+entry, to save a future run from re-discovering and re-checking it.)
+
+**Which failure mode.** Camouflage, indirectly — same as the copy-paste entry it
+extends. It does not detect a camouflaged clubhead; it improves the realism of
+*synthetic* camouflage-style training examples (dark clubhead crop composited
+onto dark clothing/foliage background) that copy-paste already produces cheaply
+but with a known lighting/shadow mismatch. It has no bearing on the motion-blur
+failure mode.
+
+**Why it helps this model specifically.** This is not a new idea, it is the
+missing second half of an idea already in this log. Copy-paste augmentation was
+logged as this project's cheapest camouflage-directed lever specifically because
+it needs no architecture change and no CoreML re-validation — only the training
+set grows — but its own effort/payoff section already conceded that feathered-
+alpha blending alone risks producing composites a network learns to detect as
+"pasted" rather than as genuinely hard camouflage examples, which would waste
+the augmentation's value. DoveNet (or PCTNet/HDNet from the same repo, all under
+the same MIT umbrella per the repo's own claim, though only DoveNet's own
+LICENSE file was verified directly this run) slots into that exact pipeline
+step: composite with copy-paste's box/mask logic, then run the harmonization
+network once per composite as an offline preprocessing pass before training,
+with zero change to the detector itself.
+
+**Effort vs. payoff.** Low verification effort this run (two GitHub fetches
+found the working code and the license; one more ruled out the lighter-weight
+alternative on licence). Real integration effort is moderate, not low: it is a
+second offline model to run (with its own PyTorch environment and checkpoint
+download) inserted between copy-paste's mask-based compositing and training,
+and the harmonization model's own domain (COCO/Adobe5k photographic scenes) is
+a further distribution shift from golf footage that hasn't been validated
+empirically — so, like the copy-paste entry itself, this should be evaluated on
+the held-out test set before trusting it to beat plain feathered-edge blending,
+not assumed to help. The payoff is bounded to fixing one named, verified
+weakness in an already-logged idea, not a new capability on its own, so
+priority should stay behind actually shipping copy-paste augmentation first and
+only adding this if unharmonized composites measurably underperform.
