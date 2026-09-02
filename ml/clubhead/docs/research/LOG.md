@@ -6994,3 +6994,81 @@ not assumed to help. The payoff is bounded to fixing one named, verified
 weakness in an already-logged idea, not a new capability on its own, so
 priority should stay behind actually shipping copy-paste augmentation first and
 only adding this if unharmonized composites measurably underperform.
+
+---
+
+## 2026-09-02 (second run) — YUV20K resolved: the open thread from the 2026-08-31/2026-09-01 runs is a real benchmark, but non-commercial and its code isn't out yet
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object detection,
+temporal methods) — specifically closing out a named open lead rather than
+starting fresh. Three prior runs (2026-08-31 fourth run's predecessor and
+earlier) flagged `YUV20K` as "worth a direct check next time" after search
+snippets alone suggested a camera-motion-instability VCOD benchmark, but
+`arxiv.org` was blocked every time anyone tried to load the paper itself.
+This run re-attempted `arxiv.org/html/2604.09985` directly first — still
+`EGRESS_BLOCKED`, consistent with every prior run's finding for that domain —
+then found and used a `github.com` mirror instead, which (as with this log's
+CaddieSet and DoveNet entries) was reachable. `sunholee1217/golf`, the other
+standing open thread, was also re-attempted (`huggingface.co/datasets/...`)
+and is still `EGRESS_BLOCKED`; it remains unresolved, not re-logged here.
+
+**What it is.** Liu, Yiyu et al., "YUV20K: A Complexity-Driven Benchmark and
+Trajectory-Aware Alignment Model for Video Camouflaged Object Detection,"
+arXiv:2604.09985 (2026). A pixel-level-annotated VCOD benchmark — 24,295
+frames across 91 scenes, 47 species — built specifically to stress
+large-displacement motion and camera motion as complexity axes, paired with
+a proposed model (Motion Feature Stabilization + Trajectory-Aware Alignment)
+that uses motion, not appearance, to separate camouflaged objects from
+background — the same category of temporal mechanism this log's SLT-Net,
+SAM-PM, EMIP, and Vcamba entries already cover, and this run's rotation
+bullet specifically asks for.
+
+**URL.** Code/dataset repo: https://github.com/K1NSA/YUV20K. Paper:
+https://arxiv.org/abs/2604.09985 (unreadable this run, per above).
+
+**Verification.** Fetched the repo's raw `LICENSE` and `README.md` directly
+via `raw.githubusercontent.com`. `LICENSE` is the standard MIT License
+(K1NSA, 2026) — full permissive grant, copyright/notice condition only. The
+README states the **dataset** carries a separate, different license: CC BY-NC
+4.0, with the line "any commercial usage of this dataset is strictly
+prohibited," and further discloses the source videos are scraped from the
+public internet under a fair-use claim for academic research, with copyright
+belonging to the original creators and takedown-on-request. The README's own
+roadmap section lists source-code release as pending with no date — i.e. the
+MFS/TAA model implementation itself is not yet published, only the dataset
+and paper.
+
+**Licence.** Two different licences on one repo, both confirmed from primary
+source: the repo/code shell is MIT (permits commercial use, but there is no
+model code in it yet to use), while the dataset is CC BY-NC 4.0 and
+explicitly commercial-use-prohibited — and separately compromised for this
+project's purposes regardless of licence, since the source videos are
+resold/rehosted internet clips of unclear per-clip provenance, not something
+a commercial app should build a training set on even if the wrapper licence
+allowed it.
+
+**Which failure mode.** Camouflage. Its "large-displacement motion, camera
+motion" complexity axes are inter-frame displacement and viewpoint change —
+the thing this project's own brief warns not to conflate with intra-frame
+motion blur — so it has no bearing on the blur failure mode; it is one more
+data point for the temporal-motion-cue camouflage mechanism this log has now
+verified from five independent groups (SLT-Net, SAM-PM, EMIP, Vcamba, and
+this one).
+
+**Why it helps this model specifically.** It doesn't, directly, right now:
+neither the dataset (non-commercial, unclear provenance) nor the model code
+(not released) is usable today. Its value is closing a specific, named
+uncertainty three separate prior runs left open, so a future run stops
+re-discovering and re-flagging the same lead — the same service the
+CaddieSet and Deblur-YOLO entries already provide elsewhere in this log.
+
+**Effort vs. payoff.** Low effort (one blocked `arxiv.org` fetch, one search,
+two successful raw-GitHub fetches). Zero payoff for training or architecture
+today — both the licence and the code-not-shipped status rule this out — but
+it converts a three-times-repeated "worth checking" note into a closed,
+citable negative, which is exactly what stops it from costing a fourth run's
+time. The one remaining open thread from this log's rotation is
+`sunholee1217/golf`, still blocked by this sandbox's `huggingface.co` egress
+block on every run that has tried it; it needs either a Hugging Face mirror
+on GitHub or a session with different network access, not another identical
+retry.
