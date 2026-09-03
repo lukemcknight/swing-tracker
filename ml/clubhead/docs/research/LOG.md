@@ -7408,3 +7408,88 @@ lightweight tree ensemble on top of an already-small backbone's features —
 which would need to be rebuilt from scratch at YOLO11n's actual scale, not
 adopted as-is; that is a research project of its own, not a next step to
 schedule.
+
+---
+
+## 2026-09-03 (second run) — MIORe / VAR-MIORe: a real, 1000fps-camera motion-blur benchmark (ICCV 2025), CC BY-SA 4.0
+
+**What it is.** MIORe and VAR-MIORe are a pair of motion-restoration
+benchmarks released for the AIM 2025 (ICCV 2025 workshop) "High FPS Motion
+Deblurring" challenge. Unlike most blur datasets already in this log, these
+are captured from **real** footage, not synthesized from stills: a CHRONOS
+2.1-HD high-speed camera shooting 1920×1080 at **1000 FPS**, with four
+professional lenses (Tamron 15-30mm, Canon 24mm, Sigma 85mm, Laowa 100mm
+macro), covering "complex ego-camera movements, dynamic multi-subject
+interactions, and depth-dependent blur effects." MIORe targets mild-to-
+moderate blur; VAR-MIORe extends it to a deliberately wide range of motion
+magnitudes, up to 4x stronger blur than MIORe, specifically so a method can
+be evaluated across the full spectrum rather than one fixed blur strength.
+Each sample is a blurry (LQ) / sharp (HQ reference) image pair — this is a
+deblurring benchmark, not an object-detection dataset: no bounding boxes,
+no object classes, general everyday scenes rather than sports footage.
+
+**URL.** Project/download page (GitHub, fetched directly):
+https://github.com/george200150/MIORe — Google Drive links for Track 1
+(MIORe) and Track 2 (VAR-MIORe, "High Motion") train/val/test splits are
+listed directly in the README. Paper: "MIORe & VAR-MIORe: Benchmarks to
+Push the Boundaries of Restoration" and the companion challenge report "AIM
+2025 Challenge on High FPS Motion Deblurring: Methods and Results"
+(arXiv:2509.06803 and arXiv:2509.06793 — both `arxiv.org` `EGRESS_BLOCKED`
+in this sandbox, so paper details below come from search-result excerpts
+and the CVF/ICCV listing pages, not the primary PDFs; the capture-hardware
+description above is corroborated across three independent search results,
+including a third-party summary site, so it is being treated as reliable,
+but flagged as not primary-sourced).
+
+**Licence.** Fetched the GitHub README directly. It states verbatim: "This
+work is licensed under a Creative Commons Attribution-ShareAlike 4.0
+International License." This line sits on the same page as the dataset
+download links, so it is being read as applying to the dataset, not just
+the repo's descriptive text. **CC BY-SA 4.0 permits commercial use**
+(unlike the NC variants several prior log entries were blocked by), but it
+carries a ShareAlike condition: if this dataset (or a modified/relabeled
+version of it) is itself redistributed, the redistribution must carry the
+same licence. That is a real obligation for anything beyond
+private/internal training use — e.g., a "MIORe frames re-annotated with
+golf-specific blur boxes" derivative could not be published under a
+different licence. Whether a *model's trained weights* count as a
+"derivative work" for ShareAlike purposes is legally unsettled in general
+(not specific to this dataset), and no separate statement resolving that
+question for MIORe was found. No LICENSE file separate from the README was
+located, so this is the full extent of what could be verified.
+
+**Which failure mode.** Motion blur only. No camouflage relevance — the
+capture is well-lit, no low-contrast/camouflaged targets are part of the
+task.
+
+**Why it helps this model specifically.** This is a different kind of
+resource than the golf-footage gap this log keeps circling: it is not
+clubhead training data (no boxes, no golf content) and would not move the
+82%/77% detection numbers on its own. Its value is narrower and indirect —
+it is a genuine, physically-captured (not averaged-from-assumption)
+blurry/sharp pair benchmark that could be used to (a) fine-tune or validate
+an inference-time deblur preprocessor in the RT-Focuser vein (already
+logged 2026-08-15) before feeding frames to the YOLO11n detector, or (b) as
+an external sanity check on this log's own repeated frame-averaging
+blur-synthesis proposal (2026-08-12 entry, and the 2026-08-30 entry noting
+naive averaging is measurably wrong) — MIORe's blur is ground-truth real,
+so a model or metric tuned only on synthetic averaged blur could be
+compared against it. Neither use is a small lift, and I could not confirm
+whether the raw 1000fps sub-frame sequences are included alongside the
+final LQ/HQ pairs (the README, as fetched, only lists the two final
+images) — if only the pair is released and not the burst, use (b) is
+weaker than it sounds, since there is no intermediate motion path to
+compare against.
+
+**Effort vs. payoff.** Low-to-medium verification effort (one direct
+GitHub/README fetch confirmed licence text and real download links; arXiv
+itself stayed blocked, so the capture-hardware detail is corroborated,
+not primary-sourced). Payoff for this project is modest and indirect: this
+is a legitimately new, real (not synthetic), commercially-licensed blur
+resource with no prior entry in this log, but it is a general-scene
+deblurring benchmark, not clubhead or even sports imagery, and it ships no
+detection labels. It is a plausible input to a deblur-preprocessor
+experiment (pairs with the already-logged RT-Focuser lead) but is not
+itself a next action — downloading and inspecting whether the raw
+high-fps bursts are present would be the concrete next step before
+committing effort here.
