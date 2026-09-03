@@ -7493,3 +7493,86 @@ experiment (pairs with the already-logged RT-Focuser lead) but is not
 itself a next action — downloading and inspecting whether the raw
 high-fps bursts are present would be the concrete next step before
 committing effort here.
+
+---
+
+## 2026-09-03 (third run) — Source-free domain adaptation (SimROD, ICCV 2021; "Fully Test-time Adaptation for Object Detection" / IoU-filter, CVPR 2024) checked and ruled out: a genuinely new area for this log, no shippable artifact in either case
+
+**Area covered.** None of the five listed rotation areas directly, but
+closest to bullet 5 (ways to synthesise/augment training data) — this run
+searched a category this log has never logged: adapting a detector to a new
+domain using only *unlabeled* target-domain data, no new licensed dataset
+and no relabeling. The motivating question: the README already documents an
+`indoor_test` set that is quarantined as unusable (unlabeled or otherwise
+unfit) — could a self-training / domain-adaptation method turn that existing
+footage into a usable signal without buying anything or hand-labeling it,
+directly addressing "indoor performance has never been measured"? Two
+candidate methods were checked; both are dead ends as shippable artifacts,
+which is itself the finding.
+
+**What they are.**
+- **SimROD** (Ramamonjison, Banitalebi-Dehkordi, Kang, Bai, Zhang — ICCV
+  2021 Oral, arXiv:2107.13389): a "domain-centric augmentation + gradual
+  self-labeling + teacher-guided fine-tuning" recipe, reported 15-25 AP
+  relative robustness gain on COCO-C/Cityscapes-C corruption benchmarks.
+  Offline/training-time, not on-device.
+- **"Fully Test-time Adaptation for Object Detection"** (Ruan & Tang, CVPR
+  2024 Workshops), released as `XiaoqianRuan1/IoU-filter` on GitHub: adapts
+  a detector per-image at inference using only unlabeled target images —
+  genuinely source-free (no access to original training data needed).
+
+**Verification.**
+- SimROD has two GitHub repos in circulation
+  (`github.com/abanitalebi/simrod`, `github.com/reactivetype/simrod`, the
+  latter apparently the "official" ICCV repo). Fetched both directly: each
+  is a stub — `reactivetype/simrod` is a single `README.md`, 4 commits,
+  linking out to an arXiv PDF, a YouTube demo, and a Huawei Cloud AIGallery
+  notebook. No training code, no self-labeling implementation, and **no
+  LICENSE file** in either repo. Nothing here is actually runnable from the
+  repo itself.
+- `XiaoqianRuan1/IoU-filter` is a real, more substantial repo (an
+  `adapt_net.py` entry point, config files, install steps) built on top of
+  `maskrcnn-benchmark` — i.e. it targets **Mask R-CNN**, not a YOLO-family
+  detector, and its listed dependencies (`apex`, CUDA-compiled
+  `maskrcnn-module`) are a heavy, GPU-training-era 2019-vintage stack, not
+  something that maps onto an Ultralytics YOLO11n export pipeline. Its own
+  benchmarks are VOC→Clipart/Comic/Watercolor (an art-style domain shift),
+  not lighting/exposure domain shift — the closest published evidence, but
+  not the same shift this project cares about. Direct fetch of
+  `LICENSE` at the repo root returned 404 — **no license file exists**, so
+  by default all rights are reserved and the code is not legally reusable,
+  commercially or otherwise, license question aside from the technical
+  mismatch.
+
+**Which failure mode.** Neither, in practice — this was aimed at a third
+thing this log hasn't framed as a "failure mode" but the brief calls out
+directly: the untested indoor domain gap. If either method had been usable
+it would have been logged under motion blur (indoor/low light is where real
+blur lives) since it's a route to indoor-adapted training signal without a
+new licensed dataset.
+
+**Why it doesn't help, concretely.** SimROD is a real, well-cited method
+with a real reported effect size, but nothing beyond the paper PDF and a
+demo video was ever actually released — there is no code to adopt or even
+study line-by-line. IoU-filter/Fully-TTA has real code, but it (a) requires
+backpropagation and weight updates per test image, which is not something
+CoreML inference on iOS supports or that a real-time on-device pipeline can
+afford regardless of framework, (b) is built on a detector architecture and
+a 2019-era CUDA training stack unrelated to this project's YOLO11n/CoreML
+pipeline, and (c) has no license, so even the *ideas* would need to be
+reimplemented from the paper rather than the code reused. Neither is a
+"port this" result.
+
+**Effort vs. payoff.** Low-to-medium verification effort (direct GitHub
+fetches settled the license and code-completeness questions for both
+candidates in a few requests). Payoff is zero as a direct lead, but the
+negative result is worth having on record: it closes off "just self-train
+on the quarantined indoor set" as a free lunch — any real attempt at
+domain adaptation for the indoor gap would be a from-scratch implementation
+against a paper's method description, not a fork of existing code, which
+changes it from a data-engine task to a research/engineering project. The
+concrete alternative that stays open and cheap: get the quarantined
+`indoor_test` set relabeled by a human annotator per the existing labeling
+spec — that turns it into ordinary supervised training/eval data (the thing
+this project already knows how to use) rather than chasing unsupervised
+adaptation for a gap a few hours of labeling would close directly.
