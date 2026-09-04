@@ -7643,3 +7643,86 @@ in this exact category is likely to change.
 
 **Area covered.** Bullet 3 (small/low-contrast/camouflaged object
 detection).
+
+---
+
+## 2026-09-04 (second run) — SMBlurDetect (WACV 2026 Workshops): a blur-detection/segmentation model as a labeling-QA tool, not a detector fix — existence-only, no code found
+
+Rotating into bullet 5 (data synthesis/augmentation for either failure
+regime) via a specific angle this log has not tried yet: instead of a
+technique that fixes the model, a technique that fixes the *labeling
+process* that produced the motion-blur gap the brief describes (median
+labelled-box elongation 1.60, most labels near-square, despite the spec
+instructing annotators to box the full blur streak). If genuinely blurred
+frames exist in the raw own-swing/YouTube footage but are systematically
+under-labeled (annotators drawing a tight box around the sharp "core" of a
+blurred head instead of the full streak, or simply not noticing subtle
+blur), a purpose-built blur detector could flag those frames for the data
+engine's `build_label_studio_tasks.py` / sampling step to prioritize or QA
+against — a different failure than "not enough blurred footage exists,"
+worth ruling in or out before concluding more capture is needed.
+
+**What it is.** "Subtle Motion Blur Detection and Segmentation from Static
+Image Artworks" (Arunkumar et al., WACV 2026 Workshops — WVAQ workshop),
+proposing "SMBlurDetect": a pipeline that (1) synthesizes a motion-blur-
+specific training set from super-high-resolution images using controllable
+camera- and object-motion simulation, and (2) trains a U-Net-style
+detector (ImageNet-pretrained encoder, curriculum learning, hard negatives,
+focal loss, blur-frequency input channels, resolution-aware augmentation)
+to detect and *segment* — not just classify — the blurred region of an
+image, at multiple blur-severity granularities including subtle blur.
+Reported zero-shot generalization numbers (per multiple independent search
+summaries, not the primary source): 89.68% accuracy on GoPro (vs. 66.50%
+for their baseline) and 59.77% mean IoU on CUHK (vs. 9.00% baseline).
+
+**URL.** Paper: https://openaccess.thecvf.com/content/WACV2026W/WVAQ/papers/Arunkumar_Subtle_Motion_Blur_Detection_and_Segmentation_from_Static_Image_Artworks_WACVW_2026_paper.pdf
+(also indexed at arxiv.org/abs/2602.18720). **Neither URL was fetchable
+this run** — `openaccess.thecvf.com` and `arxiv.org` both returned
+`EGRESS_BLOCKED` from this sandbox, consistent with every prior run's
+notes on academic-domain access. A targeted GitHub search for the paper's
+first author plus "SMBlurDetect" turned up no matching repository, and no
+other search result surfaced one. **This entry is therefore built entirely
+from search-engine summary snippets of the paper, not a primary-source
+read** — a materially weaker verification level than this log's usual
+"repo LICENSE file fetched directly" standard, flagged explicitly per this
+run's negative-result convention (cf. CADDIE 2026-08-21, ReynoldsFlow
+2026-08-24).
+
+**Licence.** **Unknown — not found.** No code repository was located, so
+there is nothing to check a licence against. Not usable, commercially or
+otherwise, until a downloadable artifact surfaces.
+
+**Which failure mode.** Motion blur — but indirectly, as a labeling-QA
+tool rather than a detector-side or augmentation-side fix. It does not
+address camouflage.
+
+**Why it would help this model specifically, if it existed as a usable
+artifact.** The brief's motion-blur finding is explicitly about the
+*labeled* data (box elongation statistics), not a direct measurement of
+how much real blur exists in the raw captured footage — the brief itself
+flags this gap ("indoor performance has never been measured," "real blur
+is expected wherever exposure lengthens"). A blur detector/segmenter run
+over the existing raw own-swing and YouTube source clips (not just the
+already-labeled subset) could answer a cheap, useful, currently-open
+question before investing in either new capture or synthetic blur
+augmentation: are there already-captured frames with real, meaningful
+motion blur that were labeled with tight, non-blur-streak boxes (a
+labeling-consistency bug, fixable by re-review) — as opposed to the
+footage genuinely lacking blur in the first place (a data-collection gap,
+fixable only by new capture, e.g. indoor/lower-light footage). Those are
+different problems with different fixes, and right now this log has no
+evidence which one is true.
+
+**Effort vs. payoff.** Cannot be assessed honestly beyond "unknown,
+pending a usable artifact" — there is no code to integrate, no licence to
+check, and the accuracy numbers above are unverified secondhand claims.
+Logged only because the *question* it points at (mislabeled-vs-absent
+blur in existing footage) is real, cheap to answer some other way (e.g. a
+manual spot-check of a sample of already-labeled frames against their
+source video, no ML needed), and not yet asked anywhere else in this log
+or in `docs/labeling-spec.md`. If a working, licensed blur-segmentation
+model turns up in a future run, re-evaluate against this same question
+rather than assuming this entry's numbers.
+
+**Area covered.** Bullet 5 (data synthesis/augmentation) — via a labeling-
+QA framing rather than a synthesis technique.
