@@ -7814,3 +7814,91 @@ camouflage finding comes from is far too small to tell.
 **Area covered.** Bullet 3 (small, low-contrast, or camouflaged object
 detection) — a small-object-scale mechanism rather than a camouflage-
 appearance one.
+
+---
+
+## 2026-09-04 (fourth run) — LDA-YOLO: a deblurring-aware YOLO architecture built specifically for blurred small objects, existence-only (no code found)
+
+Rotating deliberately away from bullet 3 (this run's two prior entries were
+both small-object/camouflage) and into bullet 2 (motion blur), specifically
+the "blur-robust detection architectures" sub-target — the one part of that
+bullet this run's second entry (SMBlurDetect, a labeling-QA tool) did not
+touch.
+
+**What it is.** LDA-YOLO ("a lightweight deblurring-aware network for
+real-time object detection in blurred aerial images," Wu, Yang, Han et al.,
+*Journal of Real-Time Image Processing*, vol. 23, 2026) is a YOLOv8-style
+detector with three added components: (1) a fast, lightweight deblurring
+module that restores structure from a degraded input before feature
+extraction; (2) a dual-domain feature aggregation module (DDFA) that
+sharpens the network's focus on informative regions; (3) a multi-scale
+feature-fusion network on a lightweight backbone aimed at small objects
+under combined scale and blur variation. Per search-engine summaries of the
+abstract, it was evaluated on four aerial-imagery benchmarks (VisDrone,
+DOTA, DroneVehicle, VEDAI) and reports competitive accuracy at real-time
+speed on embedded hardware. This is the first entry in this log that is
+explicitly built and named for the blur case rather than being adapted
+from a general small-object or camouflage mechanism (contrast DyFrDet,
+2026-09-04 third run, which targets scale/contrast, not blur) — and unlike
+Deblur-YOLO (2026-08-19 third run, a GAN-based joint detect+deblur model
+with real code but no shipped licence) or LDA-YOLO's own MDPI namesake
+("LDA-YOLO: A YOLO-Based Rotated Object Detection Method... with Large
+Kernel Attention and Deformable Alignment" — a different paper, unrelated
+to blur, not this entry), this is a purpose-built lightweight blur module
+sized for edge/embedded deployment, which matches this project's on-device
+CoreML constraint better than a GAN-based deblur stage would.
+
+**URL.** https://link.springer.com/article/10.1007/s11554-025-01815-7 (DOI
+10.1007/s11554-025-01815-7). Direct fetch of link.springer.com returned
+`EGRESS_BLOCKED` from this sandbox, consistent with every prior run's notes
+about paywalled/blocked academic publishers — the description above is
+reconstructed from consistent search-engine-indexed abstract text across
+multiple independent queries, not from reading the paper itself.
+
+**Licence.** **Not found — and no code repository found to license.**
+Targeted searches for a GitHub repository (`LDA-YOLO deblurring-aware
+github`, `site:github.com LDA-YOLO deblur`, author-name searches for
+Wu/Yang/Han) returned no matching repository; the closest hits were
+unrelated projects (`LOUEY233/Deblur-YOLO`, a different architecture) and
+one of the authors' own GitHub profile with no LDA-YOLO project listed.
+Journal of Real-Time Image Processing is a closed-access Springer venue
+with no indication (from indexed abstract text) of a code-availability
+statement. Treat as **existence-only, not independently verifiable, no
+licence to build on** — the same category as this log's DFRCP, ReynoldsFlow,
+and CADDIE entries.
+
+**Which failure mode.** Motion blur — specifically a blur-robust
+*architecture* addition (deblurring module + DDFA), the sub-target this
+log has logged fewer real entries against than blur *datasets* or blur
+*augmentation* techniques.
+
+**Why it helps this model specifically.** The brief's motion-blur failure
+mode is a labeling/data gap (median elongation 1.60, few genuinely blurred
+labeled boxes) more than a proven architecture gap — this log has not yet
+established that YOLO11n's stock architecture actually fails to detect
+blurred clubheads once given enough blurred training examples. If it turns
+out architecture also matters (analogous to how DTUM, 2026-08-14, and
+TrackNetV4, 2026-08-13, target motion-degraded appearance directly rather
+than via more data), LDA-YOLO's deblurring module is the first entry here
+that inserts a correction stage *before* detection rather than requiring
+temporal context (unlike DTUM/TrackNetV4, which need multi-frame input)
+or a different backbone family entirely (unlike RF-DETR, D-FINE). A
+single-frame, YOLO-family, embedded-target blur fix is the closest
+structural match to this project's actual deployment constraints of
+anything logged for blur so far.
+
+**Effort vs. payoff.** Low-to-moderate effort *if* it turns out to be
+worth pursuing, but currently blocked at the verification step, which
+caps the payoff at "worth remembering, not worth prioritizing." Without
+readable methodology or any code, reimplementing the deblurring module and
+DDFA from scratch would mean guessing at architecture details from an
+abstract, which is not a responsible use of engineering time. The
+practical next step is not to chase this paper further but to fix the
+data gap first (this log already has several concrete blur-dataset and
+blur-synthesis entries with real, checkable licences — RealBlur,
+MIORe/VAR-MIORe, RSBlur's fix recipe) and only revisit architecture-side
+fixes like this one if a model trained on genuinely blurred data still
+underperforms on blur specifically.
+
+**Area covered.** Bullet 2 (motion blur) — a blur-specific detection
+architecture, not a dataset, augmentation technique, or labeling tool.
