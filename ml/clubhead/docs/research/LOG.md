@@ -7726,3 +7726,91 @@ rather than assuming this entry's numbers.
 
 **Area covered.** Bullet 5 (data synthesis/augmentation) — via a labeling-
 QA framing rather than a synthesis technique.
+
+---
+
+## 2026-09-04 (third run) — DyFrDet: frequency-domain background suppression for small objects — real working code, no licence found
+
+Rotating into bullet 3 (small, low-contrast object detection). Every
+camouflage mechanism this log has logged so far comes from the
+camouflaged-object-detection (COD) literature proper (COD10K/CAMO/MoCA-Mask
+style benchmarks — animals blending into natural backgrounds). This run
+checked a mechanism from the *generic tiny/small-object-detection*
+literature instead, on the theory that a dark clubhead against dark
+clothing or foliage is closer in kind to a small aerial vehicle lost in
+visual clutter than to a moth on bark.
+
+**What it is.** DyFrDet (Lu et al., arXiv:2608.02495, Aug 2026) — a small
+object detector with two components: (1) **DyFrFPN**, a frequency-aware
+feature pyramid that transforms hierarchical feature maps into the
+frequency domain and uses a "Dynamic Band Predictor" to adaptively suppress
+low-frequency background redundancy and high-frequency noise, keeping only
+the bands that carry small-object signal; (2) a **Label Disambiguation
+Module (LDM)** that models small/low-resolution ground-truth boxes
+probabilistically instead of as exact rectangles, to reduce localization
+noise from inherently ambiguous tiny-object labels. Reported results (per
+search-engine summaries of the paper; arxiv.org itself was
+`EGRESS_BLOCKED` from this sandbox, consistent with every prior run's
+notes) claim state-of-the-art on AI-TOD (AP 28.7), SODA-D (AP 31.3), and
+SODA-A (AP 37.8) — all tiny/small-object detection benchmarks (aerial and
+generic scene tiny objects, median object size in the same rough pixel
+range as a clubhead in phone video at typical distance), not camouflage
+benchmarks specifically.
+
+**URL.** Paper: https://arxiv.org/abs/2608.02495 (not independently
+readable this run). Code: https://github.com/ManOfStory/DyFrDet — fetched
+directly and confirmed real: `mmdet-dyfrdet/`, `mmrotate-dyfrdet/`, and
+`cocoapi-aitod-master/` subfolders with training configs, an evaluation
+pipeline, and links to pretrained checkpoints (hosted on Quark Drive, a
+third-party cloud store, not GitHub Releases). This is a working pipeline,
+not a stub.
+
+**Licence.** **None — confirmed by direct check, not assumed.** The repo
+root contains only `assets/`, `cocoapi-aitod-master/`, `mmdet-dyfrdet/`,
+`mmrotate-dyfrdet/`, and `README.md`; a direct fetch of
+`github.com/ManOfStory/DyFrDet/blob/main/LICENSE` returned a plain 404, and
+the repo's GitHub sidebar shows no license badge. Under default copyright
+this is **not "non-commercial," it is unlicensed for any reuse at all** —
+a meaningfully stricter block than most of this log's other "no licence
+found" entries, since there isn't even a permissive-but-unstated norm to
+lean on. Only the paper's *described method* (the maths of DyFrFPN/LDM),
+not this repository's code, would be safe to build from.
+
+**Which failure mode.** Camouflage (specifically the "small + low-contrast
+against clutter" mechanism), not motion blur.
+
+**Why it helps this model specifically.** The brief's camouflage finding —
+zero candidate detections even at confidence 0.05, on visually sharp frames
+— describes a foreground-signal problem, not a lighting problem: the
+clubhead's true signal is too faint in whatever representation the network
+computes, relative to the clutter around it. DyFrDet's mechanism targets
+exactly that: it changes *what survives the feature pyramid* before the
+detection head ever scores a candidate box, rather than requiring more or
+better-labeled real examples of the object. That is a genuinely different
+lever from every other camouflage mechanism logged so far (appearance
+single-frame, motion implicit/explicit, foundation-model, diffusion
+augmentation, hybrid tree-ensemble, reference-exemplar) — this is the
+first one built and benchmarked specifically for small-object *scale*
+rather than camouflaged *appearance*. Distinguish from MS-YOLOv11
+(2026-08-29, also frequency/wavelet-domain, logged as "effectively empty
+code release") — DyFrDet has real, runnable code where that one didn't,
+even though neither has a usable licence yet.
+
+**Effort vs. payoff.** High effort, uncertain payoff. Two structural
+mismatches beyond the licence block: (1) this is built on MMDetection and
+MMRotate, not Ultralytics/YOLO — there is no config-level port, only a
+from-scratch reimplementation of DyFrFPN and the LDM loss inside the
+existing YOLO11n architecture, which is a real engineering project; (2)
+none of the paper's benchmarks use a YOLO-family or nano-sized backbone, so
+there is no existing evidence this helps a model this small specifically —
+it could equally turn out to need capacity the nano model doesn't have,
+the same capacity-mismatch risk this log already flagged for GreenCOD
+(2026-09-03). Worth revisiting only once the by-source YOLO11n v1 model's
+own measured camouflage failures are large enough in number to check
+whether they actually show this paper's "background survives, small
+foreground signal lost" pattern — the 3-clip outdoor test set the brief's
+camouflage finding comes from is far too small to tell.
+
+**Area covered.** Bullet 3 (small, low-contrast, or camouflaged object
+detection) — a small-object-scale mechanism rather than a camouflage-
+appearance one.
