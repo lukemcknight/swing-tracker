@@ -7576,3 +7576,70 @@ concrete alternative that stays open and cheap: get the quarantined
 spec — that turns it into ordinary supervised training/eval data (the thing
 this project already knows how to use) rather than chasing unsupervised
 adaptation for a gap a few hours of labeling would close directly.
+
+---
+
+## 2026-09-04 — MCOD checked and ruled out: multispectral camouflaged-object benchmark, wrong sensor and non-commercial dataset licence
+
+**What it is.** MCOD ("The First Challenging Benchmark for Multispectral
+Camouflaged Object Detection," ACM Multimedia 2025, arXiv:2509.15753) is a
+newly-released (Sept 2025) benchmark built specifically to test whether
+extra spectral information beyond ordinary RGB helps camouflaged-object
+detectors. It ships imagery captured across **8 spectral bands from 395nm
+(violet) to 950nm (near-infrared)** — i.e. images taken with a purpose-built
+multispectral camera, not an ordinary phone sensor — plus pixel-level masks
+and per-image "challenge attribute" labels (including small size and
+extreme lighting, both relevant to this project's failure modes). The
+paper's headline finding, per its own abstract, is that fusing the extra
+spectral bands measurably reduces the accuracy drop existing COD methods
+show on harder cases. Code + dataset access links are at
+`github.com/yl2900260-bit/MCOD`.
+
+**URL.** https://github.com/yl2900260-bit/MCOD (paper:
+https://arxiv.org/abs/2509.15753 — fetched via a secondary summary since
+arxiv.org is unreachable from this sandbox's egress proxy, consistent with
+every prior run's note on that domain; the repo itself, including its
+LICENSE file, was fetched directly).
+
+**Licence (verbatim from the repo, fetched directly).** The code is MIT
+licensed. The **dataset** is separately and explicitly licensed
+**CC BY-NC-ND 4.0**: "It is intended for academic research only. You must
+attribute the original source, and you are not allowed to modify or
+redistribute the dataset without permission." **Commercial use: NOT
+permitted** for the dataset (non-commercial *and* no-derivatives — stricter
+than most of the other research-only datasets already logged here, which at
+least allow modification). The MIT code licence is real but moot given the
+hardware dependency below.
+
+**Which failure mode.** Camouflage — directly on-topic in principle (the
+paper's own "small object size" and "extreme lighting" challenge attributes
+describe this project's camouflage cases almost exactly).
+
+**Why it doesn't help this model, concretely — two independent
+dealbreakers, checked separately.**
+1. **Sensor mismatch, not a licensing question.** The entire premise of MCOD
+   and the method it benchmarks is that multispectral input (up to
+   near-infrared) carries a signal ordinary RGB lacks. An iPhone camera
+   captures RGB only — there is no way to feed a stock phone video pipeline
+   8 spectral bands, and no plausible retrofit (external multispectral
+   camera hardware is not a real option for a consumer swing-analysis app).
+   This makes the benchmark's core mechanism structurally inapplicable
+   before the licence is even considered, unlike prior VCOD entries in this
+   log (SLT-Net, SAM-PM, DTUM, GreenCOD, etc.), which all operate on
+   ordinary RGB/grayscale frames and were ruled out (where they were) on
+   licensing or capacity grounds instead.
+2. **Licence.** Even if the sensor gap were somehow bridged, CC BY-NC-ND 4.0
+   forbids exactly what this project would need to do with it (train a
+   derivative commercial model).
+
+**Effort vs. payoff.** Low effort (one search-and-verify pass: repo README,
+LICENSE file, and the paper abstract via secondary summary), zero payoff —
+a clean negative result on both independent grounds, not just the licence.
+Logged so no future run re-discovers this specific "extra spectral bands
+help camouflage" thread and re-spends a cycle chasing it — the finding here
+is narrower than "multispectral helps," it's "multispectral requires
+hardware this app's capture pipeline cannot have," which no future dataset
+in this exact category is likely to change.
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object
+detection).
