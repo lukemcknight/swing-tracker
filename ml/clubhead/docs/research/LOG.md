@@ -8079,3 +8079,120 @@ whoever next touches inference-time post-processing, not worth further
 research-run effort chasing this specific paper's code.
 
 **Area covered.** Bullet 3 (small/camouflaged/temporal object detection).
+
+---
+
+## 2026-09-05 (third run) — VNTrackObjectRequest: Apple's own on-device tracker as a pixel-level recovery layer for zero-detection frames, with a documented small-object crash risk
+
+Rotating away from bullet 3 (previous run, GreenVCOD) and bullet 4 (first
+run, Yamamoto et al.). Picked a sub-thread of bullet 4/3 not yet touched by
+any of the ~90 prior entries: the app's *own* iOS platform (Vision
+framework), rather than a third-party paper or dataset, as a possible
+recovery mechanism for the "zero candidate detections" symptom. Checked the
+log for `VNTrackObjectRequest`, `VNSequenceRequestHandler`, "Vision
+framework" — no prior hits. This is a different kind of finding from most
+entries here: not a paper or dataset, but a first-party OS API already
+available to the same Swift codebase (`ios-native/SwingSenseiNative/`) that
+already calls Vision/CoreML for `ClubHeadDetector.swift`.
+
+**What it is.** `VNTrackObjectRequest` is Apple's general-purpose,
+single-object visual tracker in the Vision framework. It is seeded with a
+`VNDetectedObjectObservation` (a bounding box from a prior frame) and then,
+via `VNSequenceRequestHandler.perform([...], on: nextFrame)`, is fed
+successive frames one at a time; internally it does template/correlation
+tracking of that region and returns an updated observation (with a
+confidence) each call — it does not re-detect the object's appearance from
+scratch each frame, it *follows* the region forward. Confirmed real and
+current from Apple's own documentation pages: `VNTrackObjectRequest`,
+`VNTrackObjectRequestRevision1`/`Revision2`, and `VNTrackingRequest`
+(developer.apple.com/documentation/vision/...), plus its usage pattern
+independently corroborated by an Apple sample-code repo
+(`tiagomartinho/VisionAppleSample`) built around the sibling
+`VNTrackObjectRequest`/`VNSequenceRequestHandler` pattern for face tracking.
+
+**Which specific mechanism this is, versus what's already logged.** This
+project already has one recovery mechanism, but it is purely numeric: the
+`cleanedAndBridged` pass in `ClubHeadDetectionService.swift` interpolates
+and outlier-rejects `(x, y)` center points *after* per-frame YOLO11n
+detection, using only the coordinates — it never re-examines pixel content
+in a gap frame. `VNTrackObjectRequest` is a genuinely different kind of
+recovery: it operates on the actual image content of the frames where the
+CoreML detector produced nothing, seeded from the last confident detection,
+so it could in principle recover a real position in a gap rather than just
+interpolating a straight line through it. It's also mechanically distinct
+from the two other Vision APIs already logged here:
+`VNDetectTrajectoriesRequest` (2026-08-27, ruled out — assumes parabolic
+ballistic motion, a bad model for a swinging club) and
+`VNGenerateOpticalFlowRequest` (2026-08-28, logged — dense whole-frame flow
+with no persistent per-object identity). `VNTrackObjectRequest` is the one
+Vision-framework tool built specifically to carry a single tracked box
+forward across frames.
+
+**URL.** https://developer.apple.com/documentation/vision/vntrackobjectrequest,
+https://developer.apple.com/documentation/vision/vntrackobjectrequestrevision1,
+https://developer.apple.com/documentation/vision/vntrackingrequest. Small-object
+failure report: https://developer.apple.com/forums/thread/779884 (and an
+apparent duplicate/related post at .../thread/780037, not separately
+re-verified).
+
+**Licence.** N/A — this is not a downloaded dataset or third-party code, it
+ships as part of iOS/the Vision framework SDK the app already links
+against for its existing CoreML/Vision usage. There is no separate licence
+to check and no commercial-use restriction beyond the standard Apple SDK
+terms the project is already bound by for every other Vision/CoreML call it
+makes today. This is a genuinely zero-licence-risk entry, a first for this
+log's "which failure mode" analyses.
+
+**Which failure mode.** Both, as a recovery layer rather than a root-cause
+fix — same caveat this log already applied to InpaintNet (2026-08-17): it
+does not fix *why* a frame produces zero detections (camouflage's
+appearance problem, blur's streak-geometry problem), it fixes what happens
+after, by carrying a box forward through the gap instead of leaving it
+empty. Camouflage: a zero-candidate frame is exactly the case where seeding
+a tracker from the last good detection and letting it correlate forward
+could produce something instead of nothing. Motion blur: correlation
+tracking degrades more gracefully than fresh per-frame detection under
+blur, since it only needs to relocate a familiar local patch, not recognize
+the object's undistorted appearance.
+
+**Why it helps this model specifically.** Zero training cost and zero
+CoreML re-export, unlike every architecture-side entry in this log — it is
+Swift code added directly to the existing `ClubHeadDetectionService.swift`,
+calling a framework the app is already compiled against. A first test is
+cheap and directly measurable against ground truth: seed a
+`VNTrackObjectRequest` at the last confident detection before a gap, run it
+through the gap's frames on the existing 3-clip held-out test set, and
+compare its recovered positions to the labelled ground truth for exactly
+the frames YOLO11n currently misses — reusing the existing eval harness's
+test clips, no new data needed.
+
+**Important, concrete caveat (not speculative — a third party hit this
+directly).** The Apple Developer Forums thread linked above reports
+`VNTrackObjectRequest` throwing `Error Domain=com.apple.Vision Code=9,
+"Internal error: unexpected tracked object bounding box size"`
+intermittently when tracking a **small, fast-moving object** — the
+reporter's case is a tennis ball, a close size/speed analogue to a golf
+clubhead in frame. Apple's public documentation states no minimum
+bounding-box size, and as of this check the thread has zero replies from
+Apple or the community — the constraint is real and reproducible by an
+independent developer, but undocumented. A second, separate risk beyond
+the crash: this is a generic template/correlation tracker with no
+golf-specific training. Seeded on a barely-visible, camouflaged clubhead,
+it may latch onto the wrong dark region (clothing, foliage) and drift
+confidently rather than reporting nothing — turning today's honest "no
+detection" into a wrong-but-confident position, which is worse for a
+path-drawing feature than a clean gap. Any prototype must validate
+recovered positions against ground truth before shipping, not assume
+"tracking output equals correct position."
+
+**Effort vs. payoff.** Low effort: no dataset, no training, no export — a
+bounded Swift prototype against code that already exists in this repo,
+testable same-day against the existing held-out test set and eval
+conventions. Payoff is genuinely uncertain, capped by the undocumented
+small-box crash risk (needs its own empirical probing of safe minimum box
+sizes before relying on this) and by the drift-on-camouflage risk above.
+Worth a cheap, bounded spike specifically because the cost of finding out
+is so low relative to every model-retraining entry in this log — but it
+should be scoped and reported as "does this recover real positions or just
+confident wrong ones," not integrated on the assumption that more coverage
+is automatically better.
