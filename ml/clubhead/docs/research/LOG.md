@@ -8196,3 +8196,138 @@ is so low relative to every model-retraining entry in this log — but it
 should be scoped and reported as "does this recover real positions or just
 confident wrong ones," not integrated on the assumption that more coverage
 is automatically better.
+
+---
+
+## 2026-09-05 (fourth run) — Capping `AVCaptureDevice.activeMaxExposureDuration` in the app's own capture code: a prevention-side fix that stops blur before it's ever recorded, not after
+
+Rotating away from bullet 3 (second run, GreenVCOD) and bullet 4 (first
+run, Yamamoto et al.) and the on-device-API sub-thread already used this
+run cycle by VNTrackObjectRequest (third run, a *recovery* mechanism).
+This run went a different direction entirely: instead of another paper or
+dataset search, it read this repo's own capture code
+(`ios-native/SwingSenseiNative/CameraCaptureView.swift`) end to end, on the
+theory that if the brief's own premise is "real blur is expected wherever
+exposure lengthens... and indoor performance has never been measured," the
+most direct lever might not be a training-side fix at all — it might be
+whatever the app itself does (or doesn't do) to control exposure when a
+user records a new swing. Checked this log for `AVCaptureDevice`, "shutter
+speed", "exposure duration", "capture-side" — no prior entry touches
+camera-capture-time exposure control; every blur entry to date (PSF
+synthesis, frame-averaging, 6-DOF camera-blur synthesis, BlenderProc,
+RSBlur, FILM, motion-vector-guided synthesis, RT-Focuser, DFRCP, JFD3,
+etc.) treats blur as something to synthesize, label, deblur, or architect
+around *after* a frame already has it baked in.
+
+**What I found, reading the actual repo code (not a web source).**
+`CameraRecorder.configureHighFrameRateIfAvailable(on:)` in
+`CameraCaptureView.swift` (lines ~333–362) already does something in the
+right direction: it searches `device.formats` for a format offering
+≥120fps at ≥1280×720, and if one exists, locks
+`activeVideoMinFrameDuration == activeVideoMaxFrameDuration` to that rate
+via `lockForConfiguration()`. Locking a high frame rate does put a hard
+ceiling on exposure duration as a side effect (a frame can't expose longer
+than the time between frames), which is good — but the function returns
+`false` and changes nothing if no ≥120fps/≥720p format exists on that
+device, silently falling back to whatever `.hd1920x1080` gets from the
+default frame rate (commonly 30fps) with **`continuousAutoExposure` left
+completely unconstrained**. No exposure-duration ceiling is set anywhere
+else in the file, no exposure mode is ever configured, and
+`activeMaxExposureDuration` is never touched. That fallback path is
+exactly the case the brief flags as untested: "older phones" specifically,
+plus any device/lighting combination where iOS declines to offer a
+120fps+720p mode (some models restrict high-frame-rate formats in dim
+scenes to preserve exposure quality). On that fallback path, standard
+30fps continuous auto-exposure is free to lengthen the shutter well past
+1/120s indoors or in evening light — physically creating exactly the
+motion-blur streak on a fast-swinging clubhead that this project has never
+been able to measure, in footage the app is capturing *today*, for both
+future training data and live end-user inference.
+
+**The concrete, verified fix.** `AVCaptureDevice.activeMaxExposureDuration`
+is a real, current, documented property (Apple Developer Documentation,
+`developer.apple.com/documentation/avfoundation/avcapturedevice/activemaxexposureduration`,
+available since iOS 12.0): "the maximum exposure duration...used in the
+autoexposure algorithm." Setting it inside a `lockForConfiguration()` block
+caps how long continuous auto-exposure is ever allowed to hold the shutter
+open, without switching out of auto-exposure entirely — in low light the
+algorithm is forced to compensate with higher ISO gain instead of a longer
+exposure. Confirmed via a second, independent source (Apple Developer
+Forums thread 105514, cross-referenced against the official property page)
+that this is the standard, commonly-recommended technique specifically for
+"fixed/capped shutter speed to avoid motion blur of a fast-moving subject,"
+as opposed to `setExposureModeCustom(duration:iso:completionHandler:)`,
+which is the equivalent but fully-manual API (no continuous
+auto-exposure at all — picks a fixed duration and ISO explicitly, or an
+explicit duration with `AVCaptureDevice.currentISO` for auto-ISO metering).
+Either works; `activeMaxExposureDuration` is the smaller change since it
+keeps auto-exposure's brightness/metering behavior intact and only clamps
+the one parameter that causes blur.
+
+**Which failure mode.** Motion blur, and only motion blur — this has no
+bearing on camouflage (an exposure cap doesn't change a clubhead's color
+similarity to its background). It is also the first blur-area entry in
+this log that is a **prevention** mechanism in the sense the 2026-08-17
+GolfTracker note used that word (a better signal to detect on in the first
+place), applied to blur rather than camouflage, and applied at the point
+of *capture* rather than the point of *labeling or training*.
+
+**Why this matters for this model specifically.** Every other blur entry
+in this log — real or synthetic — is about what to do with footage that is
+already blurred, or already sharp and needs blur added back in for
+training realism. This is the only entry so far that stops blur from
+being recorded into new footage at all, for two audiences at once: (1)
+future training-data capture sessions collecting more of the app's own
+phone footage (the 29%-vs-54%-Roboflow imbalance every prior run has
+flagged), where a capped shutter means new indoor/dim clips arrive
+*already* free of exposure-driven blur rather than needing a blur-removal
+or blur-synthesis step downstream; and (2) live, on-device inference by
+real end users recording real swings in real gyms, bays, and evenings —
+where a capped shutter directly reduces how often the deployed model ever
+has to face the camouflage-adjacent, near-zero-signal blurred frames this
+whole research effort is trying to work around after the fact. It also
+directly closes part of the brief's own stated blind spot: indoor
+performance has never been measured because indoor footage barely exists
+and what little does is quarantined — a capped-shutter capture path is a
+precondition for collecting *usable* indoor test/training footage at all,
+since without it, newly captured indoor clips risk arriving blurred and
+recreating the same quarantine problem the `indoor_test` set already has.
+
+**Important caveats, stated honestly.** (1) Capping exposure duration
+trades blur for noise/darkness — in genuinely dark indoor bays, a hard
+1/500s-class cap will push ISO to its ceiling and frames may still come
+out darker and noisier than today's auto-exposed footage; this needs
+device testing to pick a duration ceiling that's short enough to matter
+but not so short that low-light footage becomes unusable for a different
+reason. (2) This does nothing at all for the 71% of training data that
+already exists (54% Roboflow, the already-captured own-swing clips) — it
+only affects footage captured after the change ships, so it cannot close
+today's training-set blur gap by itself; it prevents the gap from being
+reintroduced by tomorrow's captures, which is a different and smaller
+claim. (3) I could not test this on-device in this sandbox (no camera
+hardware, no Xcode simulator run) — this is a verified-real API applied to
+a verified-real gap in the app's own current code, not a benchmarked
+result. (4) Video stabilization is a separate, uninvestigated variable:
+this file also sets `connection.preferredVideoStabilizationMode =
+.cinematic` unconditionally, and cinematic stabilization is known to crop
+and digitally warp frames, which is a plausible (but unverified this run)
+secondary source of apparent softness independent of shutter-driven blur —
+worth a future run's attention, not folded into this one since it's a
+mechanically distinct effect.
+
+**Effort vs. payoff.** Low effort: this is a same-file, few-line change to
+code that already exists and is already partway there
+(`configureHighFrameRateIfAvailable` already proves the team understands
+frame-rate-driven exposure limits) — add an
+`activeMaxExposureDuration` cap as a fallback specifically for the case
+where the 120fps format search fails, guarded the same way with
+`lockForConfiguration()`/`unlockForConfiguration()`. No dataset, no
+licence, no retraining, no CoreML export. Payoff: potentially high but
+capped to *future* footage only, and contingent on picking a duration
+ceiling that doesn't just trade one unusable-frame problem (blur) for
+another (noise/darkness) — that tuning step needs real on-device testing
+in an actual dim room or simulator bay, which this research-only sandbox
+cannot do. Recommend as a near-term, low-risk fix to ship in the capture
+path regardless of what else this log's other entries lead to, specifically
+because it is the only entry so far that improves the *next* indoor clip
+captured rather than trying to compensate for the ones already in hand.
