@@ -7902,3 +7902,99 @@ underperforms on blur specifically.
 
 **Area covered.** Bullet 2 (motion blur) — a blur-specific detection
 architecture, not a dataset, augmentation technique, or labeling tool.
+
+---
+
+## 2026-09-05 — Yamamoto et al.'s single-camera golf-swing club-head extraction study (Frontiers in Sports and Active Living, 2023): paper and licence confirmed, no downloadable dataset found
+
+Rotating away from the last four runs (bullets 2 and 3 three times each across
+09-04 and the tail of 09-03) into bullets 1 and 4, both untouched since
+2026-09-01 — golf-specific datasets (especially indoor/low-light footage) and
+golf-specific pose/club-tracking work.
+
+**What it is.** "Extracting proficiency differences and individual
+characteristics in golfers' swing using single-video markerless motion
+analysis" (Yamamoto, Hasegawa, T. Suzuki, H. Suzuki, Tanabe, Fujii —
+*Frontiers in Sports and Active Living*, published 2023-11-15, DOI
+10.3389/fspor.2023.1272038). Twenty-seven golfers of varying skill hit a
+7-iron in front of a single camera on the sagittal plane; the authors ran
+HRNet for body-joint pose estimation and DeepLabCut for club-head object
+detection/tracking, then correlated forward-tilt-angle stability and club
+trajectory reproducibility with skill level. This is the first entry in
+this log built around DeepLabCut specifically (a markerless-tracking
+toolkit from the neuroscience/behavioral world, not a sports-vision one)
+as a club-head localizer, and the first Frontiers-journal golf paper this
+log has checked for a downloadable artifact rather than just architecture
+ideas.
+
+**URL.** https://doi.org/10.3389/fspor.2023.1272038 — also indexed at
+https://pmc.ncbi.nlm.nih.gov/articles/PMC10684732/ and
+https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2023.1272038/full.
+Existence is well-confirmed: the paper is independently indexed by PMC,
+Frontiers, DOAJ, and ResearchGate with matching title/author/DOI. Direct
+fetch of all four of those hosts (plus doi.org, researchgate.net,
+api.semanticscholar.org, and doaj.org) returned `EGRESS_BLOCKED` from this
+sandbox — the same academic-publisher block this log has hit on essentially
+every closed- or gated-access source since 2026-08-24 (DFRCP, ReynoldsFlow,
+LDA-YOLO, and others). Everything below the URL is reconstructed from
+consistent, independently-repeated search-engine-indexed abstract and
+metadata text, not from reading the article itself.
+
+**Licence.** The paper carries Frontiers' standard open-access footer,
+returned verbatim and identically across two independent search queries:
+"distributed under the terms of the Creative Commons Attribution License
+(CC BY)... permits use, distribution or reproduction in other forums
+provided the original author(s) and copyright owner(s) are credited and
+the original publication is cited." **CC BY permits commercial use**
+(attribution required) — but this covers the *article text and figures*,
+not necessarily a separately-licensed dataset. No data-availability
+statement could be read (egress-blocked), and no supplementary dataset,
+repository, or download link surfaced in targeted searches for it —
+including checks of co-author Keisuke Fujii's two public GitHub profiles
+(`fujiisoup`, `keisuke198619`), neither of which lists this project. The
+journal's default policy for papers without an explicit repository link is
+typically "data available from the authors on reasonable request," which
+is not a genuinely downloadable dataset today. **Treat the raw video /
+club-head-track data as NOT confirmed available — existence-only for the
+dataset, same category as CaddieSet (2026-08-18) and PiTrac's model
+(2026-08-28).**
+
+One specific claim could NOT be corroborated on a second, more targeted
+search: an earlier broad query's auto-generated summary asserted the
+experiment covered "both indoor and outdoor driving ranges," which would
+have been directly relevant to this project's indoor-footage gap. A
+follow-up search for that detail found nothing supporting it. Flagging
+this explicitly rather than repeating it: **the indoor/outdoor claim is
+unconfirmed and may be a search-summarizer artifact, not real paper
+content** — do not treat it as established.
+
+**Which failure mode.** Nominally bullet 1 (golf dataset) and bullet 4
+(golf-specific club-tracking implementation), not directly camouflage or
+motion blur. The closest tie to this project's actual failure modes is
+methodological: DeepLabCut localizes a small, fast-moving marker from a
+single RGB camera without a specialized sports-detection architecture,
+which is the same problem shape as clubhead camouflage/blur, but the paper
+gives no indication its training data included low-light, indoor, or
+motion-blurred frames, so it does not directly evidence a fix for either
+named failure mode.
+
+**Why it helps this model specifically.** It doesn't, right now. Absent a
+downloadable dataset or code, there is nothing here to train on, augment
+with, or port. The one actionable thread is procedural, not technical:
+Frontiers CC-BY biomechanics papers with named corresponding authors are
+worth a direct data-availability-statement/author-contact check when this
+sandbox's egress block is not in the way, since a "sagittal-plane
+single-camera, 27-subject, club-head-tracked" dataset would be unusually
+well-matched to this project's exact capture geometry if the raw video
+ever does turn out to be shareable.
+
+**Effort vs. payoff.** Very low effort spent today (search plus six
+blocked fetch attempts), correspondingly low payoff: one more confirmed-
+to-exist, CC-BY-licensed paper with no verified usable artifact. Not worth
+pursuing further unless a future run can actually read the data-
+availability statement or finds the dataset hosted somewhere this sandbox
+can reach.
+
+**Area covered.** Bullets 1 and 4 (golf-specific datasets, especially
+indoor/low-light, and golf-specific pose/club-tracking work) — both idle
+since 2026-09-01.
