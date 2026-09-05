@@ -7998,3 +7998,84 @@ can reach.
 **Area covered.** Bullets 1 and 4 (golf-specific datasets, especially
 indoor/low-light, and golf-specific pose/club-tracking work) — both idle
 since 2026-09-01.
+
+---
+
+## 2026-09-05 (second run) — GreenVCOD: decision-level short/long-term temporal ensembling for video camouflage — existence-only, no code found
+
+Rotating back to bullet 3 (small/camouflaged/temporal object detection in
+video), untouched since DyFrDet on 2026-09-04.
+
+**What it is.** "Green Video Camouflaged Object Detection" (arXiv
+2501.10914; also an IEEE conference publication, document ID 10849196),
+attributed in search-engine indexing to Xinyu Wang and collaborators at
+USC's Media Communications Lab — the same lab behind GreenCOD, logged here
+2026-09-03. GreenVCOD is the video/temporal counterpart to GreenCOD: it
+takes the per-frame prediction map from an existing *image-based* COD
+model and refines it with a **short-term and long-term temporal-neighbor
+ensemble** — combining a frame's own prediction with nearby frames'
+predictions to smooth out single-frame errors — rather than building a new
+end-to-end spatio-temporal network. This is mechanically different from
+every other VCOD entry already in this log: SLT-Net (2026-08-15) does
+implicit motion handling inside a transformer; SAM-PM (2026-08-19) fuses
+spatio-temporal attention into SAM; EMIP (2026-08-24) uses an explicit
+two-stream optical-flow branch; Vcamba (2026-08-29) does dual-domain
+motion perception inside a Mamba block. GreenVCOD's ensembling step is the
+first of these described as a **post-hoc, decision-level** refinement
+that is largely agnostic to which per-frame detector produced the initial
+map — architecturally the cheapest of the six to imagine bolting onto an
+existing, unmodified per-frame detector, IF its exact mechanics were
+available to inspect.
+
+**URL.** https://arxiv.org/abs/2501.10914 (arXiv, submitted 2025-01) and
+https://ieeexplore.ieee.org/document/10849196/. Existence is confirmed by
+three independent indexes agreeing on title, arXiv ID, and a matching
+abstract: NASA ADS (https://ui.adsabs.harvard.edu/abs/2025arXiv250110914W/abstract),
+aimodels.fyi (https://www.aimodels.fyi/papers/arxiv/green-video-camouflaged-object-detection),
+and themoonlight.io's literature-review page. Direct fetch of all of
+arxiv.org, ieeexplore.ieee.org, ui.adsabs.harvard.edu, aimodels.fyi,
+themoonlight.io, mcl.usc.edu, paperswithcode.com, and
+api.semanticscholar.org returned `EGRESS_BLOCKED` from this sandbox — the
+same recurring academic-host block noted on nearly every prior entry
+since 2026-08-24. Everything here beyond title/author/venue/one-paragraph
+mechanism is reconstructed from consistent search-snippet summaries, not
+from reading the paper.
+
+**Licence.** Not found. No GitHub, PapersWithCode, or Hugging Face page
+for this paper turned up in repeated targeted searches ("GreenVCOD
+github", "Green Video Camouflaged Object Detection github code"), and the
+paper itself could not be fetched to check for a code/data-availability
+statement. **Treat as existence-only — no usable code or licence, same
+category as DFRCP, ReynoldsFlow, and LDA-YOLO** (all logged 2026-08-24 and
+2026-09-04 under the identical caveat).
+
+**Which failure mode.** Bullet 3 / camouflage — a video/temporal method,
+which the brief flags as "of particular interest" since motion is what
+should separate a moving clubhead from static foliage when appearance
+alone fails. Not aimed at motion blur; nothing in the available summaries
+suggests the temporal ensemble was designed with, or tested against,
+blurred frames.
+
+**Why it helps this model specifically.** Only as a concept, not as
+adoptable code. The interesting part isn't GreenVCOD itself but the shape
+of its claim: that smoothing/ensembling a per-frame detector's confidence
+across a short window of neighboring frames measurably improves
+camouflage-style detection *without* replacing the per-frame detector.
+That is a generic, well-understood technique (temporal confidence
+voting/hysteresis) this project could prototype directly against its own
+YOLO11n output — using GreenVCOD only as one more piece of literature
+evidence that it is worth trying for exactly this appearance-fails/
+motion-helps failure mode, not as a dependency. No architecture change,
+no retraining, and no licence risk, since it would be original code, not a
+port of theirs.
+
+**Effort vs. payoff.** Low effort (search plus eight blocked fetch
+attempts); low payoff as literature — another confirmed-to-exist,
+code-less paper. But the underlying idea it corroborates (frame-window
+confidence ensembling as an architecture-agnostic post-processing step)
+is cheap enough that this project doesn't need GreenVCOD's code to test
+it; it needs an afternoon and the existing eval harness. Worth flagging to
+whoever next touches inference-time post-processing, not worth further
+research-run effort chasing this specific paper's code.
+
+**Area covered.** Bullet 3 (small/camouflaged/temporal object detection).
