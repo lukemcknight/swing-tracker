@@ -8331,3 +8331,123 @@ cannot do. Recommend as a near-term, low-risk fix to ship in the capture
 path regardless of what else this log's other entries lead to, specifically
 because it is the only entry so far that improves the *next* indoor clip
 captured rather than trying to compensate for the ones already in hand.
+
+---
+
+## 2026-09-06 — Rolling-shutter shear as a distinct, previously-unconsidered contributor to the motion-blur box-elongation problem, via JCD/RSCD (Zhong, Zheng & Sato, CVPR 2021)
+
+**Note on this entry.** The run that produced this entry branched from a
+stale point in this log's history (it believed only 30 entries existed and
+13 days had passed since the last run, when the actual state at the time
+was 93 entries current through 2026-09-05) — a branch/base bug in the
+automation around this log, not a research error. This run fixes the branch
+by rebuilding it from the complete chain; the finding below is left as
+originally written because it stands on its own.
+
+**Area covered.** Rather than add a variant to an already-saturated
+category, this run went looking for something *conceptually* new rather
+than another paper in an already-covered category — specifically, whether
+"motion blur" as this project defines it (linear smear along the
+clubhead's travel direction) is the complete picture, or whether phone
+cameras' rolling-shutter (RS) sensors introduce a second, geometrically
+different artifact that has been silently folded into "blur" without being
+named. It has: RS sensors expose each row of the frame at a slightly
+different instant, so a fast-moving object captured by one is not just
+smeared, it is also **sheared/skewed** — its true rectangular outline
+becomes a parallelogram-like shape, a distortion motion blur alone does
+not produce and that a plain elongated axis-aligned box (per this project's
+own labeling-spec convention, `docs/labeling-spec.md`) cannot represent
+without further loosening. That connects directly to a specific, already-
+documented symptom of this project: the labeling spec's own opening line —
+"Consistency here is what fixes loose boxes (the low varied-IoU score)" —
+names loose/inconsistent boxes as a known, live problem, without
+attributing a geometric cause. This run treats RS shear as a candidate
+partial explanation that nothing in this log has previously named.
+
+**What was checked.** "Towards Rolling Shutter Correction and Deblurring in
+Dynamic Scenes" (Zhong, Zheng, Sato — CVPR 2021), a joint rolling-shutter-
+correction-and-deblurring network (paper's own model name: JCD), code
+released as `zzh-tech/RSCD`. Fetched directly via `raw.githubusercontent.com`
+(HTTP 200 on both files below, not just search-snippet-sourced):
+`README.md` and `LICENSE`.
+
+**URL.** https://github.com/zzh-tech/RSCD (paper: CVPR 2021 Open Access —
+`openaccess.thecvf.com` is blocked by this sandbox's egress proxy, same
+recurring restriction noted throughout this log against `arxiv.org` and
+similar hosts, so architectural detail below is limited to what the
+README states; a companion RS-specific network, `GitCVfb/JAMNet`, CVPR
+2023, was also checked and is faster (28ms/frame on an RTX 3090 — still
+GPU-class, not mobile) but is explicitly **research-only**: its README
+states "This project is for research purpose only, please contact us for
+the licence of commercial use," so it is named here only to be marked
+closed, not as a lead).
+
+**Licence (verbatim, from `raw.githubusercontent.com/zzh-tech/RSCD/main/LICENSE`,
+fetched directly).** MIT License. "Permission is hereby granted, free of
+charge, to any person obtaining a copy of this software... to deal in the
+Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software." **Commercial use: permitted**, code and the named
+pretrained checkpoint (`JCD_BS-RSCD.tar`) alike — same MIT file, no
+separate restriction on the weights.
+
+**What is and isn't verified.** Confirmed directly: the repo is real, MIT-
+licensed, ships training/inference scripts and a named pretrained
+checkpoint, and targets exactly the joint RS-shear-plus-blur problem
+described above. Not verified, and this is a real gap: (1) model size,
+parameter count, backbone type, and inference speed are not stated in the
+README, and a follow-up attempt to read the model definition file directly
+(`package_core/model_JCD.py`, guessed path) 404'd — so there is currently
+**no evidence either way** that this is small/fast enough for on-device
+iPhone use, unlike RT-Focuser (2026-08-15), which had iPhone/CoreML
+numbers verified directly from its own README. (2) The training dataset,
+BS-RSCD (real-world paired RS/GS footage from a beam-splitter rig, per the
+README), states no licence at all in the README text retrieved — treat it
+as unusable for retraining, default-copyright, same as several other
+datasets this log has already ruled out; this only matters if a future run
+wanted to fine-tune JCD on golf-specific footage, not if it were used
+pretrained. (3) BS-RSCD/Fastec-RS are generic dynamic-scene footage (the
+paper's own domain), not sports or small-fast-object footage, so
+domain transfer to a clubhead-sized target is unverified in either
+direction.
+
+**Which failure mode.** Motion blur — but a mechanistically distinct
+sub-cause of it that this log has not previously separated out from linear
+smear. Not camouflage: RS shear changes an object's outline shape, not
+its color contrast against the background.
+
+**Why it helps this model specifically.** This is not a proposal to adopt
+JCD as-is (its on-device feasibility is exactly the open question above,
+and it's unlikely to be worth a second full model in the pipeline without
+that answer). The concrete, near-zero-cost value is diagnostic: the
+project's own eval harness already computes `--test-set` frame-level
+metrics (see `README.md`'s Phase 0 harness) and the failure-analysis
+process already visually inspects failing frames for camouflage. Add one
+more visual check on the existing fast-swing failure frames: does the
+clubhead's blurred region look like a straight linear streak (pure motion
+blur, matches the current labeling-spec convention cleanly) or a
+skewed/parallelogram shape (RS shear, which a simple axis-aligned
+elongated box fits worse, which would explain some of the box-looseness
+the labeling spec already flags without requiring a new model, new data,
+or any training-pipeline change at all). If RS shear turns out to be
+visually present and non-negligible on the fastest downswing frames, it
+reframes part of the "motion blur" bucket as a labeling-representation
+problem (an axis-aligned box is structurally the wrong shape for a sheared
+streak, independent of how much blur training data exists) rather than
+purely a data-scarcity problem — which is a different fix (e.g., oriented
+bounding boxes, already supported by the Ultralytics OBB task head this
+project's YOLO11n dependency ships) than every training-data entry already
+logged (PSF-synthesis, frame-averaging, iPhoneBlur/SloMoDeblur).
+
+**Effort vs. payoff.** Very low effort for the diagnostic step (re-look at
+already-collected failing frames with one new question in mind — no new
+data, model, or dependency), payoff currently unknown but cheap to find
+out. Adopting JCD itself, if the diagnostic confirms RS shear is real and
+material, is a separate and larger effort whose payoff cannot be assessed
+until this project verifies JCD's on-device cost — which this run could
+not do (see gaps above). This is being logged as a new *hypothesis with a
+cheap first test*, not as a ready-to-adopt fix, and it should not be
+confused with — or used to deprioritize — the already-verified,
+already-CoreML-benchmarked RT-Focuser entry (2026-08-15), which remains
+the cheaper, better-verified inference-time experiment to run first
+regardless of what the RS-shear check finds.
