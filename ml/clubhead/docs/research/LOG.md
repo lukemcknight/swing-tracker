@@ -8531,3 +8531,94 @@ so a future run does not re-spend time re-discovering the same dead end,
 and because "real, mask-annotated, non-frame-averaged object motion blur"
 is a genuinely new *category* of asset this log had not previously named
 even though this specific instance of it is closed.
+
+---
+
+## 2026-09-06 (third run) — SoccerSynth-Detection: a peer-reviewed, Apache-2.0 synthetic-sports-detection dataset+generator with a direct, published claim that synthetic motion blur measurably closes a real-data motion-blur gap
+
+**What it is.** SoccerSynth-Detection ("SoccerSynth-Detection: A Synthetic
+Dataset for Soccer Player Detection," Qin, Yeung, Umemoto & Fujii, 2025) is a
+procedurally-rendered synthetic dataset of soccer players — random lighting,
+random textures, and **simulated camera motion blur** — built specifically
+because real soccer-broadcast datasets (SoccerNet-Tracking, SportsMoT) are
+copyright-restricted and low-diversity. The authors trained **YOLOv8n** (same
+architecture family as this project's YOLO11n) on the synthetic data and
+report, in their own abstract: it "matched the performance of real datasets
+and significantly outperformed them in images with motion blur" in transfer
+tests, and separately "significantly enhanc[ed] the algorithm's overall
+performance" when used as a pre-training set ahead of fine-tuning on real
+data. This is a different kind of finding from this log's other synthesis
+entries (BlenderProc, CamDiff, copy-paste, motion-vector-guided patch
+synthesis, "Preserve the Hard, Regenerate the Rest"): it is not a tool or
+technique whose usefulness is inferred, but a published, controlled
+before/after comparison — on a YOLO detector, on the specific
+motion-blur axis — that synthetic-blur pretraining measurably helps.
+
+**URL.** Code + generator + dataset links:
+https://github.com/open-starlab/SoccerSynth-Detection . Paper:
+arXiv:2501.09281, "SoccerSynth-Detection: A Synthetic Dataset for Soccer
+Player Detection" (`arxiv.org` itself was blocked by this sandbox's egress
+proxy on every domain tried — `arxiv.org`, `export.arxiv.org`,
+`ar5iv.labs.arxiv.org` — so the abstract above is sourced from the verbatim
+copy in the GitHub README, fetched directly via
+`raw.githubusercontent.com`, HTTP 200, not from the PDF; treat the
+paper's quantitative numbers, which the README does not reproduce, as
+unverified even though the claim's substance is confirmed from the authors'
+own text). The dataset and a Windows generator binary are distributed via
+Google Drive links in the README; `drive.google.com` was also blocked by
+this sandbox's egress proxy, so actual downloadability of those assets is
+**not verified** — only the repo, its code, and the linked-to URLs are
+confirmed to exist.
+
+**Licence — verified.** `LICENSE.md` at the repo root (fetched verbatim via
+`raw.githubusercontent.com/open-starlab/SoccerSynth-Detection/main/LICENSE.md`,
+HTTP 200): Apache License, Version 2.0, copyright 2024 Haobin Qin, Calvin
+Yeung, Rikuhei Umemoto, Keisuke Fujii. **Commercial use: permitted** for the
+repo's code (generator scripts, training code), subject to standard
+Apache-2.0 conditions (retain notices, state changes). Caveat: the LICENSE
+file covers the GitHub repo; the dataset and generator binary themselves
+live on Google Drive with no separate terms stated anywhere in the README —
+there is no license conflict (nothing marks them as more restrictive, and
+the README presents them as part of "the Work" this Apache-2.0 license
+covers), but this is an inference from absence of a contrary statement, not
+a license file attached directly to the Drive assets, so it is one notch
+below the confidence this log gives a LICENSE file fetched from the same
+host as the asset it covers (e.g. RealBlur, iPhoneBlur, RSBlur).
+
+**Which failure mode.** Motion blur, primarily — this is the empirical
+"does synthetic blur pretraining actually help" validation this log's other
+blur-synthesis entries (frame-averaging, PSF-expansion, 6-DOF camera-motion,
+motion-vector-guided patch synthesis) have proposed but never had a
+published before/after number for. Secondarily touches camouflage/general
+robustness through the randomized lighting and texture domain-randomization,
+but the authors' own headline comparison is specifically about blurred
+images.
+
+**Why it helps this model specifically.** Domain mismatch is real and should
+not be understated: soccer players are large, textured, humanoid — nothing
+like a small, metallic, near-featureless clubhead — so the *dataset itself*
+is not directly reusable. What transfers is the *validated recipe*:
+procedural rendering with randomized lighting/texture plus simulated camera
+motion blur, on a YOLO-family nano model, produces synthetic data that
+specifically closes a real-data gap on blurred frames rather than just
+adding generic noise-robustness. That is exactly the shape of this
+project's own motion-blur gap (a labelled-corpus deficit of genuinely
+elongated boxes, not a lack of "blurry-looking" pixels in general) and is
+independent supporting evidence — from a different domain, a different
+team, and a different renderer than this log's BlenderProc entry — that the
+approach this log has repeatedly proposed (synthesize blur, keep the true
+motion-derived box) is not merely plausible but has been shown to work on
+the same model family this project uses.
+
+**Effort vs. payoff.** Low effort to verify (repo, license, and abstract all
+confirmed directly; the Google Drive assets were not exercised, so no
+implementation effort was spent this run), payoff is evidential rather than
+directly reusable: this does not hand the project a golf clubhead dataset,
+but it is the first entry in this log to supply a published, quantified
+claim (even without the raw numbers, which are PDF-locked) that the
+project's own preferred fix for the blur gap — synthetic-blur pretraining
+on a YOLO nano model — has precedent that worked. If the project builds its
+own synthetic-blur pipeline (per this log's 2026-08-12/08-14/08-25/08-30/
+09-02 entries), citing this result is a stronger justification than "should
+work in theory." Recommend as corroboration to build on, not as a drop-in
+asset.
