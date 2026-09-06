@@ -8451,3 +8451,83 @@ confused with — or used to deprioritize — the already-verified,
 already-CoreML-benchmarked RT-Focuser entry (2026-08-15), which remains
 the cheaper, better-verified inference-time experiment to run first
 regardless of what the RS-shear check finds.
+
+---
+
+## 2026-09-06 (second run) — OMoBlur: a brand-new (CVPR 2026) real-world object-motion-blur dataset with mask-supervised local deblurring, checked and ruled out on licence
+
+**What it is.** OMoBlur ("An Object Motion Blur Dataset and Benchmark for
+Real-World Local Motion Deblurring," Yu, Li, Zhou, Zhuge, Chen & Li, CVPR
+2026) is a dataset and paired network (OMDNet) built specifically around
+*object* motion blur — blur caused by a fast-moving object against a
+static or slower background — as distinct from whole-frame camera-shake
+blur, which is exactly the geometry of this project's problem (a fast
+clubhead against a comparatively still golfer/background). Its stated
+synthesis method is a genuine departure from every blur-synthesis entry
+already in this log (frame-averaging, PSF-expansion, 6-DOF camera-motion,
+RSBlur, motion-vector-guided patch synthesis): it uses "programmable sensor
+control" to physically emulate the continuous photon-integration process
+of a real exposure, rather than averaging discrete captured frames or
+convolving a kernel — the project's own framing is that naive
+frame-averaging (this log's own 2026-08-12 starting idea, and GoPro/REDS)
+produces a measurably wrong blur distribution, and this is a different fix
+for that same problem than RSBlur's already-logged (2026-08-30) recipe.
+Each sample ships as a blurry image, a **blur mask** (the region actually
+affected), a sharp ground-truth mid-frame, and the sequential sub-frames
+spanning the exposure window — 20,000 pairs total. OMDNet, the accompanying
+model, does mask-guided local deblurring (sharpens only the blurred region,
+leaves the rest of the frame untouched) rather than acting as a full-frame
+restoration network or a detector.
+
+**URL.** Paper: CVPR 2026 Open Access (`openaccess.thecvf.com` — blocked by
+this sandbox's egress proxy, same recurring restriction this log has hit on
+every CVPR/arXiv host). Code + project page:
+https://github.com/yudingchuan/OMDNet and
+https://yudingchuan.github.io/OMoBlur_homepage/ (the homepage itself is
+also blocked by the egress proxy; fetched instead via
+`raw.githubusercontent.com/yudingchuan/OMDNet/main/README.md`, HTTP 200,
+directly).
+
+**Licence — checked and ruled out.** No `LICENSE` file exists in the repo
+(`raw.githubusercontent.com/yudingchuan/OMDNet/{main,master}/LICENSE` both
+404). The README itself has no license or terms-of-use section for either
+the code or the dataset, and no explicit statement on commercial use. Per
+this log's own repeated standard (same treatment as DFRCP, DyFrDet, EMIP,
+ReynoldsFlow, and others already logged this way): an unlicensed public
+repo is default-copyright and **not usable commercially** — neither the
+code, the pretrained OMDNet checkpoint, nor the OMoBlur dataset itself —
+without contacting the authors directly. This is a research-only result.
+
+**Which failure mode.** Motion blur. Not camouflage — the dataset's blur
+masks and local-deblur framing are irrelevant to an appearance/contrast
+problem.
+
+**Why it would have helped this model specifically, if licensed.** Two
+separate uses were worth checking, and both are blocked by the same licence
+gap: (1) as a *dataset*, OMoBlur's mask-annotated real object-motion-blur
+pairs are the closest thing this log has found yet to "real photographed
+blur streaks with ground-truth extent," which is precisely what this
+project's own labeling-spec caveat (motion-blur boxes are supposed to cover
+the full streak, but the labelled corpus skews near-square) needs more of
+— but it is generic real-world objects (the README references the ReLoBlur
+dataset and Sony camera captures, not sports or small fast-moving objects),
+so even licensed it would have needed a domain-transfer argument this run
+could not evaluate either. (2) as a *preprocessing* step, OMDNet's
+mask-guided local deblur is a different mechanism from this log's other
+deblur-as-preprocessing entries (RT-Focuser, DeFMO) in that it only touches
+the blurred region rather than the whole frame — potentially cheaper at
+inference — but the README states no model size, parameter count, or
+inference speed, so on-device feasibility is unverified regardless of the
+licence question, the same open gap this log already flagged for JCD/RSCD
+in the entry immediately above.
+
+**Effort vs. payoff.** Low effort to check (existence, licence, and
+mechanism all confirmed directly from the repo in a handful of fetches),
+zero payoff currently available: the licence blocker is absolute for a
+commercial product, and unlike this log's RSBlur entry (which had the same
+problem and got resolved on a later run when a licensed alternative
+surfaced), there is no indication yet that OMoBlur will be relicensed. Logged
+so a future run does not re-spend time re-discovering the same dead end,
+and because "real, mask-annotated, non-frame-averaged object motion blur"
+is a genuinely new *category* of asset this log had not previously named
+even though this specific instance of it is closed.
