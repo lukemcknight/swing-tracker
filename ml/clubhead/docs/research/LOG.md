@@ -8622,3 +8622,109 @@ own synthetic-blur pipeline (per this log's 2026-08-12/08-14/08-25/08-30/
 09-02 entries), citing this result is a stronger justification than "should
 work in theory." Recommend as corroboration to build on, not as a drop-in
 asset.
+
+---
+
+## 2026-09-06 (fourth run) — Kubric (Google Research, CVPR 2022): an Apache-2.0 procedural-synthesis tool that supersedes this log's own BlenderProc entry on the exact point that entry flagged for legal review
+
+**What it is.** Kubric (`google-research/kubric`) is Google Research's
+open-source Python framework for generating synthetic multi-object video
+with automatic, renderer-derived ground truth: instance segmentation masks,
+depth maps, and **optical flow**, in addition to standard RGB and (per direct
+source inspection below) bounding boxes. It combines PyBullet for physics
+simulation (objects fall, collide, and move under real dynamics rather than
+scripted keyframes) with Blender/Cycles for photorealistic rendering,
+invoked via a published Docker image (`kubricdockerhub/kubruntu`) rather than
+a bundled binary. This is the same category of tool as this log's own
+2026-08-18 (second run) BlenderProc entry — procedural 3D rendering as a
+route to synthetic clubhead data with construction-correct labels — found
+this run while re-checking that category for a Google-maintained,
+differently-licensed alternative, not by accident.
+
+**URL.** Code: https://github.com/google-research/kubric. Paper: "Kubric: A
+Scalable Dataset Generator" (Greff, Belletti, et al., CVPR 2022), open-access
+PDF at `openaccess.thecvf.com` (arXiv:2203.03570 mirrors it; `arxiv.org`
+itself is blocked by this sandbox's standing egress restriction, consistent
+with every prior entry in this log that has hit the same wall). Maintenance
+verified directly against the repo's own commit history
+(`github.com/google-research/kubric/commits/main`, fetched live): most
+recent commit **May 21, 2026**, "Blender v4_3 fixes for Kubric renderer" —
+an active compatibility fix eight weeks before this run's date, not a
+years-stale research drop. (BlenderProc's own maintenance status was not
+checked in its original 2026-08-18 entry — this is new information on
+Kubric specifically, not a claim about BlenderProc's current state.)
+
+**Licence — verified.** Apache License, Version 2.0, fetched verbatim via
+direct `raw.githubusercontent.com/google-research/kubric/main/LICENSE`
+(HTTP 200, not search-indexed). **Commercial use: permitted**, standard
+Apache-2.0 terms (retain notices, state changes). This is the specific
+point of contrast with BlenderProc: that entry's GPLv3 licence required
+flagging for legal review before use, on the reasoning (FSF's compiler/
+output analogy — a GPL tool's output is not itself GPL merely because the
+tool is GPL) that running BlenderProc offline and never shipping it should
+be fine, but "should be fine pending legal review" is a real cost a
+company can reasonably want to avoid. Kubric's own wrapper source — the
+part actually read, modified, or potentially vendored into this project's
+data-engine pipeline — is unambiguously Apache-2.0. The important honest
+caveat: Kubric still invokes **Blender itself (GPL-2.0-or-later)** as the
+external renderer inside its Docker image, exactly as BlenderProc does, so
+the *same* FSF output-is-not-derivative reasoning is still the thing doing
+the work of making rendered images and a model trained on them
+non-GPL — Kubric does not eliminate that reasoning's role, it only removes
+GPL exposure from the wrapper code itself. This is a smaller, more precise
+win than "no GPL involved at all," and should be represented as such, not
+oversold.
+
+**Which failure mode.** Primarily motion blur, secondarily camouflage.
+Direct source verification (`kubric/renderer/blender.py`, fetched via
+`raw.githubusercontent.com`, not search-indexed): the `Blender` renderer
+class constructor accepts `motion_blur: Optional[float] = None`, passed
+through to `blender_utils.set_up_exr_output_node(motion_blur=motion_blur)`.
+The parameter's existence is confirmed directly from source; its exact
+mechanism (shutter-fraction-based like BlenderProc's `enable_motion_blur`,
+vs. some other blur model) was **not** confirmed — `blender_utils.py` itself
+was not fetched this run, so treat "a real motion_blur control exists" as
+verified and "how it behaves in detail" as not. One concrete capability gap
+versus BlenderProc, also unconfirmed either way this run: no rolling-shutter
+parameter was found in the file inspected, whereas BlenderProc's own
+motion-blur example explicitly layers a rolling-shutter model on top (per
+this log's 2026-08-18 entry) — a real phone shutter is rolling, not global,
+so this may matter for label realism and is worth checking before choosing
+between the two tools. For camouflage: Kubric's PyBullet-driven scene
+randomization (object placement, physics-correct occlusion) plus its
+free, renderer-exact optical-flow ground truth is relevant to this log's
+already-logged multi-frame/temporal camouflage mechanisms (DTUM, TrackNetV4,
+Channel-stacked YOLO, Motion-Informed Enhancement, SLT-Net, EMIP, Vcamba) —
+Kubric could generate perfectly labeled synthetic optical-flow pairs to
+validate or pretrain a motion-based camouflage component against ground
+truth, rather than only against noisy real-world flow estimates.
+
+**Why it helps this model specifically.** This log's BlenderProc entry
+already made the core case: synthesizing a clubhead against randomized
+backgrounds/lighting with a controllable motion-blur length produces boxes
+that are ground-truth-correct by construction, for exactly the
+elongated-streak-against-cluttered-background examples this project's real
+training data is short on (per the run brief: median labelled elongation
+1.60, and the camouflage test set structurally excludes blur). Kubric does
+not change that underlying case; it changes which tool the project would
+actually reach for to act on it. A team that would hesitate to bring a
+GPLv3 dependency into an internal pipeline even for offline, non-shipped
+use — a common, reasonable engineering-org policy independent of the legal
+analysis — has, as of this run, a verified, actively-maintained,
+Apache-2.0 alternative with a superset of relevant features (physics sim,
+optical flow, depth) rather than having to resolve that policy question
+before starting.
+
+**Effort vs. payoff.** Low effort to verify this run (LICENSE, the
+`motion_blur` parameter, and current commit activity all confirmed by
+direct, non-search-indexed fetches; no attempt was made to actually run the
+Docker pipeline or render a test scene). Payoff is the same shape as the
+BlenderProc entry's, not larger: Kubric does not hand the project a golf
+clubhead asset — a 3D clubhead model to render still has to come from
+somewhere, exactly the bottleneck already flagged for BlenderProc — and the
+blur mechanism's realism is unverified. What this run adds is narrow but
+concrete: it resolves the specific licence-policy friction the BlenderProc
+entry raised, with a tool that is at least as capable and more recently
+maintained. Recommend as the preferred choice *if and when* the project
+acts on the BlenderProc-style synthesis idea, not as a new, independent
+idea to evaluate on its own.
