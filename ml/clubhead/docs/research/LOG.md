@@ -8728,3 +8728,110 @@ entry raised, with a tool that is at least as capable and more recently
 maintained. Recommend as the preferred choice *if and when* the project
 acts on the BlenderProc-style synthesis idea, not as a new, independent
 idea to evaluate on its own.
+
+---
+
+## 2026-09-07 — SelfHVD: self-supervised handheld video deblurring for phones (CVPR 2026), with a real license/domain-mismatch tension worth logging honestly
+
+**Area covered.** Motion blur — specifically "video deblurring usable as
+preprocessing," a sub-area this log has only touched twice before
+(RT-Focuser, 2026-08-15, an on-device CoreML deblur head; DeFMO, 2026-08-20,
+an offline data-engine/labeling-QA tool). Checked both existing entries
+first: SelfHVD is a different mechanism from either — it is neither a
+lightweight on-device head nor a fast-moving-object recovery tool, but a
+*self-supervised training method* for a full video-restoration network that
+needs no paired blur/sharp data. Also checked this run's rotation against
+the last several runs (2026-09-06 covered rolling-shutter shear, OMoBlur,
+SoccerSynth-Detection, and Kubric — all motion-blur-bucket already; 2026-09-05
+covered a golf paper, a camouflage paper, an Apple API, and a capture-side
+fix). Motion blur is still this run's target, but a distinct sub-area within
+it (deblurring-as-preprocessing/data-recovery, not synthesis or architecture).
+
+**What it is.** "SelfHVD: Self-Supervised Handheld Video Deblurring for
+Mobile Phones" (arXiv:2508.08605), confirmed as a **CVPR 2026** paper via
+the repository's own README framing. Code and two datasets are published at
+`https://github.com/cshonglei/SelfHVD`. The method's premise: ordinary
+handheld video naturally contains a mix of sharp and blurry frames (the
+camera settles between movements), so the model extracts those naturally
+sharp frames from the video itself and uses them as pseudo ground-truth
+("misalignment labels") for the neighboring blurry frames — no externally
+supplied blur/sharp pairs required. Two named components: **SEVD**
+(Self-Enhanced Video Deblurring, which generates higher-quality synthetic
+pairs from the mined sharp/blurry pairs) and **SCSCM** (Self-Constrained
+Spatial Consistency Maintenance, which stops the deblurred output from
+drifting spatially relative to the input). Architecture is built on
+**BasicVSR++** inside the **MMagic/MMEditing** framework — a recurrent,
+multi-frame video-restoration network, not a single-frame filter. A
+pretrained checkpoint (`chkpts/pretrain.pth`) is published. Two datasets
+ship with the repo: **GoProShake** (synthetic, built from GoPro footage with
+simulated optical-image-stabilization artifacts) and **HVD** (a *real*
+handheld-video dataset, described in the README as one where "sharp frames
+are present and reliable in most cases of handheld shooting scenarios") —
+both linked from the repo via Google Drive.
+
+**Licence.** Verified by fetching the repository's raw `LICENSE` file
+directly (not a search-engine snippet): it is the standard **Apache License
+2.0** text, applied to the codebase (the file's own boilerplate identifies
+it as inherited from the MMEditing/MMagic base the project forks — itself an
+OpenMMLab Apache-2.0 project). **Commercial use of the code is permitted.**
+What is *not* independently confirmed: whether that same Apache-2.0 grant is
+understood by the authors to cover the two linked datasets, since Apache-2.0
+in its standard form licenses "the Software," and the README states no
+separate data licence or terms of use for the Google-Drive-hosted
+GoProShake/HVD downloads. This is the same ambiguity this log has flagged
+before for other repos that bundle data links inside a code licence (e.g.
+the 2026-08-20 GoPro/REDS entry, "probable CC BY 4.0, verbatim read
+blocked") — treat the **code and pretrained checkpoint** as commercially
+clear, and the **datasets** as unconfirmed pending a direct look at
+whatever terms accompany the Drive folder itself, which this sandbox did
+not reach.
+
+**Which failure mode.** Motion blur, and only motion blur — no camouflage
+relevance. But there is an important, honestly-reported domain mismatch:
+SelfHVD is built for **global camera-shake blur** (the whole frame blurs
+because the handheld camera itself is unsteady), which is exactly the kind
+of blur its self-supervision signal depends on — it needs whole frames to
+be crisply "sharp" or "blurry" so it can mine one to supervise the other.
+This project's blur problem is different in kind: a **fast-moving small
+foreground object** (the clubhead) blurs because of *its own* motion while
+the camera is comparatively static (propped or handheld-but-braced) and the
+rest of the frame stays sharp. A frame with a sharp background and a
+blurred clubhead is not cleanly "a sharp frame" or "a blurry frame" in the
+global sense SelfHVD's sharp-frame-mining step is built to distinguish, so
+its core self-supervision mechanism may simply not fire usefully on this
+project's footage — this is a real, unresolved risk, not a solved transfer.
+
+**Why it helps this model specifically, and why it might not.** The
+appealing angle is data-engine, not on-device inference: the README's
+"Phase 0" quarantined `indoor_test` set (per this project's own README) is
+exactly the kind of raw, unlabeled handheld phone footage SelfHVD's method
+is designed to consume with zero manual blur/sharp annotation. If the
+global-vs-local blur mismatch above turns out not to be fatal — worth an
+hour of empirical checking before anything else — it could offer a way to
+either (a) deblur/recover currently-unusable indoor frames for labeling, or
+(b) repurpose its sharp/blurry frame-mining step as an automatic filter that
+flags which frames in raw footage are genuinely blurred at all, feeding a
+labeling queue that currently has no automated way to find blur examples.
+Both uses are speculative until someone actually runs the published
+checkpoint over a few minutes of this project's own footage and looks at
+the output. Using it as an *inference-time* preprocessor for the shipped
+app is a non-starter as published: BasicVSR++ is a multi-frame recurrent
+GPU-class restoration network with no stated mobile latency numbers and no
+CoreML export path — nothing here suggests it fits an on-device budget the
+way RT-Focuser was designed to.
+
+**Effort vs. payoff.** Low effort to verify (direct fetch of the LICENSE and
+README from the raw GitHub content, not search snippets — higher confidence
+than most entries in this log, which are usually search-engine-only due to
+the standing `arxiv.org` egress block). Payoff is real but conditional: this
+is the first entry in this log that could plausibly touch the quarantined
+indoor test set directly, which no other logged idea addresses at all — but
+the global-camera-shake-vs-local-object-blur mismatch is a genuine,
+unverified risk that could make the whole approach a dead end on this
+project's footage. Recommended next step is cheap and concrete: run the
+published checkpoint (no training, no licence risk yet — pure inference) on
+a short clip from the quarantined indoor set and look at the output before
+investing in anything further; do not attempt to retrain or fine-tune it,
+and do not treat the HVD/GoProShake datasets as clear for commercial
+training use until their terms are read directly rather than inferred from
+the code's Apache-2.0 licence.
