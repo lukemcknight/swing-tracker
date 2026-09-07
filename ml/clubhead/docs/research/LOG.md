@@ -8925,3 +8925,67 @@ turning out to be small enough for on-device use, which nothing found here
 confirms one way or the other. Recommended action: none right now; if this
 log is ever revisited systematically, search again for a LeanCOD code
 release before spending further effort on it.
+
+## 2026-09-07 (third run) — `sanjeevs/golftracker`: a real, MIT-licensed club-head "tracker," verified to be manual labeling plus linear interpolation, not a detector
+
+**Area covered.** Golf-specific pose/club tracking implementations. The last
+two runs today (SelfHVD, LeanCOD) were both blur/camouflage-bucket, and
+before that 2026-09-06 was four straight motion-blur entries, so this run
+rotates to the golf-specific-tracking category, last touched 2026-09-05
+(Yamamoto et al.). Checked against every prior entry in this category first
+(GolfDB, GolfPose, dj_masters, AICaddy, CADDIE, CaddieSet x2, PiTrac,
+Yamamoto et al., onkar-99/Golf-Ball-Tracking, ReynoldsFlow) — none of them
+is this package, and none use manual-label-plus-interpolation as their
+mechanism, so it's a genuinely distinct entry, not a repeat.
+
+**What it is.** `golftracker` on PyPI (https://pypi.org/project/golftracker/),
+source at https://github.com/sanjeevs/golftracker, by Sanjeev Singh. Verified
+via the PyPI JSON API (`https://pypi.org/pypi/golftracker/json`), which is
+static and rendered correctly where the PyPI web page itself did not: latest
+release is version 2.0 (2023-11-25), MIT license classifier
+(`License :: OSI Approved :: MIT License`), requiring Python 3.9–3.12 and
+Google MediaPipe. The README (read via a GitHub fetch of the repo) describes
+the actual club-head mechanism plainly: "Label the club head in some of the
+frames. The script will then use a linear approx[imation] to fill the
+position in the remaining frames." That is the entire tracking method — a
+human clicks the club head in a sparse set of keyframes via the
+`label_club_head` script, and the tool linearly interpolates its position
+for every frame in between. It is not an ML detector and not a CV tracker
+(no CSRT/KCF/optical-flow component was found). MediaPipe is used only for
+golfer body-pose landmarks (`label_golf_poses`), not for the club head
+itself. A `dump_swing_db` command exports the result as structured data for
+a separate `GolfTrainer` package. Repo has a `LICENSE.txt` (MIT) at the root,
+confirmed present.
+
+**Licence.** MIT, confirmed both via the PyPI classifier and the repo's
+`LICENSE.txt`. Commercial use is unambiguously permitted — but there is
+nothing here worth reusing under that license (see below).
+
+**Which failure mode.** Neither, directly — and that's the finding. Linear
+interpolation between manually-labeled keyframes is exactly the wrong
+approximation during the fast part of a swing: clubhead angular velocity is
+highly non-linear through the downswing and impact, which is precisely the
+segment this project's brief identifies as under-represented for motion
+blur (the "impact-speed" frames). A tool that fills in position by straight-
+line interpolation between sparse manual clicks would produce systematically
+wrong boxes exactly where blur-streak labels matter most, and it does
+nothing at all for the camouflage failure mode (a human still has to see and
+click the clubhead in every keyframe, including camouflaged ones — the tool
+provides no help there).
+
+**Why it doesn't help this model.** This project's actual gaps are (a) an
+automatic detector that still fails on camouflaged/blurred frames, and (b)
+a shortage of correctly-boxed real blur examples. `golftracker` addresses
+neither: it is a manual-labeling convenience script for a downstream swing-
+metrics package (`GolfTrainer`), not a detection or data-synthesis tool, and
+even as a labeling aid its interpolation assumption breaks down fastest in
+the highest-value region (impact). It would only be useful, if at all, as
+a rough pre-fill for annotators on the slow parts of a swing (address,
+backswing top, follow-through), where linear interpolation is a reasonable
+approximation — but that's the part of the swing this project already labels
+fine.
+
+**Effort vs. payoff.** Low effort (PyPI JSON API + one GitHub README fetch,
+both fully verified, no blocked domains this time). Payoff is essentially
+none: this is a "checked and ruled out" result for both failure modes. Not
+recommending any follow-up.
