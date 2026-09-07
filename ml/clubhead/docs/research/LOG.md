@@ -8835,3 +8835,93 @@ investing in anything further; do not attempt to retrain or fine-tune it,
 and do not treat the HVD/GoProShake datasets as clear for commercial
 training use until their terms are read directly rather than inferred from
 the code's Apache-2.0 licence.
+
+## 2026-09-07 (second run) — LeanCOD: the first logged camouflage paper whose stated bottleneck is specifically extra-small objects, with a real edge-device (not desktop-GPU) benchmark
+
+**Area covered.** Camouflage — small/low-contrast object detection. Last run
+(this same day) covered motion blur (SelfHVD), and the four runs before that
+(2026-09-06 x4 through 2026-09-07 first run) were also all motion-blur-bucket
+entries, so this run deliberately rotates back to camouflage, a category this
+log has not touched since 2026-09-05 (GreenVCOD, VNTrackObjectRequest). Also
+checked against every prior camouflage entry (SLT-Net, SINet-V2, DTUM,
+Motion-Informed Enhancement, SAM-PM, CamDiff, RefCOD/R2CNet, GreenCOD, MCOD,
+Vcamba, EMIP, GreenVCOD, DyFrDet) — none of them frame small object *size*
+itself as the headline failure axis the way this one does, and none report a
+real edge-hardware (as opposed to desktop-GPU or existence-only) real-time
+number.
+
+**What it is.** "LeanCOD: Real-Time Small Camouflaged Object Detection on
+Edge Devices," published in *Sensors* (MDPI), volume 26, article 4354,
+2026-07-09, in the "AI for Sensor-Based Robotic Object Perception" Special
+Issue (`https://www.mdpi.com/1424-8220/26/14/4354`, mirrored at PMC as
+PMC13417466 and indexed at PubMed as 42515239). Confirmed via multiple
+independent search-engine snippets of the abstract text, not full-text —
+this sandbox's egress proxy blocks `mdpi.com`, `pmc.ncbi.nlm.nih.gov`,
+`pubmed.ncbi.nlm.nih.gov`, `doi.org`, `api.semanticscholar.org`, and
+`scilit.com` outright (a much broader block than the previously-noted
+`arxiv.org`-only restriction; every attempted direct fetch on this paper
+returned `EGRESS_BLOCKED`), so nothing below is a full-text read. The paper
+pairs an unnamed "foundation-model encoder" with a lightweight decoder for
+single-image binary camouflaged object detection, adding a "size-aware
+composite loss" specifically to strengthen supervision on small camouflaged
+targets. Its own stated finding: across its benchmarks, "the 0–1%
+extra-small-object regime is the major performance bottleneck for existing
+COD methods" — object area under ~1% of the frame is exactly the regime a
+golf clubhead occupies in most swing footage. Reported numbers: Sα (structure
+measure) of 0.908 at 576×576 input resolution, running at 31.6 FPS with
+TensorRT FP16 on an **NVIDIA Jetson AGX Orin** — the paper's own claim is
+that no other published COD method has simultaneously hit competitive
+accuracy and real-time throughput on edge-class hardware. No GitHub
+repository, code release, or model weights could be found anywhere (direct
+GitHub search for "LeanCOD" and site-restricted search both came back
+empty) — this is an existence-only result for the artifact, same caveat
+category as several prior entries (GreenVCOD, LDA-YOLO, SMBlurDetect).
+
+**Licence.** A search-engine snippet of the paper's own copyright notice
+reads: "This article is an open access article distributed under the terms
+and conditions of the Creative Commons Attribution (CC BY) license.
+Copyright is retained by the authors, with MDPI ... as licensee" — this is
+MDPI's standard open-access licence for *Sensors*, and **CC BY permits
+commercial use** (attribution required, no NonCommercial or ShareAlike
+clause). That licence covers the paper text and any figures; since no code
+or weights were found to exist at all, there is nothing beyond the paper
+itself to license.
+
+**Which failure mode.** Camouflage, specifically — and it is the most
+directly on-point framing of the camouflage problem this log has found: this
+project's own failure analysis is exactly "zero candidate detections even at
+confidence 0.05" for a dark clubhead against dark clothing or foliage, and
+LeanCOD's whole premise is that standard COD architectures collapse
+specifically when the target is both camouflaged *and* occupies under 1% of
+frame area — the same conjunction, not just camouflage alone. No motion-blur
+relevance.
+
+**Why it helps this model specifically, and why it might not.** The
+appeal is narrow but real: every previous camouflage entry in this log that
+reported real numbers was either a heavyweight foundation-model wrapper
+ruled out for this deployment target (SAM-PM, and by direct analogy CamSAM2 —
+checked this run and not logged separately since it reconfirms rather than
+extends that ruling: a frozen-SAM2 video-segmentation model is the same
+"foundation-model VCOD doesn't fit here" category already closed) or a
+desktop/CUDA-only benchmark with no edge numbers at all (Vcamba, DyFrDet,
+EMIP). LeanCOD is the first with a demonstrated real-time number on
+edge-class silicon. But "edge-class" here is a Jetson AGX Orin — a
+232-TOPS accelerator card, not an iPhone NPU — so "real-time on edge
+hardware" is not evidence it fits this app's actual on-device budget; the
+encoder is explicitly described as a "foundation-model encoder," and
+foundation-model encoders (ViT-scale or larger) are usually the opposite of
+what fits alongside a 2.6M-parameter YOLO11n in a phone app's memory and
+latency budget. Without a code release there is no way to check the
+encoder's actual parameter count, nor any CoreML export path, nor even
+confirm the claims independently. The honest reading: this is a paper worth
+re-checking every few months for a code release, not something actionable
+today.
+
+**Effort vs. payoff.** Low effort spent (search-engine verification only;
+full-text and code-repository checks both came back empty or blocked).
+Payoff today is zero — there is nothing to run, port, or license-clear.
+Payoff *if* code ever ships is uncertain and conditional on the encoder
+turning out to be small enough for on-device use, which nothing found here
+confirms one way or the other. Recommended action: none right now; if this
+log is ever revisited systematically, search again for a LeanCOD code
+release before spending further effort on it.
