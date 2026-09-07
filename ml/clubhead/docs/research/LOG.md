@@ -8989,3 +8989,109 @@ fine.
 both fully verified, no blocked domains this time). Payoff is essentially
 none: this is a "checked and ruled out" result for both failure modes. Not
 recommending any follow-up.
+
+## 2026-09-07 (fourth run) — YOLO-Net (PLOS ONE, 2026): a YOLO11n-native, CC BY 4.0 small-object recipe for racket sports, at almost exactly this model's parameter count
+
+**Area covered.** Small/low-contrast object detection techniques (bullet 3).
+Today's first three runs were blur (SelfHVD), camouflage/VCOD (LeanCOD),
+and golf-specific tracking (`golftracker`, ruled out) — none touched plain
+architecture surgery on YOLO11n itself, which this log last did on
+2026-09-01 (the MSEAF/ScalCat/SRepD entry). Checked against every prior
+architecture-bucket entry (P2/4 head, YOLO26, YOLO12, FastViT, RF-DETR,
+D-FINE, MSEAF/ScalCat/SRepD, NWD loss, YOLO-Ball, MS-YOLOv11, DFRCP,
+Enhanced-YOLOv11n) — none use the module names or loss function here
+(C3k-MSEIS, ECA-after-C2PSA, Focaler-IoU), so this is a distinct paper, not
+a repeat of the 09-01 entry it superficially resembles.
+
+**What it is.** "YOLO-Net: A lightweight edge-enhanced detection model for
+small-object recognition in tennis match scenarios," *PLOS ONE* 21(7):
+e0335558, published July 2026 (PMC13367711, PubMed 42447115). It modifies
+YOLO11n with three concrete, named changes: (1) **C3k-MSEIS** — a
+Multi-Scale Edge Information Selection block folded into the backbone's
+C3k2 module, which performs feature selection in *both* the spatial and
+frequency domains to sharpen weak edges and high-frequency detail on small
+targets (the same MSEIS mechanism, per a cross-check search, also appears
+independently in a 2025 Scientific Reports underwater-detection paper and a
+PCB-defect paper — it is a real, reused module family, not invented for
+this paper); (2) an **ECA** (Efficient Channel Attention) block inserted
+immediately after YOLO11's existing C2PSA block, to sharpen inter-channel
+feature discriminability; (3) a **Focaler-IoU** loss (an existing,
+published IoU-loss variant, not new here) swapped in to up-weight hard and
+small samples during box regression. The authors built their own 6,648-
+image tennis dataset (player/racquet/ball, "diverse scenes, camera angles,
+and lighting conditions") and report **84.5% precision, 78.2% mAP@0.5, at
+2.58M parameters — a +2.5-point precision and +0.9-point mAP@0.5 gain over
+their own YOLO11n baseline, at real-time speed**. 2.58M parameters is
+within rounding of this project's own YOLO11n (~2.6M), because it *is*
+YOLO11n plus these three additions, not a different base model.
+
+**Licence.** Confirmed via multiple independent search results quoting the
+article's own licence line: PLOS ONE's standard "distributed under the
+terms of the Creative Commons Attribution License, which permits
+unrestricted use, distribution, and reproduction in any medium, provided
+the original author and source are credited" — i.e. **CC BY 4.0, commercial
+use permitted**, on the paper's text, figures, and methodology. This
+licence does **not** automatically extend to the authors' 6,648-image
+tennis dataset (not needed here anyway — it's tennis, not golf) or to any
+code, because **no code repository for this paper could be found** by
+repeated targeted search (only unrelated, generic tennis-YOLO hobby repos
+turned up). So the reusable asset is the published method description
+itself, which CC BY 4.0 explicitly permits reimplementing.
+
+**Verification performed, and its limits.** Every primary host was
+egress-blocked from this sandbox on direct fetch: `journals.plos.org`,
+`pmc.ncbi.nlm.nih.gov`, `www.ncbi.nlm.nih.gov`, `europepmc.org`,
+`doi.org`, and `api.semanticscholar.org` all returned `EGRESS_BLOCKED` —
+consistent with every prior run's standing restriction on academic-
+publisher hosts, and `europepmc.org` and `doi.org` are two hosts not
+previously recorded as blocked in this log. What's verified instead is
+convergent, specific detail across five independent search queries: exact
+journal/volume/article-ID/DOI/PMC-ID/PubMed-ID, the exact three module
+names and what each does, the exact quantitative results, and a verbatim
+quote of the licence line. This is existence-and-detail-verified but not
+primary-source-read; the architecture diagrams, full ablation table, and
+any dataset/code availability statement in the paper itself remain
+unconfirmed. Given the precedent in this log (e.g. the 09-01 MSEAF entry,
+logged existence-only with much less corroborating detail), this entry
+clears a materially higher verification bar than that one, but should still
+be re-checked against the primary PDF before anyone relies on the specific
+numbers.
+
+**Which failure mode.** Camouflage / small-object-primary, same
+classification as the P2-head and MSEAF entries — the C3k-MSEIS and ECA
+changes target weak-edge, low-contrast small-object signal, not motion
+elongation directly. Focaler-IoU's "hard and small samples" framing is the
+one piece with plausible blur relevance (a motion-smeared clubhead box is
+both harder to regress and effectively a small, elongated target relative
+to a stock IoU loss's assumptions), but the paper's own framing is
+small-object-first, so this is filed as primarily camouflage-side with a
+secondary, unconfirmed motion-blur benefit.
+
+**Why it helps this model specifically.** This is the most architecturally
+literal match this log has found yet: not a different backbone (RF-DETR,
+D-FINE), not a different YOLO generation (YOLO12, YOLO26), but the *exact*
+same YOLO11n graph with three bolt-on modifications, evaluated on a sport
+task that shares this project's core symptom — a small, fast, sometimes
+visually indistinct target (racquet/ball vs. clubhead) in cluttered,
+variable-lighting scenes, at a near-identical parameter budget. Because
+it's the same base architecture, the changes should be reproducible by
+following the paper's description directly against this project's own
+`ultralytics` training config, without needing the authors' code. This
+sits alongside the already-logged P2-head and MSEAF findings as a third,
+independent small-object recipe converging on similar territory (edge/
+frequency-domain feature selection plus a loss reweighted for small/hard
+targets) — three separate groups arriving at compatible fixes is a
+mildly stronger signal than any one of them alone, though none has been
+tested on this project's own data yet.
+
+**Effort vs. payoff.** Low-to-moderate effort spent (five search queries,
+six blocked direct-fetch attempts, all consistent with this sandbox's known
+limits). Payoff if reimplemented: moderate — C3k-MSEIS and the ECA
+insertion are a nontrivial but bounded architecture change (a custom C3k2
+variant plus one attention block), Focaler-IoU is a much smaller lift (a
+loss-function swap, and a known technique independent of this paper).
+Recommended next step, if this project ever prioritizes architecture
+changes over data-engine work: reimplement Focaler-IoU first (cheapest,
+well-documented, decoupled from the other two changes) as a fast way to
+test whether small/hard-sample reweighting helps before committing to the
+larger MSEIS/ECA backbone surgery.
