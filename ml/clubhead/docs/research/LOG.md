@@ -9095,3 +9095,356 @@ changes over data-engine work: reimplement Focaler-IoU first (cheapest,
 well-documented, decoupled from the other two changes) as a fast way to
 test whether small/hard-sample reweighting helps before committing to the
 larger MSEIS/ECA backbone surgery.
+
+---
+
+## 2026-09-08 — `DetectLensSmudgeRequest` / `CalculateImageAestheticsScoresRequest`: a free, on-device Apple API that already reacts to motion blur, repurposable as a zero-training-cost blur triage signal for the data engine
+
+**Area covered.** Rotated to a sub-thread of bullet 5 (synthesizing/augmenting
+training data) and bullet 2 (motion blur), from the data-engine/labeling
+angle rather than architecture or synthesis-of-pixels — specifically, how to
+*find* real blur in the team's own unlabeled raw phone footage cheaply,
+since this log has repeatedly noted (RT-Focuser 2026-08-15, capped-exposure
+capture 2026-09-05, rolling-shutter 2026-09-06) that the project has never
+actually measured how much blur its own raw footage contains, only that the
+labeled training set is short of it. Checked against every prior
+data-engine/QA-tool entry first (RT-Focuser, SMBlurDetect, DeFMO/FMO,
+`VNTrackObjectRequest`, `VNGenerateOpticalFlowRequest`,
+`VNDetectTrajectoriesRequest`, `AVCaptureDevice.activeMaxExposureDuration`)
+— none of them is this API, and none of them is a *classifier already
+running for free on-device* rather than a model to train, integrate, or a
+capture-side prevention.
+
+**What it is.** Two Apple Vision framework request types, both new as of
+iOS/iPadOS/macOS/visionOS 26 (announced alongside the WWDC25 "Read
+documents using the Vision framework" session, `developer.apple.com/videos/
+play/wwdc2025/272/`, which covers the same image-quality API family):
+
+1. **`DetectLensSmudgeRequest`** (Swift) / `VNDetectLensSmudgeRequest`
+   (Objective-C-compatible) — analyzes a still image or video frame and
+   returns a confidence score from 0 to 1 for "this looks like it was shot
+   through a smudged lens." Documented at
+   `developer.apple.com/documentation/vision/detectlenssmudgerequest`.
+   Multiple independent, mutually consistent search-engine summaries of
+   Apple's own doc text state explicitly: **"images with blur caused by
+   camera motion, long exposure, or images of clouds or fog" can score as
+   falsely smudged** — i.e. Apple's own documentation names camera motion
+   blur as a known confound of this exact score.
+2. **`CalculateImageAestheticsScoresRequest`** (`VNCalculateImageAesthetics
+   ScoresRequest`) — a broader, general image-quality/aesthetics scorer
+   (also flags "utility images" like documents/receipts), documented at
+   `developer.apple.com/documentation/vision/calculateimageaestheticsscoresrequest`.
+   Less specifically tied to blur than the smudge request — logged here
+   only as a secondary, noisier signal in the same family, not the primary
+   finding.
+
+**URL.**
+`https://developer.apple.com/documentation/vision/detectlenssmudgerequest`
+and `https://developer.apple.com/documentation/vision/calculateimageaestheticsscoresrequest`.
+
+**Licence.** Not applicable in the usual sense — this is a first-party
+Apple system framework API shipped in the OS, covered by the standard Apple
+Developer Program agreement like every other Vision/CoreML/AVFoundation
+call this app already makes. **Commercial use is unrestricted** in the same
+way `VNGenerateOpticalFlowRequest` or `VNTrackObjectRequest` already used
+elsewhere in this app are. The only real constraint is a **minimum
+deployment target of iOS 26** (2025) — this needs to be checked against
+the app's current `Info.plist`/project deployment target before use; if the
+app currently supports older iOS versions, adopting this either raises the
+floor or requires an availability-gated fallback.
+
+**Verification performed, and its limits.** `developer.apple.com` is *not*
+egress-blocked in this sandbox (unlike `arxiv.org`, `huggingface.co`,
+`universe.roboflow.com`, `blog.roboflow.com`, and `kuscholarworks.ku.edu`,
+all of which were tried again this run and are all still blocked, no
+change from prior entries) — direct fetches to both documentation URLs
+returned real HTTP 200 pages confirming the pages exist. However, Apple's
+developer documentation is a JavaScript-rendered single-page app: the
+fetched HTML contains only the page `<title>`, with the actual API
+description, availability annotation, and parameter list injected
+client-side and invisible to a plain HTML-to-markdown fetch. This is a
+**new class of verification limit** for this log, distinct from every
+prior `EGRESS_BLOCKED` case — the host is reachable, the page is real, but
+its content could not be read directly this run. In place of that, this
+entry relies on close agreement across four independent search queries,
+each surfacing search-engine-indexed snippets of Apple's own doc text
+(including what reads as a near-verbatim quote: "*images with blur caused
+by camera motion, long exposure, or images of clouds or fog*" can produce a
+false-positive smudge score) — consistent wording across independent
+queries is what's being trusted here, not a single source. This clears a
+similar bar to this log's DFRCP entry (2026-08-24: existence-and-detail
+confirmed via convergent snippets, primary source unread) — not as strong
+as entries where raw GitHub source was fetched directly (e.g. WASB-SBDT,
+YUV20K).
+
+**Which failure mode.** Motion blur, specifically the **data-engine
+problem**, not a training-time or architecture fix. This does not change
+what the model sees or how it's trained; it changes how cheaply the team
+can find real blurred clubhead frames in their own existing raw phone
+footage to send to annotators. The project's stated gap is concrete: only
+~29% of training data is the app's own phone footage, and the labeling
+spec already instructs annotators to box the full blur streak (so the
+labeling *convention* is not the bottleneck — the labeling *spec* is
+correct, per `docs/labeling-spec.md`) — the bottleneck is finding enough
+genuinely blurred source frames to label in the first place, and no
+existing entry in this log addresses *searching the team's own footage
+library* for blur cheaply; every prior blur-related data-engine entry
+(RT-Focuser, SMBlurDetect, DeFMO) works on frames already selected, not on
+mining unlabeled raw video for blur candidates.
+
+**Why it helps this model specifically.** Because it runs on-device today,
+for free, with zero training data, zero licensing risk, and (per the
+project's own README) is compatible with the same Apple ecosystem
+(CoreML/Vision) the shipped app already integrates with. The practical use
+is a labeling-triage tool, not a model change: run
+`DetectLensSmudgeRequest` over the team's raw, not-yet-labeled phone clips
+(including, notably, any of the quarantined `indoor_test` footage, since
+Apple's own doc explicitly calls out "long exposure" — the exact condition
+indoor/evening/simulator-bay footage produces — as a trigger) and use high
+smudge-confidence-with-a-clean-lens as a cheap proxy for "this frame is
+probably blurred, prioritize it for annotation." This would not fix
+anything by itself — it is pure triage, exploiting a documented false-
+positive mode rather than a purpose-built blur detector — and the
+correlation between "smudge confidence" and "motion-blur streak length"
+has never been measured and could be weak or non-monotonic; this is a
+repurposing, not a validated blur metric.
+
+**Effort vs. payoff.** Low effort so far (four search queries, two direct
+fetches that confirmed the pages exist but not their content, no code to
+write or evaluate). Payoff is unverified but potentially the cheapest item
+in this entire log to *pilot*: no model to license-check, no dataset to
+evaluate, no architecture change — just running one Vision request over
+existing raw footage the team already has and eyeballing whether high-
+scoring frames are in fact the visibly blurred ones. Recommended next step,
+if this is picked up: run it against a handful of already-labeled frames
+with known elongation (the p90 3.01 group vs. the median 1.60 group) and
+check whether smudge confidence actually correlates with elongation before
+trusting it as a triage signal — a 30-minute check that would either kill
+this idea outright or turn it into a genuinely low-cost addition to the
+data engine. Do not skip that validation step: this log has repeatedly
+warned (see the RSBlur and copy-paste-harmonization entries) against
+assuming a plausible-sounding proxy works without checking it on this
+project's own data first.
+
+---
+
+## 2026-09-08 (second run) — MAPBoost: a peer-reviewed edge-detector architecture that explicitly targets motion blur + small objects together, existence-only (no code found)
+
+**Area covered.** Bullet 2 (blur-robust detection architectures), checked
+first against every architecture entry already in this log (RF-DETR,
+D-FINE, YOLO12, YOLO11-OBB, YOLOV/YOLOV++, Temporal-YOLOv8, TSM,
+MS-YOLOv11, Enhanced YOLOv11n/MSEAF, YOLO-Net, JFD3, LDA-YOLO, DFRCP,
+GDD-YOLO-adjacent small-object entries) — none of them is this paper, and
+none of them evaluates robustness to motion blur, illumination change, and
+geometric distortion *jointly*, on a small-object task, with a reported
+edge-device FPS number. Also checked against this log's golf-tracking
+entries (GolfPose, `mamoonik/golf-swing`, `dj_masters`, `GolfPosePro`,
+`rlarcher/GolfTracker`) since a search this run first surfaced
+`mamoonik/golf-swing` again — already logged as an aside on 2026-08-13/14,
+not repeated here.
+
+**What it is.** MAPBoost (author list not recoverable from search snippets
+alone, see verification limits below), "MAPBoost: augmentation-resilient
+real-time object detection for edge deployment," *Journal of Real-Time
+Image Processing* (Springer), published online November 2025. A
+lightweight detection framework built around three modules layered onto a
+YOLOv8-family baseline: **SobelEdgePool** (an edge-preserving pooling
+operator, presumably meant to retain high-frequency boundary information
+that blur/downsampling destroys), **WeightedConcat** (adaptive multi-scale
+feature fusion), and **DepthMix** (a lightweight channel-refinement/mixing
+block). Evaluated on license-plate detection — the paper's own framing of
+this as "a challenging small-object scenario" is the same size regime this
+project's clubhead problem sits in. Reported numbers: 38.1% mAP@75
+improvement over YOLOv8n, 56.8% FLOPs reduction (3.5G vs 8.1G), 104 FPS on
+GPU and 40 FPS on an edge device, with robustness explicitly measured
+"under illumination changes, motion blur, and geometric distortions" per
+the abstract, and an ablation the search snippets describe as showing flat
+accuracy sensitivity to learning rate/batch size — i.e. the authors'
+own claim that the gain comes from the architecture, not tuning.
+
+**URL.** `https://link.springer.com/article/10.1007/s11554-025-01805-9`
+(DOI `10.1007/s11554-025-01805-9`).
+
+**Licence and code availability — NOT FOUND, treat as unusable today.**
+No GitHub repository, no arXiv preprint, and no code/data-availability
+statement could be located for this paper across five separate search
+queries (module names, author-workflow terms, DOI-string search, and a
+direct attempt at the DOI itself). This is an **existence-only** result:
+there is nothing here to license, download, or run. If code does surface
+later, its licence would need separate verification before any commercial
+use — nothing about a Springer publication implies permissive licensing
+of accompanying code by itself.
+
+**Verification performed, and its real limits — weaker than this log's
+usual bar, flagged explicitly.** `link.springer.com`, `doi.org`, and
+`api.openalex.org` are all `EGRESS_BLOCKED` in this sandbox (new hosts for
+that list — prior entries had already flagged `arxiv.org`,
+`huggingface.co`, `universe.roboflow.com`, `blog.roboflow.com`, and
+`kuscholarworks.ku.edu`; none of those attempts changed this run). Every
+detail above — the module names, the numbers, the "November 2025"
+publication date, and the abstract text — comes from search-engine-indexed
+snippets, repeated near-verbatim across three independent queries run this
+session, not from a primary source actually fetched. That is a real
+verification gap: this log's stronger entries (e.g. the Albumentations
+source-code fetch and its MIT-license-file fetch from 2026-08-27) read the
+primary text directly. Log this as confirmed to **exist** (consistent
+title, DOI, journal, and abstract wording across independent queries) but
+**not fully read** — a future run with different sandbox egress rules, or
+a manual check by someone with Springer access, should verify the
+architecture description against the actual paper before anyone tries to
+reimplement SobelEdgePool/WeightedConcat/DepthMix from this entry alone.
+
+**Which failure mode.** Motion blur, primarily — the abstract explicitly
+names motion blur as one of the degradations the architecture is built to
+resist, on a small-object task. Camouflage is not addressed by name in any
+snippet found, though "illumination changes" is adjacent (camouflage
+failures here are inspected in "visually sharp," well-lit frames per the
+brief, so this paper's illumination-robustness claim is likely not what
+would fix camouflage specifically — flagging that distinction rather than
+overclaiming a two-for-one).
+
+**Why it helps this model specifically.** It is one of very few items in
+this whole log that claims joint robustness to blur AND stays a real-time,
+edge-deployable, small-object detector at the same time — most blur-fix
+entries logged so far are either data-side (synthesis/datasets) or
+loss/box-regression tweaks (NWD), not a from-scratch architecture aimed at
+this exact combination. If the module descriptions hold up under a real
+read of the paper, SobelEdgePool in particular is architecturally cheap
+enough in principle to prototype independent of the rest of MAPBoost (an
+edge-aware pooling layer is a small, local change), which would make it a
+much smaller lift than adopting the whole framework — but that is a
+guess from the module name alone, not confirmed, since the actual paper
+could not be read.
+
+**Effort vs. payoff.** Effort to verify further: low (get Springer/library
+access to the actual PDF, or wait for a future run with different egress
+rules — this is a to-do, not a dead end). Effort to act on today: **not
+recommended** — there is no code and the architecture is described only at
+the level of three module names plus reported metrics, not enough detail
+to reimplement responsibly. Payoff, if it holds up, could be meaningful
+(the 38.1% mAP@75 figure over a YOLOv8n baseline on a small-object task is
+a large claimed gain), but this entry should be treated as a lead to chase
+down with real paper access, not as an actionable recipe — the honest
+version of this run's finding is "a promising paper exists that this
+sandbox could not actually read," which is less useful than most of this
+log's entries and is reported as such rather than padded into more than it
+is.
+
+---
+
+## 2026-09-08 (third run) — YOLOE visual-prompt mode: an already-in-toolchain exemplar-mining tool for both failure modes at once, distinct from the logged RefCOD architecture and Grounding DINO auto-labeler
+
+**Area covered.** Data-engine (ways to synthesise or mine training data for
+either failure regime). Today's first two runs were both motion-blur-side
+data-engine/architecture entries (`DetectLensSmudgeRequest`, a free
+on-device blur-triage classifier; MAPBoost, an existence-only blur-robust
+architecture), so this run deliberately looks for a mechanism that also
+helps camouflage, not just blur. Checked first against the two nearest
+existing entries: Grounding DINO (2026-08-22, open-vocabulary auto-labeling
+of raw footage — a separate framework, text-prompt only) and RefCOD/R2CNet
+(2026-08-30, reference-exemplar-guided camouflage *architecture* — a
+training-time network change requiring retraining on an unverified-
+downloadable dataset). YOLOE's visual-prompt mode is neither: it's an
+inference-time exemplar-matching tool already living inside the exact
+`ultralytics` Python package this project already depends on for training
+YOLO11n (per the 2026-09-07 YOLO-Net entry's own reference to "this
+project's own `ultralytics` training config").
+
+**What it is.** YOLOE ("Real-Time Seeing Anything," ICCV 2025), research
+code at `https://github.com/THU-MIG/yoloe`, and integrated directly into
+the Ultralytics package as the `ultralytics.YOLOE` class (confirmed by
+fetching `docs/en/models/yoloe.md` from `raw.githubusercontent.com/
+ultralytics/ultralytics/main/`, not a search snippet). It supports three
+prompting modes; the one that matters here is the **visual-prompt** mode
+(SAVPE — Semantic-Activated Visual Prompt Encoder): instead of a text
+label, you give it one or more example bounding boxes drawn on a reference
+image, and it searches other images/frames for objects that look similar
+to that example, with no retraining. Verified working code snippet from
+the docs:
+
+```python
+import numpy as np
+from ultralytics import YOLOE
+from ultralytics.models.yolo.yoloe import YOLOEVPSegPredictor
+
+model = YOLOE("yoloe-26l-seg.pt")
+visual_prompts = {
+    "bboxes": np.array([[221.52, 405.8, 344.98, 857.54], [120, 425, 160, 445]]),
+    "cls": np.array([0, 1]),
+}
+results = model.predict("bus.jpg", visual_prompts=visual_prompts, predictor=YOLOEVPSegPredictor)
+```
+
+Checkpoints ship at n/s/m/l/x scales across three model families
+(YOLOE-26, YOLOE-11, YOLOE-v8). Docs state plainly: visual-prompt outputs
+do **not** carry your class names — they come back as `object0`,
+`object1`, grouped by the `cls` id you assigned to each example box, and
+must be mapped/relabeled by a human afterward.
+
+**Licence.** Verified by direct fetch of
+`raw.githubusercontent.com/THU-MIG/yoloe/main/LICENSE`: the full **GNU
+Affero General Public License, Version 3** text. The Ultralytics package
+that hosts the integrated version (`raw.githubusercontent.com/ultralytics/
+ultralytics/main/LICENSE`) is the same: **AGPL-3.0**. AGPL "permits
+commercial activity" (you may charge for copies, support, etc.) but its
+copyleft/network-server clause requires that any modified version, if
+distributed or run as a network service for others, be released under
+AGPL with source available — a real constraint if this tool, or anything
+built on it, were ever shipped rather than run as an internal offline
+script. **Important, honest framing: this introduces no new licensing
+decision.** The project already depends on the `ultralytics` package
+(itself AGPL-3.0) to train YOLO11n today, per the YOLO-Net entry. Using
+`YOLOE` from that same already-installed package, offline, as a labeling-
+assist script that never leaves the dev machine, carries the identical
+licence posture the project has already accepted for training — it is not
+a new AGPL exposure, only a new *use* of one already present. This log has
+no visibility into whether the project holds an Ultralytics Enterprise
+licence for its existing training use; whatever that status is, it applies
+equally here and does not change by adding this one use case.
+
+**Which failure mode.** Both, via the same mechanism, which no other data-
+engine entry in this log has offered. (a) Camouflage: draw one visual-
+prompt box on a known hard example (dark clubhead against dark clothing or
+foliage) and let SAVPE search a large batch of raw, unlabeled phone footage
+for visually similar low-contrast instances — a recall-boosting exemplar
+search, not a fixed-vocabulary text query like Grounding DINO's ("clubhead"
+as a text prompt does not capture "dark, low-contrast, blends into
+foliage" the way an actual crop does). (b) Motion blur: the same mechanism
+run with a visual prompt drawn from a genuinely blurred clubhead streak
+(the project's own stated gap — median labelled elongation 1.60, real blur
+examples scarce) could mine raw footage specifically for other
+motion-blurred instances, which a text prompt ("clubhead" or even "blurred
+clubhead") is a poor descriptor for but a visual exemplar captures
+directly by construction.
+
+**Why it helps this model specifically, and its real limits.** The
+practical value is candidate generation for the labeling queue, not a
+detector fix by itself: run visual-prompt search over unlabeled raw
+footage using one exemplar each for "camouflaged" and "blurred," surface
+the matches, and hand them to a human annotator to draw the actual
+labeling-spec-compliant box (full motion-blur streak per
+`docs/labeling-spec.md`, tightest rectangle, one box per frame) — YOLOE's
+own output box is not guaranteed to satisfy that convention and must be
+treated as a candidate location, not a finished label, exactly like the
+already-logged Grounding DINO entry's caveat. This is genuinely lower
+friction than that entry, though: Grounding DINO needs a separate
+framework and dependency stack; YOLOE needs nothing beyond the package
+already installed for training. Reported accuracy for visual-prompt mode
+at small scales is modest and measured on generic LVIS categories, not a
+single narrow class in swing footage (YOLOE-26n: 21.9 mAP visual-prompt on
+LVIS minival) — real recall on clubhead-in-clutter is unverified and would
+need to be checked empirically on this project's own footage before
+trusting it as a labeling-queue filter.
+
+**Effort vs. payoff.** Low effort: no new dependency (already-installed
+`ultralytics` package), a documented, directly-runnable API, and a same-day
+scriptable test — point it at a folder of raw unlabeled clips with two or
+three hand-picked exemplar crops (one camouflaged, one blurred) and look at
+what it surfaces. Payoff is speculative until that test is run: this is a
+recall tool for finding *candidate* hard examples faster than manual
+scrubbing, for both failure modes at once, not a training or inference fix.
+Recommended as a cheap, concrete next step specifically for the data-engine
+gap the run brief flags (only ~29% of training data is the app's own phone
+footage) — try it on a batch of raw footage before investing further in
+either the RefCOD architecture spike or a from-scratch labeling-assist
+build.
