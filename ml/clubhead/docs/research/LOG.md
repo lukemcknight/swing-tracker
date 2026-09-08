@@ -9448,3 +9448,81 @@ gap the run brief flags (only ~29% of training data is the app's own phone
 footage) — try it on a batch of raw footage before investing further in
 either the RefCOD architecture spike or a from-scratch labeling-assist
 build.
+
+---
+
+## 2026-09-08 (fourth run) — VCP-DCN checked and ruled out: a real, brand-new camouflage architecture blocked by a genuine sensor mismatch, plus a debunked code-availability claim
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object detection),
+checked first against every architecture already logged in this space
+(SINet-V2, SLT-Net, SAM-PM, EMIP, Vcamba, GreenCOD, GreenVCOD, RefCOD/R2CNet,
+LeanCOD, DTUM, Motion-Informed Enhancement, channel-stacked multi-frame
+YOLO, MCOD) and against today's earlier two runs (`DetectLensSmudgeRequest`,
+MAPBoost) — none of them is this paper, and none is depth-modality-based.
+Also explicitly re-checked against the 2026-08-19 SHOP finding before
+writing anything: SHOP was already investigated and deliberately **not**
+logged as a full entry that run (no GitHub repo found), so it stays
+off-limits and is not being re-logged here.
+
+**What it is.** "VCP-DCN: Beyond Visual Concealed Property via Depth
+Collaborative Network for Camouflaged Object Detection," arXiv:2607.27843,
+submitted July 2026. It fuses RGB with a depth channel through three
+modules — Separable Prototype Embedding (SPE), a Multi-modality Dual
+Attention (MDA) block, and a Depth Adaptive Injection (DAI) module — to
+exploit depth as a signal for objects that are visually concealed but
+physically stand off from their background. Per two independent search
+queries this run, it is trained/evaluated against **NJU2K, NLPR, and DUT**
+— the standard RGB-D salient-object-detection benchmarks, built from real
+stereo-camera/structured-light depth *pairs*, not monocular-estimated
+depth. (One search summary blurred the line between "RGB-D SOD" and "COD"
+framing for this paper; that ambiguity could not be resolved because the
+primary source was unreadable — flagged honestly rather than papered
+over.)
+
+**URL.** https://arxiv.org/abs/2607.27843 (also mirrored at
+`arxiv.org/html/2607.27843`). Both `arxiv.org` paths returned
+`EGRESS_BLOCKED` from this sandbox, consistent with every prior run's
+standing restriction — nothing above comes from a primary-source read.
+
+**Licence and code availability — the claim does not hold up.** A search
+summary asserted "the code is available on GitHub" at
+`https://github.com/duan-song/VCPDCN`. Fetching that URL directly returns
+**HTTP 404 — the repository does not exist.** To rule out a typo'd
+username, `github.com/duan-song` was fetched directly: the profile is
+real, is affiliated with Xidian University, and works in exactly this
+sub-field (their top repo, SATNet, is literally "Lightweight RGB-D Salient
+Object Detection from a Speed-Accuracy Tradeoff Perspective") — but their
+five public repositories (SATNet, DiH-CLIP, Pro2SAM, VFMamba, TextRAP)
+**do not include anything named VCPDCN or VCP-DCN.** This is a plausible-
+author, wrong-or-not-yet-published-repo situation, not a resolvable typo.
+Treat "code available" as **false as of this run** — there is nothing
+here to license or download.
+
+**Which failure mode.** Camouflage. Not blur — depth fusion targets
+appearance-based concealment (matching background color/texture), not
+motion or exposure.
+
+**Why it does not help this model, and why that's confirmed rather than
+assumed.** This app's clubhead detector runs on ordinary phone RGB video;
+it has no depth-sensor input in its pipeline (the project's own README and
+data-engine docs describe a single-camera RGB capture path, no LiDAR/depth
+requirement). VCP-DCN's entire mechanism — SPE, MDA, and DAI — operates on
+a genuine second depth channel aligned to RGB, sourced in its own
+benchmarks from stereo/structured-light hardware, not inferred from a
+single image. Substituting an off-the-shelf monocular depth estimator
+(e.g. Depth Anything, Apple's Depth Pro) as a drop-in depth channel is
+*conceivable* but is not what this paper trained or validated against, and
+would be a separate, unverified research question, not a use of this
+paper's contribution. Combined with the debunked code-availability claim
+above, this is a clean two-reasons-independently-sufficient rule-out: wrong
+input modality for this deployment, and nothing to run even if the
+modality mismatch were solved.
+
+**Effort vs. payoff.** Low effort (four search queries, two direct
+fetches: the dead repo URL and the author's real profile). Payoff: zero
+for this project as things stand. Worth logging anyway because it
+positively catches a specific false claim (a hallucinated-looking GitHub
+URL circulating in search-engine summaries) rather than leaving it as an
+open lead for a future run to waste a cycle chasing — the same discipline
+this log applied to SHOP and the `LOUEY233/Deblur-YOLO` gap-fill on
+2026-08-19.
