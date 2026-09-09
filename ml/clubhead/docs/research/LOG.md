@@ -9697,3 +9697,118 @@ resurface (it was GrafanaCON 2026 content, actively being promoted this
 month) — better to close it off now with the specific reasons (radar-
 primary, ball-only, AGPL) than have a future run re-discover it and spend
 a cycle re-verifying the same dead end.
+
+---
+
+## 2026-09-09 (third run) — NAFNet checked: a permissively-licensed, higher-PSNR deblurring architecture than the already-logged RT-Focuser, but with no verified mobile/CoreML deployment evidence anywhere in the repo (motion blur area, existence-with-caveats result)
+
+**Area covered.** Bullet 2 (motion blur specifically: blur-robust
+architectures / video deblurring preprocessing). Chosen because the day's
+first two runs both landed on camouflage and golf-tracking respectively
+(MRCNet/Phantom-Insight, OpenFlight/GrotShotPro), and this run's initial
+searches into golf-specific indoor/simulator datasets (bullet 1) turned up
+nothing beyond `universe.roboflow.com`-hosted sets, which remain
+`EGRESS_BLOCKED` in this sandbox exactly as every prior run has found (a
+newly-surfaced 8,405-image "golf-club-urzzy" Roboflow set and the
+"golf-club-tracking" v2 set could not be opened to check licence or
+content, so per this log's established practice they are not logged).
+Checked the log for prior mentions of `NAFNet`/`megvii` first: one hit, a
+passing mention inside the 2026-08-22 (fourth run) iPhoneBlur entry, which
+cites NAFNet only as "best at 31.2dB overall" among six benchmarked
+architectures on the iPhoneBlur dataset — NAFNet itself was never
+independently investigated as a candidate deblurring model. That gap is
+what this entry fills.
+
+**What it is.** NAFNet ("Nonlinear Activation Free Network for Image
+Restoration," Chen, Chu, Zhang & Sun, ECCV 2022) is a widely-cited,
+general-purpose image-restoration architecture that removes nonlinear
+activation functions in favor of a "SimpleGate" mechanism, evaluated on
+image deblurring (GoPro benchmark — the same dataset this log's 2026-08-20
+entry already logged), denoising (SIDD), and stereo super-resolution
+(NAFSSR, Flickr1024/Middlebury). It ships as `megvii-research/NAFNet` on
+GitHub, with two size variants in the deblurring config, width32 and
+width64. This is the same family of remedy as the already-logged RT-Focuser
+entry (2026-08-15): an inference-time deblurring pass applied to a frame
+*before* it reaches the detector, requiring no retraining of the detector
+and no change to labels — not a training-side fix, and not a camouflage
+fix.
+
+**URL.** https://github.com/megvii-research/NAFNet (paper reportedly ECCV
+2022; arXiv and any IEEE/ECCV proceedings mirror were not checked directly
+since this sandbox's established arXiv block made that pointless — see
+every prior entry back to 2026-08-15). The GitHub repo itself was fetched
+directly (root page and the `LICENSE` file specifically, both returned
+real content, not a 404 or blocked-domain error) and is confirmed live and
+substantial: it lists deblurring/denoising/super-resolution task
+directories, a results table, and pretrained-model links.
+
+**Licence — verified by direct fetch of the LICENSE file, and it is dual
+and fully permissive.** The repository's `LICENSE` combines the **MIT
+License** (Copyright (c) 2022 megvii-model) for the NAFNet code itself —
+verbatim: "Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software... subject to
+the following conditions: The above copyright notice and this permission
+notice shall be included in all copies or substantial portions of the
+Software" — plus the full **Apache License 2.0** text for the bundled
+BasicSR component. **Commercial use is permitted** under both. This is a
+cleaner licence situation than several architecture entries already logged
+in this file that had real code but no licence at all (Vcamba, EMIP,
+DyFrDet, JFD3).
+
+**Which failure mode.** Motion blur, specifically and only — same
+reasoning as the RT-Focuser entry: sharpening a blur streak's edges does
+not manufacture an appearance cue where a dark clubhead and dark
+background/clothing genuinely share color and texture, so this has no
+bearing on the camouflage failure mode.
+
+**Why it does not clearly help this model, and how it compares to the
+already-logged RT-Focuser fix.** Two verified GoPro-benchmark numbers from
+the README (fetched directly): NAFNet-width32 reaches 32.87dB PSNR /
+0.9606 SSIM, and NAFNet-width64 reaches 33.71dB PSNR / 0.9668 SSIM — both
+higher than RT-Focuser's own reported numbers on the same GoPro benchmark
+(RT-Focuser's entry did not itself quote a directly comparable PSNR
+figure, but frames it as a lightweight-tier model, and the README text
+fetched here separately claims NAFNet exceeds "the previous SOTA [on
+GoPro] by 0.38 dB with only 8.4% of its computational cost" of that prior
+SOTA — a relative claim, not an absolute FLOPs/param number). Two things
+this run could **not** verify, despite trying (direct fetches of the repo
+root and README both returned no such data): (1) no MACs/parameter-count
+table for width32 vs width64 was present in the fetched README content —
+unlike RT-Focuser's entry, which quoted a concrete 5.85M params / 15.76
+GMACs; and (2) no mention anywhere in the fetched repo content of ONNX,
+CoreML, or any mobile/edge deployment path or benchmark — unlike
+RT-Focuser, which is independently confirmed to run at 146.72 FPS on an
+iPhone 15 (A16 Bionic) via CoreML, the exact runtime class this project
+ships to. So the honest comparison is: NAFNet is a better-known, dual-
+licensed, and (on the GoPro numbers available) apparently higher-quality
+restoration network than RT-Focuser, but it is a research codebase with no
+evidence anyone has fit it into a real-time mobile pipeline, whereas
+RT-Focuser was purpose-built and already benchmarked for exactly that
+constraint. Without a parameter count or a mobile benchmark, there is no
+basis here to claim NAFNet is deployable inside this project's per-frame
+latency budget alongside YOLO11n — general priors about restoration-network
+compute cost (dense full-resolution convolutional processing over the
+entire frame, run every frame, in addition to the detector) make it a
+plausible but unconfirmed latency risk, not a confirmed one.
+
+**Effort vs. payoff.** Low-moderate effort (four searches, three direct
+fetches: repo root twice with different prompts, `LICENSE` file once); no
+code was run and no local reproduction was attempted. Payoff: mostly
+negative-with-value. This does not replace RT-Focuser as this log's
+recommended next same-day experiment (2026-08-15's cheap ONNX-weights
+harness test remains the better first move, precisely because it already
+has a concrete mobile benchmark and pretrained weights ready to run).
+NAFNet's value to this project is as a **documented fallback**: if the
+RT-Focuser on-device experiment runs and produces a detectable-but-
+insufficient PSNR/detection-rate lift, NAFNet-width32 is the next thing to
+try for a quality ceiling — but only after separately confirming its
+param count, converting it to CoreML or ONNX Runtime Mobile, and measuring
+on-device latency from scratch, none of which exists today. Worth logging
+specifically so a future run does not treat NAFNet as an unexplored lead
+just because it appeared as a bare benchmark number inside the iPhoneBlur
+entry — it has now been checked as a candidate in its own right, and the
+gap (no mobile evidence) is the reason it stays a fallback rather than a
+recommendation.
