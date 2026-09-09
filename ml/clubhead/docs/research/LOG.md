@@ -9622,3 +9622,78 @@ plausible-looking lead before a future run spends a cycle on it, and in
 recording the trend note above so future camouflage-area searches don't
 keep re-discovering "COD paper uses an MLLM now" as if each instance were
 novel.
+
+---
+
+## 2026-09-09 (second run) — OpenFlight/GrotShotPro checked and ruled out: an open-source golf launch monitor with a camera/YOLO side-branch, but radar-primary, ball-only, undocumented data, and AGPL-licensed
+
+**Area covered.** Bullet 4 (golf-specific pose/club tracking papers,
+benchmarks, or open-source implementations). Chosen because the last two
+runs (00:27 today and 2026-09-08's fourth run) both landed on camouflage,
+and the dataset bullet (1) hit this log's long-standing wall again this
+run: `universe.roboflow.com` is still `EGRESS_BLOCKED` (same standing
+restriction as every prior run — see e.g. the 2026-08-18 and 2026-09-08
+entries), which blocked verification of a newly-surfaced 8,405-image
+"golf-club-urzzy" Roboflow set before any licence or content claim could be
+checked, so per this log's established practice that lead is **not**
+logged and this run pivoted to a technique/implementation area where
+GitHub is actually fetchable. Checked the log for prior mentions of
+`open-flight`/`openflight`, `GrotShotPro`, `Robin-Hood-zjw/golf_swing`,
+`personableduck/GolfSwing`, and `CypressJack/swing-analyze` first — none
+are present except a passing mention of `personableduck/GolfSwing` inside
+the 2026-08-26 Temporal-YOLOv8 entry (2016-era body pose, not club
+detection) — so OpenFlight is a genuinely new implementation for this log.
+
+**What it is.** OpenFlight (`github.com/open-flight/openflight`), the
+open-source engine behind "GrotShotPro," a DIY golf launch monitor
+presented as a GrafanaCON 2026 talk (Coleman Rollins, Grafana Labs). The
+production system is **radar-based** — an OPS243-A Doppler radar plus an
+optional TI IWR6843 angle radar on a Raspberry Pi — not camera-based. The
+repo separately documents "Camera and YOLO Experiments"
+(`docs/development/camera-yolo.md`) as an explicitly optional,
+non-production side-branch.
+
+**What the camera branch actually contains, verified by direct fetch.**
+`docs/development/camera-yolo.md` references two pre-existing model files,
+`models/golf_ball_yolo11n_new_256.onnx` and `models/golf_ball_yolo11n.pt`,
+for **ball** detection — there is no clubhead model or clubhead-labeled
+data anywhere in the document. The doc describes experimental camera setup
+and benchmarking procedure only; it does not describe, link, or ship any
+training image/video dataset, and gives no indication of where the
+`golf_ball_yolo11n` weights were trained from. Nothing here is a usable
+data source for this project even before the licence question.
+
+**Licence — verified by direct fetch of the LICENSE file, and it blocks
+commercial use of anything reused from this repo.** `LICENSE` at the repo
+root is the **GNU Affero General Public License, Version 3, 19 November
+2007** (verbatim opening: "GNU AFFERO GENERAL PUBLIC LICENSE / Version 3,
+19 November 2007 / Copyright (C) 2007 Free Software Foundation, Inc."). AGPL-3.0 is
+strong copyleft with a network-use clause — reusing any code or trained
+weights from this repo in SwingSensei would require SwingSensei's own
+source to be made available on the same terms. **Commercial use in a
+closed-source iOS app is not permitted** without that disclosure.
+
+**Which failure mode.** Neither, directly — it's ball detection, not
+clubhead, and the repo's own text gives no evidence the `golf_ball_yolo11n`
+training data contains blur or camouflage examples either way. Filed under
+golf-specific tracking per the rotation bullet, not as a blur/camouflage
+finding.
+
+**Why it does not help this model.** Three independent reasons, any one of
+which is sufficient: (1) the production system is radar, so the camera
+work is an unmaintained side experiment with no claim of accuracy or
+robustness; (2) what data provenance is documented is ball-only, not
+clubhead, and this project already has a ball detector's worth of
+Roboflow-style ball imagery in the wider ecosystem — the gap named in the
+brief is clubhead-specific; (3) even if a usable clubhead artifact turned
+up in this repo later, AGPL-3.0 rules out folding it into a closed-source
+commercial app without open-sourcing SwingSensei itself.
+
+**Effort vs. payoff.** Low-moderate effort (four search queries, three
+direct GitHub fetches: repo root, `camera-yolo.md`, `LICENSE`). Payoff:
+zero for this project. Worth logging because it is a real, active,
+recently-publicized project that a future run's search is likely to
+resurface (it was GrafanaCON 2026 content, actively being promoted this
+month) — better to close it off now with the specific reasons (radar-
+primary, ball-only, AGPL) than have a future run re-discover it and spend
+a cycle re-verifying the same dead end.
