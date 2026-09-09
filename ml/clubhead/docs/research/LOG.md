@@ -9526,3 +9526,99 @@ URL circulating in search-engine summaries) rather than leaving it as an
 open lead for a future run to waste a cycle chasing — the same discipline
 this log applied to SHOP and the `LOUEY233/Deblur-YOLO` gap-fill on
 2026-08-19.
+
+---
+
+## 2026-09-09 — MRCNet and Phantom-Insight checked and ruled out: MLLM-fused video camouflage detection is a real, emerging sub-trend, but structurally incompatible with an on-device nano detector (camouflage area, negative result)
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object detection
+in video, multi-frame/temporal methods specifically called for in the run
+brief). Checked against every VCOD mechanism already logged in this space
+(SINet-V2, SLT-Net, SAM-PM, EMIP, Vcamba, GreenCOD, GreenVCOD, RefCOD/R2CNet,
+LeanCOD, DTUM, Motion-Informed Enhancement, channel-stacked multi-frame
+YOLO, MCOD, VCP-DCN, CamoSAM2) — neither finding below duplicates any of
+them, and neither uses depth, Mamba, optical flow, or a tree ensemble like
+those do.
+
+**What it is.** Two independent, very recent papers both fuse a
+multimodal large language model (MLLM) into video camouflaged object
+detection (VCOD):
+
+- **MRCNet** — "Motion Reasoning Chain for Cross Modal Video Camouflaged
+  Object Detection," by Wenjun Hui, Zhenfeng Zhu, Shuai Zheng, Ming-Ming
+  Cheng, Huchuan Lu, Yao Zhao. Early access in **IEEE Transactions on
+  Pattern Analysis and Machine Intelligence (TPAMI)** — a genuine top-tier,
+  peer-reviewed venue (Ming-Ming Cheng is a well-known COD researcher,
+  co-author of SINet, already logged 2026-08-16). It uses an MLLM as a
+  generative sampling strategy to build a "motion reasoning chain,"
+  emulating how a human reasons about motion to spot a camouflaged object,
+  then does hierarchical de-biased motion-prototype learning to control
+  MLLM hallucination. Evaluated on MoCA-Mask and CAD2016 (standard VCOD
+  animal/natural-scene benchmarks) plus one more, achieving SOTA on both
+  accuracy and spatiotemporal-consistency metrics.
+- **Phantom-Insight** — "Adaptive Multi-cue Fusion for Video Camouflaged
+  Object Detection with Multimodal LLM" (arXiv:2509.06422). Combines SAM
+  (frozen, so it struggles with fine edges alone) with an MLLM: video is
+  represented as temporal/spatial cues, fused through the MLLM to raise
+  information density, then a dynamic foreground visual-token-scoring
+  module and a prompt network adaptively fine-tune SAM's segmentation. A
+  decoupled foreground/background learning strategy improves separability.
+  MLLM + SAM both run at **inference time**, not just training time.
+
+**URLs.** MRCNet: `https://pubmed.ncbi.nlm.nih.gov/42065983/` and
+`https://www.computer.org/csdl/journal/tp/5555/01/11503675/2gdl9Q4CdmE`
+(TPAMI early-access listing). Phantom-Insight:
+`https://arxiv.org/abs/2509.06422`. Both `pubmed.ncbi.nlm.nih.gov`,
+`www.computer.org`, `www.semanticscholar.org`, `www.themoonlight.io`, and
+`arxiv.org` returned `EGRESS_BLOCKED` from this sandbox on direct fetch —
+consistent with every prior run's standing restriction — so nothing above
+comes from a primary-source read; it is reconstructed from independent
+search-engine summaries that agreed on the mechanism, venue, and authors.
+
+**Licence and code availability.** **No downloadable code found for
+either paper**, and this was actively checked rather than assumed: a
+GitHub search for "MRCNet" turns up only a same-named but unrelated
+CVPR 2024 paper (`IndigoChildren/collaborative-perception-MRCNet`, a
+multi-agent perception network with no connection to camouflage
+detection) — a name collision worth flagging explicitly so a future run
+doesn't chase it, the same discipline this log applied to the VCP-DCN
+GitHub-URL claim on 2026-09-08 (fourth run). MRCNet does not appear in either of
+the two actively-maintained community COD paper trackers
+(`visionxiang/awesome-camouflaged-object-detection`,
+`Awesome-COD/awesome-cod`), consistent with it being too recent (TPAMI
+early access) to have been indexed. Phantom-Insight's code location could
+not be confirmed either. With no repository, there is nothing to license.
+
+**Which failure mode.** Camouflage. Both are appearance-plus-motion
+methods for objects blending into background texture, not blur.
+
+**Why neither helps this model, verified rather than assumed.** This
+project ships a YOLO11n exported to CoreML running in real time on an
+iPhone. Both papers put a multimodal LLM in the pipeline — MRCNet uses
+one as a generative sampler during motion-reasoning-chain construction;
+Phantom-Insight runs SAM *and* an MLLM together at inference. Neither is a
+lightweight distillation target: both papers' contributions are the
+MLLM-driven cue generation itself, not a small student network trained
+from its outputs, so there is no obvious path to strip the MLLM out and
+keep the accuracy. An MLLM (even a "small" one) is orders of magnitude
+larger than a YOLO11n and is not something CoreML-exports or runs in real
+time on a phone alongside frame capture — this is the same on-device
+deployability wall this log already hit with EdgeTAM's SAM2 backbone
+(2026-08-25, second run) and RF-DETR's DINOv2 backbone (2026-08-25), just
+one step further out. That two independent groups converged on MLLM
+fusion in the same few months is worth noting as a field-level signal —
+COD research is moving toward foundation-model fusion, not toward
+smaller, faster, more on-device-friendly architectures — which is itself
+useful context for scoping future searches in this area: expect the
+*next* wave of VCOD papers to keep drifting further from what a nano
+edge model can use, not closer.
+
+**Effort vs. payoff.** Low-to-moderate effort (six search queries across
+PubMed, the TPAMI listing, Semantic Scholar, GitHub, and two community
+COD trackers; every direct fetch blocked by sandbox egress, so this ran
+entirely on cross-checked search summaries). Payoff: zero directly
+usable technique for this project, but real value in closing off a
+plausible-looking lead before a future run spends a cycle on it, and in
+recording the trend note above so future camouflage-area searches don't
+keep re-discovering "COD paper uses an MLLM now" as if each instance were
+novel.
