@@ -9812,3 +9812,99 @@ just because it appeared as a bare benchmark number inside the iPhoneBlur
 entry — it has now been checked as a candidate in its own right, and the
 gap (no mobile evidence) is the reason it stays a fallback rather than a
 recommendation.
+
+---
+
+## 2026-09-09 (fourth run) — SoccerNet Tracking (SN-Tracking): the ball is annotated, but the raw footage is broadcast-camera soccer, not a blur/camouflage match, and its licence could not be pinned down past MIT-for-code (dataset area, negative-with-caveats result)
+
+**Area covered.** Bullet 1 (datasets), with an eye on bullet 3's temporal
+angle. Today's first three runs covered camouflage (MRCNet/Phantom-Insight),
+golf-tracking (OpenFlight/GrotShotPro), and motion blur (NAFNet), so this
+run went back to the dataset bullet, which the third run's notes flagged as
+having turned up nothing beyond `EGRESS_BLOCKED` Roboflow sets. Widened the
+search past golf specifically to other small/fast/dark sports-ball datasets
+not yet logged (this log already has baseball/tennis/table-tennis/badminton
+ball-tracking entries — WASB-SBDT, TOTNet, BlurBall, YOLO-Ball — but no
+soccer one), and SoccerNet came up. Grepped this log first: `SoccerNet` (as
+`SoccerNet-Tracking`) appears twice already, but only as a comparison
+number cited inside the 2026-08-23 MoSA-Det entry and a contextual aside in
+the 2026-09-06 SoccerSynth-Detection entry — it has never been independently
+opened and checked. That gap is what this entry fills.
+
+**What it is.** SoccerNet is a large-scale academic soccer-video benchmark
+suite (`github.com/SoccerNet`) with multiple sub-challenges. Its Tracking
+challenge (`SoccerNet/sn-tracking`) is the relevant one here: full-pitch
+broadcast video with continuous multi-object tracking annotations, and
+critically — confirmed by direct fetch of the `sn-tracking` README — the
+ball itself is one of the annotated/tracked classes, not just players:
+"The object to retrieve are among the following classes: players,
+goalkeepers, referees, balls and any other human entering the field." That
+makes it the first entry in this log's dataset sweep that pairs a genuinely
+small, fast-moving, fully-annotated ball with a *tracking* (not just
+single-frame detection) task — the earlier SoccerNet-v3 sub-dataset was
+checked in the same session and ruled out immediately, since its own
+README confirms its bounding boxes are human-only ("we frame each human on
+the field within a bounding box"), with no ball annotation at all.
+
+**URL.** https://github.com/SoccerNet/sn-tracking (data distributed via the
+`pip install SoccerNet` downloader tool, per the same README); parent org
+https://github.com/SoccerNet; official site https://www.soccer-net.org
+(this last one returned `EGRESS_BLOCKED` on every fetch attempt this run,
+as did `arxiv.org`, `www.nature.com`, and `pmc.ncbi.nlm.nih.gov` — the
+original SoccerNet-v3 paper and the official FAQ/data-terms page could not
+be read directly).
+
+**Licence — confirmed for the code, unresolved for the actual video data.**
+The `sn-tracking` and `SoccerNet-v3` GitHub repos both carry an MIT
+`LICENSE` file (verified by direct fetch of `SoccerNet-v3/LICENSE`:
+"Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software... to deal in the Software without restriction,
+including... to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies"), but that licence is for the download tooling and
+annotation-format code, the same pattern this log has already hit with
+other academic repos (e.g. the 2026-08-25 RF-DETR entry's code-vs-weights
+split). Neither README states a licence for the underlying broadcast video
+itself. Web-search snippets citing the official `soccer-net.org` FAQ state
+that "to download any video data from SoccerNet, users must first fill in
+a Non-Disclosure Agreement (NDA) form... to prevent the re-distribution of
+copyright materials" — consistent with SoccerNet's video being licensed
+broadcast footage (originally from professional leagues), not
+project-owned data. This could not be verified against the FAQ page
+directly (blocked), so treat the NDA/no-redistribution claim as one notch
+below full verification, same caveat this log has applied before when a
+primary source was unreachable. Given that, **commercial use of the raw
+video should be assumed blocked pending confirmation** — this is not a
+"go ahead" finding.
+
+**Which failure mode.** Weakly both, and that weakness is the main reason
+this is a negative result rather than a recommendation. Camouflage: a
+soccer ball is white/high-visibility by design against green turf — the
+opposite visual regime from a dark clubhead against dark clothing or
+foliage, so there is no camouflage transfer value here. Motion blur:
+broadcast soccer cameras are optimized for broadcast clarity (fast shutter,
+good lighting, further from the action), which is exactly the "well-lit,
+fast-shutter" profile this log's own read-first brief already flagged as
+structurally unable to surface real blur — the same structural gap as this
+project's own 3-clip outdoor test set. So even before the licence question,
+the domain match to *either* target failure mode is poor.
+
+**Why it doesn't move this model forward.** Two independent reasons stack
+against this one: (1) the annotation quality that made it worth checking —
+a real ball class in a real tracking benchmark — doesn't transfer to either
+failure mode's actual visual regime (bright ball vs. dark clubhead;
+broadcast-sharp vs. genuinely blurred), so even a fully-cleared licence
+would only offer generic small-object-tracking pretraining value, which
+this log's already-logged, better-matched candidates (WASB-SBDT, TOTNet,
+YOLO-Ball) already cover more directly for sports-ball detection in
+general; and (2) the licence for the one component that would matter (raw
+video, if ever needed for fine-tuning beyond pretraining) is unresolved and
+plausibly NDA-gated against redistribution, which is disqualifying for
+commercial training data regardless of (1).
+
+**Effort vs. payoff.** Low-moderate effort (five direct fetches: two
+GitHub repo READMEs, one LICENSE file, plus two blocked attempts against
+`soccer-net.org` and `nature.com`/`pmc.ncbi.nlm.nih.gov` that cost time but
+returned nothing). Payoff: low. This closes out "is there an untried
+soccer-ball dataset worth checking" with a documented no, so a future run
+doesn't have to re-open SoccerNet from the two passing mentions already in
+this log — but it adds no usable data or technique to either failure mode.
