@@ -9908,3 +9908,78 @@ returned nothing). Payoff: low. This closes out "is there an untried
 soccer-ball dataset worth checking" with a documented no, so a future run
 doesn't have to re-open SoccerNet from the two passing mentions already in
 this log — but it adds no usable data or technique to either failure mode.
+
+
+---
+
+## 2026-09-10 — ATDIoU: a March-2026 vertex-wise bounding-box regression loss, existence confirmed via three independent indexes, primary source blocked in this sandbox (motion blur area, existence-only result)
+
+**Area covered.** Motion blur — specifically the loss-function layer this
+log opened with the 2026-08-27 NWD entry, not a new architecture and not a
+new dataset. Grepped this log's ~150 prior entries for "ATDIoU," "MPDIoU,"
+and "arctangent" before starting: no hits — genuinely new to the log.
+Re-checked whether the underlying gap the NWD entry found (stock
+Ultralytics `bbox_iou` only supports GIoU/DIoU/CIoU) has changed since:
+fetched `ultralytics/utils/metrics.py` from `main` directly again today —
+signature is byte-for-byte the same three flags as the 2026-08-27 check,
+so that finding still stands and is not being re-logged, only re-confirmed
+as still-true context for why a new loss candidate is relevant.
+
+**What it is.** "ATDIOU: Arctangent Differential Loss Function for
+Bounding Box Regression" (MDPI *Sensors*, volume 26, issue 5, article 1545,
+published March 2026; DOI 10.3390/s26051545). Per consistent summaries
+across three independent bibliographic indexes (the MDPI journal page, its
+PubMed listing at PMID 41829509, and its PMC mirror at PMC12987189), it
+models the distance between a predicted and ground-truth box as a
+two-dimensional arctangent-differential distribution over their four
+corner vertices individually, rather than the single center-point-plus-
+aspect-ratio-penalty that CIoU uses or the two-corner-distance that MPDIoU
+(2023) uses. The authors integrate it into YOLOv6 and report +1.4% mAP
+over a CIoU baseline and +0.7% mAP over MPDIoU on PASCAL VOC and
+VisDrone2019 (a small/tiny aerial-object benchmark, the same benchmark
+family this log's NWD entry cited AI-TOD from).
+
+**Verification status — could not reach the primary source; flagging this
+honestly rather than logging it as confirmed.** `mdpi.com`, `doi.org`,
+`pubmed.ncbi.nlm.nih.gov`, and `researchgate.net` were all rejected outright
+by this sandbox's egress proxy (`CONNECT tunnel failed, response 403`,
+organization policy — confirmed via direct `curl` against each host, not
+just a WebFetch failure). This means I could not read the article's own
+copyright/licence line, could not confirm whether a code or supplementary-
+material link exists, and could not verify the reported numbers beyond
+what three independent search-engine summaries agree on. I am **not**
+asserting a licence here the way the NWD or SoccerNet entries could,
+because I did not verify it directly — MDPI *Sensors* is publicly known to
+publish under CC BY 4.0 by default, which would permit commercial reuse of
+the paper's described method (a loss function is a mathematical formula,
+not redistributable code or data, so the more relevant question is simply
+whether the formula is fully specified in the paper, which I cannot confirm
+without reading it) — but that is general knowledge about MDPI's publishing
+model, not something this session confirmed against this specific article.
+No GitHub repository for ATDIoU turned up in any search.
+
+**Why it would help this model specifically, if it holds up.** The reason
+this is worth a placeholder entry rather than skipping: the model's own
+box-shape problem (median labelled-box elongation 1.60, p90 3.01) is
+exactly a *corner-asymmetry* problem — a motion-blur streak stretches a box
+in one direction only, so the box's corners move non-uniformly relative to
+its center. CIoU's aspect-ratio term and NWD's whole-box Gaussian both
+reason about the box as a single symmetric shape; a per-vertex distance
+measure is structurally better matched to an asymmetric stretch than either.
+This is a refinement of the NWD entry's territory, not a replacement for
+it — both are training-time-only, zero CoreML-export-risk changes to
+`BboxLoss`/`bbox_iou`, so if this model ever runs the NWD ablation the
+2026-08-27 entry recommended, ATDIoU (once its formula can actually be
+read) would be a natural second loss variant to include in the same
+ablation sweep.
+
+**Effort vs. payoff.** Very low effort to log, genuinely unknown payoff to
+implement — unlike NWD, this entry could not reach the paper's closed-form
+definition, so there is nothing here yet to hand-implement against (NWD's
+entry could specify "Gaussian-encode a box, closed-form 2D Wasserstein
+distance" precisely because the primary source was readable; this entry
+cannot make an equivalent concrete claim). Recommend: do not prioritize
+this over the already-actionable NWD ablation. Revisit only if a future run
+gets a working egress path to `mdpi.com` (or finds the same paper mirrored
+somewhere this sandbox can reach) and can extract the actual formula —
+until then this is a name and a citation, not yet a usable recipe.
