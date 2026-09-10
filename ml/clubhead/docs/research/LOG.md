@@ -10095,3 +10095,111 @@ motion-blur entries (PSF-based blur-box synthesis, NWD/ATDIoU loss
 ablation, the RSBlur synthesis fix) in priority order. Logged mainly so a
 future run recognizes "BOCCHI" and "MSDCT-UNet" and does not re-spend a
 cycle re-discovering the same block.
+
+---
+
+## 2026-09-10 (third run) — LLOT / H-DCPT: a low-light *tracking* benchmark whose target description ("lack distinct texture... not directly observable") reads as camouflage-by-darkness, not just blur
+
+**Area covered.** Rotated deliberately off motion blur (this run's two
+prior entries, ATDIoU and BOCCHI, were both motion-blur-area) to bullet 3
+(small/low-contrast/camouflaged object detection in video, temporal
+methods especially) and bullet 1 (datasets, low-light specifically).
+Grepped this log first for "low-light," "LLOT," "H-DCPT," and "darkness
+clue" — the log has plenty of low-light *image enhancement/augmentation*
+entries (Zero-DCE, DEN, TinyDark-YOLO) and low-light-*adjacent* blur
+datasets (RealBlur, LOL-Blur), but nothing that treats low light as its
+own tracking benchmark with a dedicated architecture, so this is new.
+
+**What it is.** "Low-Light Object Tracking: A Benchmark" (Pengzhi Zhong et
+al.; arXiv:2408.11463; also published in IEEE Transactions on Intelligent
+Vehicles, 2025 per a citing paper's reference). It introduces **LLOT**: 269
+annotated single-object-tracking sequences, 132K+ frames, specifically
+low-light footage where, per the abstract language surfaced across three
+independent search snippets, "targets may lack distinct texture features,
+and... may not be directly observable" — i.e. the paper frames low light
+as a target-vs-background *discriminability* problem, not only a blur
+problem. Alongside the benchmark the authors propose **H-DCPT**, a ViT
+tracker with three explicit modules: Darkness Clue Prompts (DCP, features
+tuned for low-light discrimination), Historical Prompt Fusion (temporal
+consistency from prior frames), and Gated Feature Aggregation (learned
+weighting between the two prompt sources). Reported metrics (S_AUC 0.576,
+Precision 0.684 on LLOT, beating 39 other trackers) are taken from search
+snippets, not the primary PDF — see verification status.
+
+**Verification status — real, multiply-corroborated, but two specific
+gaps stay open.** Existence and the details above are corroborated across
+four independent sources found by search (arXiv abstract listing, IEEE
+Xplore listing, IEEE DataPort dataset listing, and a working GitHub repo).
+The GitHub repo, `OpenCodeGithub/H-DCPT`, was fetched directly (not just a
+search snippet): it contains a real `LICENSE` file whose text is
+**Apache License, Version 2.0** (confirmed by direct fetch of the LICENSE
+file itself — full permissive grant, commercial use allowed, standard
+attribution/NOTICE conditions), a working PyTorch training/eval setup, and
+a README that lists real dataset download mirrors (Baidu Cloud with a
+password, plus two Google Drive folders) — this is a working artifact, not
+a dead GitHub stub of the kind this log has repeatedly flagged (GolfPose
+pre-fix, dj_masters, AICaddy, TinyDark-YOLO). What is **not** confirmed:
+(1) whether the Apache-2.0 LICENSE governs the *dataset* or only the
+tracker *code* — these are commonly licensed separately, and the actual
+IEEE DataPort listing page (`ieee-dataport.org`) that would state the
+dataset's own terms was `EGRESS_BLOCKED` in this sandbox on every fetch
+attempt, same as `arxiv.org`, `ar5iv.labs.arxiv.org`, `ieeexplore.ieee.org`,
+and `aimodels.fyi`; (2) the exact object categories in LLOT's 269
+sequences — search snippets never listed them, and the paper cites
+comparison against UAVDark135/NAT2021 (both nighttime UAV/aerial-tracking
+benchmarks), which hints LLOT may skew toward vehicles/pedestrians/general
+UAV targets rather than anything golf- or sports-adjacent, but this is an
+inference, not a confirmed fact. Both gaps are logged explicitly rather
+than assumed away.
+
+**Which failure mode.** Both, but unevenly. The stated target-description
+problem ("lack distinct texture... not directly observable" in low light)
+is a close conceptual match for this project's *camouflage* failure mode —
+except the confound LLOT targets is illumination-driven low contrast, not
+this project's colour/pattern confound (dark clubhead against dark
+clothing/foliage in otherwise well-lit, sharp frames). It is also relevant
+to motion blur only indirectly: low light is one of the specific conditions
+this project's own brief names as a likely real blur source (indoor bays,
+overcast, evening light, older phones) precisely because it forces longer
+exposures — LLOT's sequences, being low-light, plausibly contain that kind
+of blur as a side effect of capture conditions, but the paper's own framing
+never mentions blur, so this is a plausible correlation, not a stated
+property of the dataset.
+
+**Why it helps this model specifically.** Two independent, non-training
+uses even before the two open verification gaps are resolved: (a) if the
+Historical Prompt Fusion / Gated Feature Aggregation idea generalizes from
+SOT to detection, it is a genuinely new mechanism this log hasn't logged
+before — a way to let a per-frame detector's confidence lean on a learned,
+gated summary of recent frames' features rather than a fixed temporal
+stack (contrast with the already-logged Temporal-YOLOv8/channel-stacking
+approach, which is a static, non-learned fusion); this project's own
+frame-by-frame confidence-0.05 zero-detection failures are exactly the
+case a temporal fallback like this is meant to rescue. (b) If the dataset
+license does turn out to permit commercial use, LLOT would be the first
+dataset in this entire log built specifically around the "target hard to
+distinguish from background in real low-light capture" problem, which is
+a closer match to this project's *unmeasured* indoor/low-light gap than
+any low-light dataset logged so far (RealBlur and LOL-Blur are blur-paired
+but not framed around discriminability; ExDark, noted in an earlier entry,
+is non-commercial). Both uses are conditional — (a) on H-DCPT's modules
+actually porting to a detector head, which is unverified engineering
+work, and (b) on the still-open IEEE DataPort license question.
+
+**Effort vs. payoff.** Low-moderate effort (six search queries, five
+blocked direct-fetch attempts against arxiv.org, ar5iv.labs.arxiv.org,
+ieeexplore.ieee.org, ieee-dataport.org, and aimodels.fyi; one successful
+direct fetch of the GitHub repo and its LICENSE file, which is what pushes
+this above a pure existence-only result). Payoff today: none directly
+usable — the two open gaps (dataset license, object categories) block both
+the "download the dataset" and "confirm it's even scene-relevant" paths.
+Payoff if a future run resolves the IEEE DataPort license question: modest
+and better-suited as a low-light discriminability probe/pretraining source
+than as ready-to-use golf training data, since even a favorable license
+would not make LLOT golf-specific. The temporal-prompting architecture
+idea (a) is the more interesting long-run thread and worth a future run's
+time to chase past the search-snippet level once egress to a primary
+source is available. Flagging for a future run: try fetching the GitHub
+repo's `README.md` sections *below* the top (this run fetched the README
+via WebFetch, which may have truncated it) for a dataset-specific license
+note before re-attempting the blocked hosts.
