@@ -10203,3 +10203,93 @@ source is available. Flagging for a future run: try fetching the GitHub
 repo's `README.md` sections *below* the top (this run fetched the README
 via WebFetch, which may have truncated it) for a dataset-specific license
 note before re-attempting the blocked hosts.
+
+---
+
+## 2026-09-10 (fourth run) — SimCLR-based self-supervised backbone pretraining for YOLO (SSL-YOLO / arXiv 2508.01966): using the app's own unlabeled footage as leverage, not just its labeled 29%
+
+**Area covered.** Rotated away from motion blur (this log's three prior runs
+today — ATDIoU, BOCCHI, LLOT/H-DCPT — all sat in the blur/low-light-tracking
+space). This run targeted the data-engine gap from a different angle: not a
+new dataset or a new blur/camouflage mechanism, but a training-recipe change
+that uses data this project already has and is not currently exploiting —
+raw, *unlabeled* phone swing footage, as opposed to the labeled 29% own-swing
+slice the README/data-engine notes describe as the target to grow.
+
+**What it is.** SimCLR-style contrastive self-supervised pretraining of a
+YOLO backbone on unlabeled images, then supervised fine-tuning on the small
+labeled set — a way to adapt feature representations to the deployment
+domain before the labeled data ever enters the loss. Two independently
+findable, mutually corroborating sources:
+- A working reference implementation, `Rayen023/SSL-YOLO`
+  (https://github.com/Rayen023/SSL-YOLO), fetched and inspected directly
+  (2026-09-10): real, non-stub code — `ssl_training.py` (SimCLR/NT-Xent
+  pretraining of an Ultralytics v8.0.117 backbone), `train_detector.py`
+  (loads and optionally freezes the pretrained backbone for supervised
+  fine-tuning), `config.yaml`, `requirements.txt`/`uv.lock`. Explicitly
+  framed as a few-shot/label-efficient detection technique.
+- A paper, "Self-Supervised YOLO: Leveraging Contrastive Learning for
+  Label-Efficient Object Detection" (arXiv 2508.01966, Aug 2025) — primary
+  source blocked in this sandbox (arxiv.org egress-blocked, as in prior
+  entries), so its claims come from search-engine abstract synthesis, not a
+  direct read: pretrains YOLOv5/YOLOv8 backbones via SimCLR on unlabeled
+  COCO images, reports the SimCLR-pretrained YOLOv8 beating its
+  fully-supervised counterpart on mAP@50:95, with the gain concentrated in
+  low-label regimes. Treat the exact number as unverified; the qualitative
+  claim (SSL pretraining helps most when labels are scarce) is consistent
+  with the general SSL-for-detection literature and is not itself a novel or
+  contested claim.
+
+**Licence.** Checked the `Rayen023/SSL-YOLO` repo directly: **no LICENSE
+file** (same default-copyright situation as this log's other unlicensed
+code entries, e.g. detectInBlur 2026-08-14) — the code itself is not
+reusable commercially without contacting the author. It is also built on
+Ultralytics v8.0.117, which carries the same AGPL/Enterprise licensing
+question this project already has open for YOLO11n (noted in the 2026-08-17
+YOLO26 entry) — a second, independent reason not to pull this specific repo
+in as-is. What *is* freely reusable: SimCLR itself (Chen et al., Google,
+2020) is a published, widely reimplemented algorithm with no license barrier
+on the technique — pretraining any backbone (including YOLO11n's) with a
+from-scratch SimCLR/NT-Xent loop is not blocked by either unlicensed repo's
+copyright, only by the engineering cost of writing it. This is the same
+posture this log has already taken on other unlicensed-code-but-open-idea
+entries.
+
+**Which failure mode:** Indirectly both, primarily via the data-engine gap
+rather than either failure mode's specific mechanism. This is a generic
+representation-quality lever, not a targeted camouflage or blur fix — same
+honesty caveat this log already applied to FastViT (2026-08-23, "a generic
+capacity lever rather than a targeted fix for either failure mode").
+
+**Why it helps this model specifically.** The project's own stated
+data-engine priority is more non-Roboflow, own-phone footage, but every
+percentage point of that 29% had to be hand-labeled through Label Studio
+under the labeling-spec's box-the-blur-streak rule — a real annotator-hours
+cost per frame. An iOS app that has been capturing swings presumably has
+far more *raw* video sitting around than anyone has had time to box-label,
+and none of that surplus currently does anything for the model. SSL backbone
+pretraining is a way to spend that surplus: run contrastive pretraining on
+whatever raw clips exist (labeled or not, indoor or outdoor, blurred or
+sharp) so the backbone's features already reflect this app's actual phones,
+lighting, and swing-motion statistics before the comparatively tiny labeled
+set does the supervised fine-tuning. It does not manufacture new blur- or
+camouflage-specific examples the way this log's synthesis entries
+(PSF-synthesis, Copy-Paste, BlenderProc, Kubric, SoccerSynth-Detection) do,
+so it should be read as complementary to those, not a substitute.
+
+**Effort vs. payoff.** Medium effort, genuinely uncertain and probably
+modest payoff on its own. Effort: a from-scratch SimCLR loop over YOLO11n's
+backbone plus a freeze/fine-tune training script is a real week-ish
+engineering task — Ultralytics has no drop-in flag for this; a user asking
+for exactly this in `ultralytics/ultralytics#1493` ("vast amount of video
+data, most of it unannotated") got no implementation and the issue was
+closed as not planned, confirmed by fetching the issue directly — bigger
+than a config change, smaller than BlenderProc-scale synthesis. Payoff: plausible but unverified for this model — the cited
+paper's gains are demonstrated on COCO-scale pretraining pools and general
+object classes, not on a single-class, tiny (nano) backbone at this
+project's data scale, and unlabeled raw footage volume from the app is
+unknown from anything in the repo docs read so far. Recommend as a
+lower-priority parallel track: worth a small pilot (pretrain on whatever raw
+unlabeled clips can be gathered, fine-tune, compare against the existing
+`chdet.evaluate` baseline) only after the higher-confidence, already-logged
+synthesis and architecture entries have been tried, not as a first move.
