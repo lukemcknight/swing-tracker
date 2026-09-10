@@ -9983,3 +9983,115 @@ this over the already-actionable NWD ablation. Revisit only if a future run
 gets a working egress path to `mdpi.com` (or finds the same paper mirrored
 somewhere this sandbox can reach) and can extract the actual formula —
 until then this is a name and a citation, not yet a usable recipe.
+
+---
+
+## 2026-09-10 (second run) — BOCCHI: a July-2026 pixel-level local-motion-blur-detection benchmark (blur *segmentation*, not object detection) — existence-only, no code/licence found
+
+**Area covered.** Motion blur — but a genuinely different sub-task than
+every prior motion-blur entry in this log. Grepped for "blur mask," "blur
+segmentation," "blur detection network," and "BOCCHI"/"MSDCT" before
+starting: the only near-hit is the already-logged OMoBlur entry
+(2026-09-06, ruled out on licence), which ships a blur mask as *part of* an
+object-motion-blur dataset, not as its own detection task. Every other
+motion-blur entry to date is either (a) a dataset/benchmark of blurred
+images for training a detector or deblur model, (b) a deblurring
+architecture, (c) a blur-*synthesis* technique, or (d) a bbox-regression
+loss. None of them asks "given a frame, which pixels are actually blurred
+vs. sharp" as its own standalone task — that is what this entry covers.
+Also rotated deliberately away from this log's immediately preceding entry
+today (ATDIoU, also motion-blur-area) only because no other area's search
+this run surfaced anything both new and verifiable — see the dataset-area
+and golf-tracking-area dead ends noted below — not because the rotation
+rule was ignored.
+
+**Dead ends hit first, noted so a future run doesn't re-spend the search.**
+Bullet 1 (indoor/simulator/low-light golf datasets): `universe.roboflow.com`
+is still `EGRESS_BLOCKED` in this sandbox, confirmed again by a direct
+fetch attempt against `universe.roboflow.com/golf-club-8jior/golf-club-urzzy`
+(the same 8,405-image "golf-club-urzzy" set two prior runs, 2026-09-08 and
+2026-09-09, already flagged as unverifiable for the same reason) — still
+not logged, per this log's established practice of not logging unverifiable
+Roboflow leads. Bullet 4 (golf-specific tracking): a search for new
+golf-club GitHub projects surfaced only Hugging Face golf-course-imagery
+sets (irrelevant, course photography not swing footage) and golf-simulator
+industry news (Uneekor AIMY, Rapsodo overhead launch monitor, Full Swing/
+Back Nine) with no public dataset or code, nothing new to verify.
+
+**What it is.** "BOCCHI: A More Realistic and Challenging Benchmark for
+Local Motion Blur Detection with MSDCT-UNet" (Kuan-Lin Chen et al.,
+Graduate Institute of Communication Engineering, National Taiwan
+University; arXiv:2607.10427, posted July 2026). BOCCHI ("Blurred Objects
+Captured across Cameras with Human-annotated Imagery") is a 633-image,
+real-captured (not synthetic), pixel-level-annotated benchmark for **local
+motion blur detection** — a per-pixel blurred/sharp segmentation task, not
+object detection. Its stated contribution over prior blur-detection
+benchmarks is that its sharp regions deliberately include both textured
+*and* smooth surfaces, creating gradient-distribution overlap with the
+blurred regions, which defeats the simple "high-frequency energy = sharp"
+shortcut that easier benchmarks let a model get away with. The paper also
+proposes MSDCT-UNet, a frequency-aware encoder-decoder that injects
+multi-scale Discrete Cosine Transform priors via a "DCT Attention" module
+and FiLM conditioning, and reports it as both the best in-domain model on
+BOCCHI and the best cross-dataset transfer source among the benchmarks
+compared, despite BOCCHI's small (633-image) size.
+
+**Verification status — real paper, but blocked past the abstract.**
+Confirmed to exist via three independent search-engine-indexed hits
+(the arXiv abstract page, the arXiv HTML full-text mirror, and a
+ResearchGate author-publications listing for Kuan-Lin Chen) that agree on
+title, author, venue, and the 633-image/MSDCT-UNet/DCT-Attention details
+above — treated as corroborated, not a single unconfirmed claim. What
+could **not** be verified this run: `arxiv.org`, `huggingface.co`, and
+`paperswithcode.com` were all rejected outright by this sandbox's egress
+proxy (`EGRESS_BLOCKED`, confirmed via direct fetch attempts against all
+three, not just a search-snippet gap) — the same standing block this log
+has hit on academic-paper hosts since its first week. No GitHub repository
+for BOCCHI or MSDCT-UNet turned up in two separate targeted searches
+(one for the project name, one for the lead author's name). That means the
+dataset's actual licence, whether it is downloadable at all outside the
+paper's own hosting, and whether MSDCT-UNet's code was released are all
+**unconfirmed** — this is logged as an existence-only result, same
+evidentiary class as this log's ATDIoU and CSRDA entries, not a "go build
+this" recommendation.
+
+**Which failure mode.** Motion blur — specifically a diagnostic layer
+underneath it, not a fix for it directly.
+
+**Why it would help this model specifically, if it turns out to be usable.**
+This project's two failure modes are currently distinguished only by
+*manual* visual inspection of failing frames (per the brief: "visual
+inspection of failing frames shows..."). A trained local-blur-detection
+model, even a small one built by fine-tuning on a 633-image benchmark like
+BOCCHI plus whatever real blurred/sharp clubhead frames the project already
+has, would give a cheap, automatic per-frame signal that could (a) separate
+the "zero detections because dark-on-dark camouflage" tail from the
+"zero detections because of a genuine blur streak" tail in the failure set
+at eval time, rather than relying on someone re-watching clips, sharpening
+the brief's own two-buckets analysis with a repeatable measurement instead
+of a one-time manual read; and (b) run over the project's own ~29%-share
+own-phone footage to *find and prioritize for labeling* the frames that are
+actually blurred — directly attacking the labeling-spec gap this log's
+brief opens with (median box elongation 1.60, most labelled clubheads
+near-square, because annotators have too few genuinely blurred examples to
+box in the first place). That second use is speculative synergy, not
+something BOCCHI's authors claim — BOCCHI is generic-scene blur detection,
+never tested on golf footage or small elongated objects specifically, and
+its own novelty claim (textured-vs-smooth sharp-region overlap) is about a
+different confound than this project has (dark-clubhead-vs-dark-clothing is
+a colour/contrast confound, not a texture confound), so the domain match is
+plausible but unproven.
+
+**Effort vs. payoff.** Low-moderate effort to find and corroborate
+existence (four search queries, three blocked direct-fetch attempts against
+arXiv/HF/PapersWithCode, two blocked Roboflow-lead dead ends noted above
+so they aren't re-chased). Payoff today: zero — no licence, no code, and no
+golf-domain evidence means nothing here is implementable yet. Payoff if a
+future run can reach the primary source: still likely modest and
+supporting rather than central — a blur-triage signal is a data-engine
+*measurement* tool, not a training-time fix for either failure mode, so it
+belongs well behind this log's already-actionable, higher-confidence
+motion-blur entries (PSF-based blur-box synthesis, NWD/ATDIoU loss
+ablation, the RSBlur synthesis fix) in priority order. Logged mainly so a
+future run recognizes "BOCCHI" and "MSDCT-UNet" and does not re-spend a
+cycle re-discovering the same block.
