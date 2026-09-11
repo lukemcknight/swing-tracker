@@ -10498,3 +10498,123 @@ possible on hardware even tinier than a phone," which is reassuring but not
 actionable. Not recommended as a next step; logged for completeness since
 it directly names GolfDB and on-device deployment, both squarely in this
 project's stated interest areas.
+
+---
+
+## 2026-09-11 (third run) — Wan2.2 (Apache-2.0, open-weight image-to-video diffusion): a genuinely different synthesis mechanism — generated video, not a 3D render or an inpainted still
+
+**Area covered.** Bullet 5 (synthesising training data), reaching directly
+into bullet 2 (motion blur) and touching bullet 1 (dataset diversity,
+specifically indoor/low-light). Grepped the full log first for "video
+diffusion", "text-to-video", "Sora", "HunyuanVideo", "Wan2", "LTX-Video",
+"Kling", "Runway Gen", "Omniverse", "Unity Perception", "event camera" and
+"DVS" — zero hits. This log has three prior synthesis mechanisms (3D
+procedural render: BlenderProc/Kubric; static-image inpainting/generation:
+CamDiff, Copy-Paste, "Preserve the Hard, Regenerate the Rest"; and
+frame-averaging of real high-fps footage: the 2026-08-12 entry, RSBlur,
+iPhoneBlur, GoPro/REDS) but none that generate whole video clips from a
+learned motion prior — this is a fourth, distinct one.
+
+**What it is.** Wan2.2 (`Wan-Video/Wan2.2` on GitHub, weights mirrored on
+the `Wan-AI` Hugging Face org) is Alibaba's open-weight video generation
+model family: text-to-video (T2V), image-to-video (I2V — the
+`Wan2.2-I2V-A14B` checkpoint), and an "Animate" mode
+(`Wan2.2-Animate-14B`) that drives a still character image with the motion
+from a separate reference video. The I2V mode is the relevant one here: it
+takes a single still photo and a text prompt and generates a short (5s)
+720p/480p video continuing plausible motion from that still, at 24fps for
+the lighter `TI2V-5B` variant. Fetched the GitHub README directly (loads
+fine in this sandbox, unlike Hugging Face) to confirm I2V is real and
+documented, not just named: the repo gives literal `generate.py` invocation
+examples for I2V with a `--image` flag.
+
+**URL.** `https://github.com/Wan-Video/Wan2.2` (README fetched directly).
+Weights: `https://huggingface.co/Wan-AI/Wan2.2-T2V-A14B` and sibling I2V
+repo — Hugging Face is under this sandbox's standing egress block (same
+restriction noted in multiple prior entries, e.g. 2026-09-11 first-run
+Depth-Anything-V2 entry), so the weights page itself was not loaded
+directly; existence and naming were corroborated via the GitHub README and
+independent search-engine results, not Hugging Face's own page.
+
+**Licence — Apache 2.0, verified verbatim.** Fetched
+`https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/LICENSE.txt`
+directly. It opens: **"Apache License Version 2.0, January 2004
+http://www.apache.org/licenses/"**, followed by the standard "TERMS AND
+CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION" granting a "perpetual,
+worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright
+license" with no field-of-use or non-commercial restriction. **Commercial
+use is permitted** — this is a real Apache-2.0 grant on the code and, as
+far as this run could verify, the weights license page follows the same
+repo convention (not independently loaded past the egress block, so treat
+the weights license as very likely but not itself directly read).
+
+**Which failure mode.** Primarily motion blur, indirectly camouflage/data
+diversity. A relevant, corroborating (not golf-specific) finding from this
+run's search: video diffusion models are documented to already exhibit
+"motion blur artifacts on fast objects, such as a rapidly spinning
+basketball," and that "the model produces blur consistent with natural
+camera exposure at standard frame rates, reflecting priors inherited from
+pretraining on conventional video datasets" (general video-diffusion
+literature survey, fetched via search synthesis, source not independently
+re-verified past the search snippet). That is a meaningfully different
+starting point from this log's frame-averaging entries, which had to be
+told to synthesize blur and were shown (RSBlur, 2026-08-30 third run) to do
+so *incorrectly* by naive linear averaging — a video diffusion model's blur
+comes from having watched real motion-blurred video during pretraining, not
+from an explicit synthesis formula.
+
+**Why it helps this model specifically.** I2V seeded from a still gives two
+things this project's data engine does not currently have a source for at
+once: (1) volume in the blur-scarce regime — animating existing own-swing
+stills (or new stills shot specifically to vary lighting) into short clips
+samples motion the labeling-spec already asks annotators to box but that
+the training set is short of (median elongation 1.60); (2) indoor/low-light
+coverage without new real capture — since indoor performance has never been
+measured and the quarantined `indoor_test` set is unusable, an I2V still
+shot inside a simulator bay under real indoor lighting, then animated,
+would carry that lighting/environment into the generated frames in a way a
+3D render (BlenderProc/Kubric) has to be told to simulate and a
+frame-averaged real clip cannot provide unless someone already captured
+real indoor slow-motion footage (which, per the caveat, nobody has).
+
+**Real, unresolved caveats — this is a genuinely new idea for this project,
+not a vetted one.** (1) No bounding-box ground truth comes out of
+generation; every generated clip still needs auto-labeling (this log's
+Grounding DINO entry, 2026-08-22 second run) or manual re-labeling under
+the existing labeling-spec, adding real annotator or auto-label-QA cost on
+top of generation cost. (2) No paper or repo found — searched specifically
+— using video diffusion to synthesize golf-swing or any club/racket-sport
+training data; the golf-specific application here is this run's own
+extrapolation from a general-purpose video model, not a verified precedent.
+(3) Documented general risk: "occasional hallucinatory limb" and object-
+identity drift are named failure modes of current video diffusion models
+for complex human motion — a golf swing is exactly that, and the clubhead
+and shaft are exactly the kind of thin, fast, small structure this log's
+own immediately preceding entry (Depth-Anything-V2, same run day) already
+flagged general vision models as struggling to render/estimate
+consistently; there is no reason to expect video diffusion is exempt. (4)
+Non-trivial compute: 24GB VRAM minimum for the lightest (5B) variant, 80GB
+for the fuller 14B I2V model, per generated 5-second clip — not prohibitive
+for a cloud pilot but not a free experiment either. (5) No evidence found,
+in this run or elsewhere in this log, that video-diffusion-generated
+training data actually improves a downstream *detector's* accuracy on a
+task like this one — only general claims that synthetic video helps video
+object detection broadly, not a measured clubhead-detection number.
+
+**Effort vs. payoff.** Medium-high effort, speculative and unverified
+payoff. Effort: generation itself is a pretrained, off-the-shelf pipeline
+(no training required to use it), but a usable dataset needs a still-image
+sourcing step, prompt/seed curation to reject anatomically broken
+generations, and a full auto-labeling pass before anything reaches
+`chdet.evaluate` — a real multi-day pipeline, not a config change. Payoff:
+unverified in both directions — could genuinely close the indoor/blur gap
+this project's own caveat says is untested, or could produce clips
+realistic-looking to a human eye but geometrically wrong in exactly the
+thin, fast club-shaft region that matters most for a bounding-box label,
+with no way to know which until piloted. Given this log already has
+higher-confidence, lower-risk blur-synthesis routes on file with verified
+correctness properties (PSF-based box expansion, RSBlur's CC BY 4.0
+correctly-motion-blurred recipe, iPhoneBlur's working MIT-licensed
+frame-averaging script), this is worth keeping as a longer-shot parallel
+track — specifically for the indoor/low-light angle those other routes
+don't address at all — rather than a first move.
