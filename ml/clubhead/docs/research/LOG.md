@@ -10293,3 +10293,128 @@ lower-priority parallel track: worth a small pilot (pretrain on whatever raw
 unlabeled clips can be gathered, fine-tune, compare against the existing
 `chdet.evaluate` baseline) only after the higher-confidence, already-logged
 synthesis and architecture entries have been tried, not as a first move.
+
+---
+
+## 2026-09-11 — Apple's CoreML port of Depth-Anything-V2-Small: following up the VCP-DCN entry's own flagged open question, and finding a real reason to be skeptical of it
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object detection).
+This run specifically re-opened the one open thread the 2026-09-08 (fourth
+run) VCP-DCN entry left unresolved rather than logged: that entry ruled out
+VCP-DCN because it needs a real stereo/structured-light depth *pair*, not a
+depth channel this app's single RGB camera can produce, but noted in
+passing that "substituting an off-the-shelf monocular depth estimator (e.g.
+Depth Anything, Apple's Depth Pro) as a drop-in depth channel is
+conceivable but... a separate, unverified research question." Grepped the
+full log for "depth anything", "depthpro", "depth pro", and "monocular"
+first to confirm that separate question had never actually been chased
+down — it hadn't.
+
+**What it is.** Depth-Anything-V2 is a monocular depth estimation model
+(DPT decoder on a DINOv2 backbone) from the Depth Anything project. It
+ships in four sizes; critically, the **Small** variant (24.8M params) is
+licensed differently from its siblings. Apple has published its own
+ready-made Core ML port of exactly this variant —
+`apple/coreml-depth-anything-v2-small` on Hugging Face — packaged as
+`DepthAnythingV2SmallF16.mlpackage`/`...F16P6.mlpackage`, with a companion
+working Xcode sample app (`huggingface/coreml-examples`,
+`depth-anything-example/`) that downloads the `.mlpackage`, drops it into
+an Xcode project, and runs live on-device depth estimation on an iPhone.
+Reported inference time in Apple's own model card copy: ~24.6ms on an M3
+Max down to ~33.9ms on an iPhone 15 Pro Max — real-time, on exactly the
+kind of consumer iPhone this app targets. The idea for this app: run this
+as a second, depth-channel input (or a separate depth-based candidate
+filter) to help distinguish a clubhead that sits at a different physical
+distance from the camera than a cluttered background, in frames where
+appearance alone (dark head against dark foliage/clothing) produces zero
+detections.
+
+**URL.** Model port: `https://huggingface.co/apple/coreml-depth-anything-v2-small`
+(Hugging Face is under this sandbox's standing egress block — `curl` to
+`huggingface.co` returns a proxy-level `CONNECT` rejection, same
+restriction noted in multiple prior entries, e.g. 2026-08-19 SloMoDeblur —
+so nothing about this specific page was read directly). Corroborated
+instead via a source that **does** load in this sandbox: the GitHub-hosted
+sample README at
+`https://github.com/huggingface/coreml-examples/blob/main/depth-anything-example/README.md`,
+fetched directly and confirmed to (a) name-check the exact same
+`apple/coreml-depth-anything-v2-small` Hugging Face repo as its model
+source, (b) give literal steps ("Download DepthAnythingV2SmallF16.mlpackage
+... place it inside the `DepthApp/models` folder... Open
+`DepthSample.xcodeproj`... Build & run") confirming a real, working,
+buildable iOS sample exists today, and (c) describe the DPT/DINOv2
+architecture matching the upstream model. Upstream licensing was verified
+against the Depth-Anything-V2 GitHub README directly (also loads fine,
+unlike Hugging Face): **"Depth-Anything-V2-Small model is under the
+Apache-2.0 license"** while **"Depth-Anything-V2-Base/Large/Giant models
+are under the CC-BY-NC-4.0 license"** — the Small variant is the
+commercially-clear one, and it is also the one Apple chose to port to
+CoreML.
+
+**Licence — Apache 2.0, but with one real open question, not resolved
+here.** Apache-2.0 permits commercial use, including modification and
+redistribution, with attribution. However, `DepthAnything/Depth-Anything-V2`
+GitHub issue #320 (opened April 2026, fetched directly) asks the maintainers
+directly whether the Small model's *training data* is "fully cleared for
+commercial use," since the project's own README documents that the larger
+(non-commercial) variants and the Small variant share the same general
+training pipeline (synthetic + large-scale unlabeled real images) and only
+differ in which teacher/labels were distilled — the issue got **no
+maintainer reply** as of this run. This is a genuine, unresolved
+data-provenance question about an Apache-2.0-labeled model, not a
+resolved licence the way, e.g., this log's SoccerSynth-Detection or Kubric
+entries were. Treat the Apache-2.0 grant as the operative licence (that is
+what is actually attached to the weights and what a court would look to
+first) but flag the open question honestly rather than pretending it
+doesn't exist.
+
+**Which failure mode.** Camouflage, and only camouflage — this is a
+single-frame, appearance-independent geometric cue, not a fix for motion
+blur. If anything it is undercut by blur, per the caveat below.
+
+**Why it does, and does not, help this model specifically.** The
+project's failure analysis describes two camouflage sub-cases: clubhead
+against cluttered foliage, and clubhead against dark clothing. Depth should
+genuinely help the *foliage* sub-case — the club is at arm's length from
+the camera while background foliage is typically several meters back, a
+large, easy depth discontinuity even a coarse monocular estimate should
+recover. It is much less likely to help the *clothing* sub-case: during
+the parts of a swing where the club crosses in front of the golfer's torso,
+the club and the body can sit at similar apparent depth from the camera's
+viewpoint, so a depth channel would show little to no contrast exactly
+where the appearance signal is already failing. On top of that
+sub-case-dependent split, there is a documented, independent reason for
+caution that applies to both: monocular depth models, Depth Anything
+included, are well-documented in the wider literature (a survey and a
+recent wildlife-depth benchmark, both fetched via search, and the original
+project's own known failure gallery) to struggle specifically with **thin
+structures** — the exact geometry of a club shaft and head — variously
+ignoring them, flattening them into the background, or producing
+inconsistent depth values frame to frame. That weakness compounds with
+this model's other named failure mode: a motion-blurred clubhead is
+geometrically smeared before depth estimation even sees it, so the frames
+most likely to need a same-frame recovery signal (fast, blurred swing
+frames) are also the frames where a thin-structure-fragile depth estimator
+is least likely to render the club as a coherent object at all.
+
+**Effort vs. payoff.** Medium effort to pilot, genuinely mixed and
+unverified payoff. Effort: the CoreML model and a working iOS reference
+app already exist (this is not a build-from-a-paper situation like several
+prior existence-only entries) — the work is wiring a second on-device
+model into the existing detection pipeline, deciding how to fuse a depth
+map with the YOLO11n RGB path (extra channel vs. post-hoc candidate
+filter), and re-running the app's own `chdet.evaluate` harness against the
+3-clip outdoor test set plus, ideally, foliage-heavy and clothing-heavy
+frames specifically to see whether the predicted split actually holds.
+Payoff: plausible only for the foliage-background half of the camouflage
+problem, unproven and reasoned to be weak for the clothing-background half,
+and further weakened on precisely the blurred frames this project's other
+named failure mode says are already under-represented and hardest. Given
+this log has already logged nine motion/appearance-based camouflage
+mechanisms with clearer, unqualified applicability (SLT-Net, DTUM,
+Motion-Informed Enhancement, channel-stacked multi-frame YOLO, SAM-PM,
+EMIP, GreenCOD, RefCOD/R2CNet, LeanCOD), this is worth keeping on file as a
+free-to-try (Apache-2.0, pre-built) low-commitment experiment, but not
+worth prioritizing over those unless a follow-up frame audit shows the
+foliage sub-case, specifically, is the dominant one among this project's
+zero-detection camouflage failures.
