@@ -10418,3 +10418,83 @@ free-to-try (Apache-2.0, pre-built) low-commitment experiment, but not
 worth prioritizing over those unless a follow-up frame audit shows the
 foliage sub-case, specifically, is the dominant one among this project's
 zero-detection camouflage failures.
+
+---
+
+## 2026-09-11 (second run) — StreamTinyNet: a golf-specific, on-device multi-frame TinyML architecture, checked and found to be a task mismatch with no usable code
+
+**What it is.** StreamTinyNet ("StreamTinyNet: video streaming analysis with
+spatial-temporal TinyML," Shalby, Pavan & Roveri, Politecnico di Milano,
+presented at WCCI/IJCNN 2024, arXiv:2407.17524) is described as the first
+TinyML architecture to perform *multiple-frame* video-stream analysis —
+fusing spatial and temporal information — on severely resource-constrained
+embedded hardware, versus the frame-by-frame analysis that is the TinyML
+norm. It was ported and benchmarked on an Arduino Nicla Vision (a
+microcontroller-class board, orders of magnitude more constrained than an
+iPhone's CoreML runtime), reaching 81% accuracy on gesture recognition
+(Jester dataset) and 56% accuracy on **event detection using GolfDB** —
+i.e. classifying which of GolfDB's 8 swing-sequence events (address, top of
+backswing, impact, etc.) a clip belongs to, not locating a clubhead in a
+frame.
+
+**URL.** https://arxiv.org/abs/2407.17524 (also indexed at
+https://ieeexplore.ieee.org/document/10651090). Direct verification was
+blocked: this sandbox's egress proxy rejects arxiv.org, ieeexplore.ieee.org,
+researchgate.net, semanticscholar.org and emergentmind.com outright (`curl`
+to arxiv.org returns a proxy-level 403 CONNECT rejection — the same
+standing restriction noted in numerous prior entries in this log). The
+paper's existence, authors, venue, and the Jester/GolfDB numbers above are
+corroborated only at the search-snippet level, consistently across five
+independent listings (arXiv abstract page, IEEE Xplore, ADS, ResearchGate,
+and emergentmind.com's paper summary) returned by the same query, which is
+a step below reading the primary source directly.
+
+**Licence — no usable release found; treat as unlicensed / all-rights-reserved.**
+No official code repository from the authors or Politecnico di Milano was
+found. One third-party, unofficial reimplementation exists —
+`github.com/Abstroar/StreamTinyNet` ("Implementation of multiple tiny model
+from multiple paper", last updated April 2025) — but a direct check of
+`raw.githubusercontent.com/Abstroar/StreamTinyNet/{main,master}/LICENSE`
+returns HTTP 404 on both branches: **no LICENSE file exists**, which under
+default copyright means all rights reserved and no commercial-use grant,
+independent of whether the reimplementation is even faithful to the paper
+(unverifiable — no official code to diff against). **Commercial use: not
+permitted** (nothing to permit it).
+
+**Which failure mode.** Camouflage — specifically the "multi-frame and
+temporal methods... of particular interest because motion is what separates
+a moving clubhead from static foliage when appearance cannot" angle named
+directly in this project's research brief. Not motion blur.
+
+**Why it helps this model specifically — and why it mostly doesn't.** The
+one genuinely new data point here is golf-specific and on-device-specific
+at the same time: it's independent evidence that multi-frame temporal
+fusion is tractable even on hardware far more constrained than an iPhone
+(a Cortex-M7-class microcontroller vs. a modern iPhone's Neural Engine),
+which reinforces — but does not add new mechanism to — this log's roughly
+half-dozen already-logged multi-frame/temporal detection entries
+(channel-stacked multi-frame YOLO, Motion-Informed Enhancement, TSM, YOLOV,
+Temporal-YOLOv8, DTUM). Against that, three things blunt it: (1) task
+mismatch — GolfDB "event detection" is whole-clip classification into one
+of 8 swing phases, not per-frame bounding-box localization, so nothing here
+transfers as a drop-in architecture for this model's actual task; (2) 56%
+accuracy on an 8-way classification problem (chance is 12.5%) is a weak
+result, not a strong one, and is not comparable to this model's detection
+metrics; (3) no usable code or licence, so even the architectural idea
+would have to be reimplemented from the paper's description alone, which
+could not be read in this sandbox.
+
+**Effort vs. payoff.** Low effort to note, very low payoff to act on.
+Effort: near-zero right now, since there's nothing installable — a real
+attempt would mean reading the primary paper (blocked here, but not
+necessarily blocked for a human on a normal connection) and reimplementing
+its spatial-temporal fusion block from scratch, then adapting it from
+clip-level classification to per-frame detection, which is a materially
+different architecture problem. Payoff: marginal — the log has already
+established, with clearer and reusable code (e.g. TSM, Temporal-YOLOv8,
+Motion-Informed Enhancement), that multi-frame temporal fusion helps this
+class of problem. StreamTinyNet's only unique contribution is "this is
+possible on hardware even tinier than a phone," which is reassuring but not
+actionable. Not recommended as a next step; logged for completeness since
+it directly names GolfDB and on-device deployment, both squarely in this
+project's stated interest areas.
