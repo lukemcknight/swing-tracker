@@ -10618,3 +10618,89 @@ correctly-motion-blurred recipe, iPhoneBlur's working MIT-licensed
 frame-averaging script), this is worth keeping as a longer-shot parallel
 track — specifically for the indoor/low-light angle those other routes
 don't address at all — rather than a first move.
+
+---
+
+## 2026-09-11 (fourth run) — `Vadbeg/nafnet-coreml`: a real CoreML port of the already-logged NAFNet deblurring model exists, and its own author documents exactly why it isn't mobile-viable yet
+
+**Area covered.** Bullet 2 (motion blur specifically: inference-time
+deblurring preprocessing), closing a gap this log itself flagged rather
+than opening a new mechanism. Today's first three runs covered camouflage
+tooling (Depth-Anything-V2), a golf-specific architecture check
+(StreamTinyNet), and synthesis (Wan2.2), so this run rotated back to
+motion blur, which the day had not yet touched. The 2026-09-09 (third run)
+NAFNet entry logged NAFNet itself (MIT + Apache-2.0 dual licence, GoPro
+PSNR beats RT-Focuser) but could not find "any mention anywhere in the
+fetched repo content of ONNX, CoreML, or any mobile/edge deployment path"
+and flagged that absence as the open reason NAFNet stayed a documented
+fallback rather than an actionable lead. This run searched specifically
+for a CoreML port of NAFNet to close that gap, and found one.
+
+**What it is.** `Vadbeg/nafnet-coreml` (single-author GitHub repo, Vadim
+Titko) converts a pretrained NAFNet checkpoint to Apple's `.mlmodel`
+format with "normalization, preprocessing and postprocessing integrated to
+[the] network graph" — i.e. a ready-to-load CoreML deblurring model, not
+just conversion-script instructions. The converted checkpoint is
+**NAFNet-REDS-width64** (trained on REDS, not the GoPro checkpoint the
+2026-09-09 entry quoted PSNR numbers for — a different training set, same
+architecture family). Repo ships an FP8-quantized `.mlmodel`
+(`nafnet_reds_64_fp8.mlmodel`, 66.04 MB) directly in-repo, plus FP32/FP16
+versions linked out to Google Drive (not independently fetched — Google
+Drive is outside what this run verified directly). Small and dormant: 5
+commits total, last pushed 2023-07-25, no activity since — over three
+years stale as of this run, with no issues or forks checked.
+
+**URL.** `https://github.com/Vadbeg/nafnet-coreml`, fetched directly (repo
+root and README both loaded real content, not a 404).
+
+**Licence — MIT, verified verbatim by direct fetch.** Fetched
+`https://raw.githubusercontent.com/Vadbeg/nafnet-coreml/main/LICENSE`
+directly: "MIT License, Copyright (c) 2023 Vadim Titko" followed by the
+standard MIT permission grant, no field-of-use restriction. **Commercial
+use of this conversion code and the shipped `.mlmodel` file is permitted.**
+This only licenses the conversion artifact itself — it does not change or
+re-litigate the underlying NAFNet-REDS license, which the 2026-09-09 entry
+already verified as dual MIT/Apache-2.0 and commercially usable in its own
+right.
+
+**Which failure mode.** Motion blur only, same as the NAFNet and
+RT-Focuser entries it extends — an inference-time sharpening pass on a
+frame before the detector sees it, not a fix for the camouflage failure
+mode (a genuinely camouflaged, static-textured clubhead has no blur to
+remove).
+
+**Why this does not actually resolve the gap it looks like it resolves.**
+The repo's own README states the limitation plainly, and it is worse than
+"unbenchmarked on mobile" — it is a documented non-starter for this
+project's exact deployment target. Verbatim from the README: "There is a
+known issue with artifacts on the edges of the image. It is caused by the
+model inference with FP16 and lower," so the FP8 model shipped in-repo is
+explicitly not the recommended one. The FP32 alternative needed to avoid
+that artifact comes with its own disqualifying line: "model needs to be
+inferenced in FP32 too, so try to use CPU on the device, because Apple
+mobile NPU/GPU is not supported for FP32" — i.e. no Neural Engine or GPU
+acceleration for the only artifact-free variant, CPU-only inference for a
+dense image-restoration network run every frame. The README goes further
+and says outright the model is "not suitable for mobile devices," warns
+"model loading will take a LOT of time," and states "Model inference will
+work only on MacOS" — meaning this has apparently never even been run on
+an iPhone, only on a Mac host, so there is zero on-device runtime evidence
+in either direction, worse than the "unconfirmed" status the 2026-09-09
+entry left NAFNet at.
+
+**Effort vs. payoff.** Low effort (one targeted search plus three direct
+fetches: repo root, LICENSE, README, and a commit-history check). Payoff:
+net negative-with-value, same category as this log's other "closes an
+open question with a worse answer than hoped" entries. It answers the
+2026-09-09 entry's exact open question (does a NAFNet CoreML port exist?)
+with yes, and simultaneously answers the natural follow-up (is it usable
+on-device today?) with no, from the author's own words rather than this
+run's inference. Recommended disposition: do not spend effort adapting
+this specific conversion; if NAFNet-class restoration is ever pursued
+per the 2026-09-09 entry's "documented fallback" plan, a fresh CoreML
+conversion (ideally of the GoPro-width32 checkpoint that entry's PSNR
+numbers referred to, with FP16-safe padding/normalization fixed rather
+than inherited from this dormant repo) would be needed from scratch —
+this repo is a pointer showing the conversion is *mechanically possible*,
+not a shippable dependency.
+
