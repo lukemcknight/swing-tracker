@@ -10704,3 +10704,99 @@ than inherited from this dormant repo) would be needed from scratch —
 this repo is a pointer showing the conversion is *mechanically possible*,
 not a shippable dependency.
 
+---
+
+## 2026-09-12 — COD10K-C / RobustCODLite: a corruption-robustness benchmark that quantifies exactly how badly camouflage detectors degrade under motion blur specifically
+
+**Area covered.** Bullet 3 (techniques for detecting small/low-contrast/
+camouflaged objects), with an explicit tie to bullet 2 (motion blur).
+Rotated deliberately away from motion-blur-as-preprocessing (the last two
+2026-09-11 runs, Wan2.2 and the NAFNet CoreML port) and away from the golf-
+specific and dataset areas, both of which this log has searched exhaustively
+in the last week with repeated negative results (see the many "indoor/
+simulator golf dataset" dead ends logged 2026-08-16 through 2026-09-08). A
+fresh web search for 2026 papers combining small-object detection, motion
+blur, and camouflage surfaced this one, distinct from the already-logged
+CAMotion (2026-08-22) benchmark: CAMotion tags blur and camouflage as
+co-occurring *attributes* on wildlife video; COD10K-C instead runs a
+controlled corruption study — same clean images, synthetically corrupted at
+five severities — and measures how much each of several camouflaged-object-
+detection (COD) architectures degrades under each corruption type.
+
+**What it is.** "COD10K-C: Benchmarking Robustness of Camouflaged Object
+Detection Under Natural Image Corruptions" (arXiv 2606.02603, indexed
+~May/June 2026). It extends the standard COD10K still-image camouflage
+benchmark with 8 corruption types × 5 severities (40 conditions, 81,040
+eval pairs), then scores three existing published COD models (SINet-V2 —
+already logged in this file 2026-08-16 — plus PFNet and ZoomNet) alongside
+a new lightweight model the paper introduces, RobustCODLite (EfficientNet-
+B0 encoder, U-Net-style decoder, trained with corruption augmentation, a
+frequency-prior branch, and an uncertainty-consistency loss). Headline
+result, quoted consistently across multiple independent search-index
+summaries: **motion blur and Gaussian blur cause the largest performance
+drops of any corruption type tested**, with SINet-V2 losing 18.5 Dice
+points under motion blur specifically. RobustCODLite retains 92.3% of its
+clean Dice score under corruption on average, versus 87.7% (SINet-V2),
+84.8% (ZoomNet), and 84.1% (PFNet).
+
+**Verification performed, and its limits — read before trusting the numbers
+above.** This is an existence-only finding, not a verified-artifact one, and
+that distinction matters more here than in most of this log's entries.
+`arxiv.org`, `arxiv.org/pdf/...`, `huggingface.co`, and
+`www.semanticscholar.org` were all attempted directly and all four returned
+this sandbox's standing `EGRESS_BLOCKED` (the same limitation recorded
+repeatedly since 2026-08-15). No independent code host, PapersWithCode
+listing, or GitHub repository could be found for either COD10K-C or
+RobustCODLite across four separate targeted searches — search results
+themselves note the paper's own text says the corruption-benchmark repo
+"will be released," future tense, and three-plus months later nothing
+resolves. So: the paper's *existence* is corroborated by consistent detail
+(exact arXiv ID, exact corruption-count/severity numbers, exact Dice figures)
+repeated verbatim across multiple independent search snippets rather than
+a single unconfirmed mention — but every number in the paragraph above is
+relayed through search-engine indexing of the abstract, not read from the
+primary source, and no dataset or code was confirmed downloadable. Treat
+the Dice numbers as "probably what the paper says," not as independently
+re-derived.
+
+**Which failure mode.** Both, but asymmetrically: it is direct evidence for
+motion blur being a severe compounding factor even for the camouflage
+literature, and only indirectly useful for camouflage itself (RobustCODLite
+is a corruption-robust architecture, not a camouflage-specific one — nothing
+in the recovered summary suggests it targets low-contrast/color-similarity
+failures better than SINet-V2 on clean images).
+
+**Why it helps this model specifically.** This is the sharpest third-party
+number this log has found yet in support of the brief's own stated caveat:
+the 3-clip outdoor camouflage-failure evidence "could not have surfaced blur
+failures even if they dominate." COD10K-C is independent evidence, from a
+different field entirely (wildlife/generic COD, not golf or sports), that
+whatever appearance-based camouflage technique this project eventually
+adopts (SINet-V2, DTUM, SLT-Net, RefCOD, etc. — all already logged) should
+be assumed to degrade sharply, not gracefully, the moment real motion blur
+is added on top of camouflage — an 18.5-point Dice drop is not a rounding
+error. That reframes prioritization: fixing camouflage in isolation (the
+outdoor test set's dominant visible symptom) risks shipping a model that
+still fails hard on indoor/low-light footage where both problems co-occur,
+which is exactly the scenario the brief says has never been measured. The
+training recipe RobustCODLite describes — corruption augmentation
+(training-time synthetic blur/noise/weather, cheap to reproduce without
+their code) plus a frequency-prior branch and uncertainty-consistency loss
+(both would need the primary paper to reimplement) — is only partially
+reproducible from what was verified here.
+
+**Effort vs. payoff.** Low effort spent (four search queries, four blocked
+direct-fetch attempts, no downloads). Payoff is evidentiary, not
+implementational: this does not hand the project a shippable model or
+dataset (no code confirmed, license therefore unknown and moot), but it is
+a cheap, independent data point strengthening the case for treating blur
+robustness as at least as urgent as camouflage robustness before
+investing further in either alone — the corruption-augmentation third of
+RobustCODLite's recipe is worth borrowing on its own merits (train the
+eventual camouflage fix, whichever one is chosen, with synthetic corruption
+including motion blur applied during training, and measure the Dice/AP
+retention the same way this paper does) even without ever obtaining their
+code. Recommend: no engineering action beyond that one training-recipe
+borrow; do not spend further search effort chasing this specific repo until
+a future run finds it actually published.
+
