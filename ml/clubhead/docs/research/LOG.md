@@ -10800,3 +10800,114 @@ code. Recommend: no engineering action beyond that one training-recipe
 borrow; do not spend further search effort chasing this specific repo until
 a future run finds it actually published.
 
+---
+
+## 2026-09-12 (second run) — v2e: simulating event-camera (DVS) data from ordinary phone video as an offline, motion-blur-immune auxiliary training signal
+
+**Area covered.** Bullet 3 (temporal/motion-based techniques for camouflaged
+and low-contrast objects), with a direct tie into bullet 2 (motion blur).
+Grepped the full log first for "v2e", "dynamic vision sensor", "event
+camera", "neuromorphic" — one hit, from the 2026-09-11 (third run) Wan2.2
+entry's own grep list, which found zero results for "event camera" and
+"DVS" at that time; this run follows that thread up rather than repeating
+it. Deliberately rotated away from bullet 3's most recent occupant (the
+2026-09-12 first-run COD10K-C entry, also bullet 3) by picking a mechanism
+this log has never logged in any form: not appearance (SINet-V2, RefCOD,
+GreenCOD, ...), not optical flow (ReynoldsFlow, RAFT via
+VNGenerateOpticalFlowRequest), not frame-stacking (the now-duplicate-
+flagged Quan et al. channel-stack entry), but a physically-simulated
+sensor modality.
+
+**What it is.** `v2e` (`github.com/SensorsINI/v2e`, paper: "v2e: From Video
+Frames to Realistic DVS Events," Hu, Liu & Delbruck, CVPR 2021 Workshops,
+arXiv:2006.07722) converts ordinary video frames into synthetic Dynamic
+Vision Sensor (event camera) output: a stream of per-pixel events fired
+whenever simulated log-intensity change at that pixel crosses a threshold,
+with a modeled finite photoreceptor bandwidth and pixel-level noise so the
+synthetic events resemble a real DVS sensor's output rather than a naive
+frame difference. Confirmed by direct fetch (not just search-indexed
+text): the GitHub repo root and README loaded live, and the raw `LICENSE`
+file loaded live with full text.
+
+**URL.** `https://github.com/SensorsINI/v2e` (repo), `arXiv:2006.07722`
+(paper — `arxiv.org` itself returned this sandbox's standing
+`EGRESS_BLOCKED`, same restriction as every other arXiv fetch in this log,
+so the paper's own numbers below are relayed through search-engine-indexed
+abstract text, not read directly).
+
+**Licence — MIT, verified verbatim by direct fetch of the raw LICENSE
+file.** "MIT License, Copyright (c) 2019 SensorsINI" followed by the
+standard MIT permission grant with no field-of-use restriction.
+**Commercial use of the code is permitted.**
+
+**Which failure mode.** Both, in principle, for the same underlying reason
+this log's other motion-based entries (DTUM, TrackNetV4, Motion-Informed
+Enhancement, the channel-stacked-YOLO entry) already argue: a moving
+clubhead against a static dark background produces a motion signal even
+when its RGB appearance is indistinguishable from the clutter behind it,
+which is the camouflage failure mode's exact mechanism. What's different
+here is *how* that motion signal is derived. Every prior motion-based entry
+in this log gets its motion cue either from optical flow or from raw
+frame-differencing computed on the same blurred RGB frames the detector
+already struggles with — so on a genuinely blurred frame, the motion cue
+itself is degraded by the same physical process (light integrated over an
+exposure window) that's corrupting the appearance cue. DVS pixels are
+fundamentally different: they report a change event at the microsecond
+timescale a brightness edge crosses their sensor, not an integral over an
+exposure window, so a real event camera is close to motion-blur-immune by
+construction — the search results above cite the v2e paper's own reported
+effect of this on a *different* hard-appearance domain (low-light night
+driving: a car detector trained with v2e-simulated events scored ~40%
+higher AP than the same YOLOv3 trained on intensity frames alone, per
+search-indexed abstract text, not independently re-derived here). If that
+generalizes, a v2e-derived event channel, added as extra training-time
+supervision or an auxiliary input alongside RGB, would give the detector a
+motion cue that stays informative in exactly the frames where the RGB
+motion cue (optical flow, frame differencing) itself degrades from blur —
+which is the specific gap between this log's other motion-based entries and
+this one.
+
+**Why this does not resolve the gap as cleanly as it first looks.** v2e is
+an offline, GPU-bound simulator, not a sensor or an on-device runtime path.
+Confirmed from the fetched README: it runs "50-200X slower than real time"
+even on a GTX-1050-class GPU, needs "many minutes of computing per second
+of source video" at useful timestamp resolution, and its own documentation
+has zero mention of CoreML, mobile, or edge deployment anywhere. There is
+no iPhone hardware that produces real DVS events, and there is no path to
+run v2e itself on-device or in real time — so this cannot become a runtime
+input channel the way Motion-Informed Enhancement's channel-encoded motion
+(already logged, 2026-08-18) can. Its only realistic use here is entirely
+offline and training-side: run v2e once over the existing (and any newly
+captured) training clips to produce a synthetic event channel per clip,
+then either (a) use it as an *additional supervisory/auxiliary input during
+training only*, in a teacher/distillation-style setup where the deployed
+model never sees it at inference, or (b) use it purely as a data-engine QA
+tool — visualizing where genuine motion is happening frame-by-frame to help
+verify motion-blur box labels and flag mislabeled negative frames, distinct
+from every other data-engine entry already logged (Grounding DINO auto-
+labeling, PAL active-learning, DetectLensSmudgeRequest triage). Neither use
+is the "give the on-device model a blur-immune motion channel at inference"
+outcome that would make this a strong entry; that outcome specifically is
+blocked by the same on-device/CoreML wall this log has hit for essentially
+every deblurring-network entry (RT-Focuser aside).
+
+**Effort vs. payoff.** Low-to-medium effort to try in the (a) offline-
+distillation form: running v2e over existing clips is a single CLI
+invocation per clip, no training-pipeline change; building a distillation
+setup that consumes the event channel as a training-only auxiliary loss
+target is a real but bounded engineering task, not a research one — the
+technique is well-specified in the paper. Payoff is speculative and
+narrower than most entries in this log: the ~40% AP number that motivates
+it comes from a different domain (low-light car detection, not sports
+motion blur or camouflage) and was not independently verified past search-
+engine text, and the deployed model would still need its own RGB-only
+signal to be good enough at inference — this can only ever be a training-
+time assist, never a runtime fix. Recommend: worth a cheap offline spike
+(generate v2e output for a handful of the project's own hardest camouflage
+and blur clips and visually inspect whether the synthetic events actually
+trace the clubhead cleanly through occlusion/blur/foliage) before
+committing to building the distillation pipeline around it — the visual
+spike is nearly free and would settle whether the underlying premise (DVS-
+style motion cues survive where RGB motion cues degrade, on *this* footage
+specifically) holds before any training-side engineering effort is spent.
+
