@@ -10911,3 +10911,88 @@ spike is nearly free and would settle whether the underlying premise (DVS-
 style motion cues survive where RGB motion cues degrade, on *this* footage
 specifically) holds before any training-side engineering effort is spent.
 
+---
+
+## 2026-09-12 (third run) — LHM-Net: a Hough-transform-fused lightweight detector for motion-blurred small tennis targets — a genuine motion-blur architecture, undercut by a shape prior this model's object doesn't share
+
+**Area covered.** Bullet 2 (motion-blur-robust detection architectures),
+deliberately rotated away from bullet 3 (small/camouflaged/temporal
+detection), which both prior 2026-09-12 runs (COD10K-C, v2e) already used.
+Grepped this log's full text first for "Ghost module," "Hough," "DIoU-NMS,"
+and "β-IoU" — no hits, so the specific mechanism below is not a repeat of
+the already-logged NWD loss (2026-08-27, a different loss formula entirely)
+or any of the logged architecture entries (JFD3, DFRCP, MoSA-Det, D-FINE,
+RF-DETR, YOLO-Net, YOLO-Ball, the P2/4-head entry).
+
+**What it is.** "Lightweight and Hough transform collaborative advancement
+detection algorithm for small tennis targets" (LHM-Net), published on
+ScienceDirect, dated 2026-07-29. Per consistent detail repeated verbatim
+across multiple independent search-engine snippets: built on a YOLOv8s
+baseline with a Ghost-module backbone (fewer parameters), a channel-space
+hybrid-attention/focus-modulation block, an added high-resolution
+detection branch, a cross-modal fusion step that embeds a Hough-transform-
+derived geometric prior probability map (tuned to the tennis ball's
+circular shape) as an extra input channel, an improved β-IoU box-regression
+loss, and a distance-based flexible NMS (DIoU-NMS) for small, overlapping
+targets. Reported results, quoted consistently across sources: authors
+built a dedicated "Tennis1500" dataset of tiny, motion-blurred tennis
+balls; LHM-Net reaches AP_small of 78.6%±0.1% versus 62.4%±0.2% for
+YOLOv8s (+16.2 points), +9.1% on AP_75, +1.8% mAP@0.5 over baseline, and
+106 FPS.
+
+**Verification performed, and its limits.** `sciencedirect.com` returned
+this sandbox's standing `EGRESS_BLOCKED` on direct fetch (the same
+restriction already logged repeatedly for arxiv.org, huggingface.co, and
+semanticscholar.org since 2026-08-15) — the primary source could not be
+read. Four separate targeted searches (paper title + "github", paper title
++ "arxiv"/"preprint", "LHM-Net" + "code", "LHM-Net" + "Hough" + "github")
+found no code repository, no PapersWithCode listing, and no author names.
+The paper's existence and its reported numbers are corroborated only by
+repetition of identical specifics (exact percentages, exact FPS, exact
+dataset name, exact component list) across independently-issued search
+queries, not by reading the source — treat every figure above as "probably
+what the paper reports," not independently re-derived, and treat the
+absence of any code link as current fact, not a search gap: no artifact is
+confirmed downloadable today. **No licence could be found for anything —
+neither a code licence (no code exists to license) nor a stated dataset
+licence for Tennis1500 — so this cannot be recommended for use even if
+code later surfaces, without that being checked first.**
+
+**Which failure mode.** Motion blur, primarily, with a small-object-
+detection angle common to most of this log's bullet-2/3 entries. Not
+camouflage — nothing in the reported mechanism addresses appearance
+similarity to background.
+
+**Why it helps this model specifically — and the specific reason it helps
+less than it first appears.** The headline result (a 16-point AP_small
+gain on tiny, motion-blurred, fast-moving round objects, tracked at 106
+FPS on what reads as a real-time-capable network) is exactly the shape of
+evidence this log has been looking for for the elongated-blur-box failure
+mode: a lightweight, deployable-scale architecture with a large measured
+gain specifically on blurred small targets, not just clean small ones.
+But the paper's own central contribution — fusing a Hough-transform
+circular-shape prior into the network — is built specifically around the
+tennis ball being round. A golf clubhead is not round: it is an irregular,
+elongated wedge/blade/head shape at rest, and per this project's own
+labeling spec (the full motion-blur streak is boxed), a *moving* clubhead
+is an even more elongated, non-circular streak. The one part of LHM-Net
+that the paper credits with the geometric-prior gain is therefore the one
+part with no golf-clubhead analogue — a Hough line-segment or ellipse
+prior might substitute, but that is this log's own extrapolation, not
+anything the paper claims or tests. The other three components (Ghost
+lightweight backbone, β-IoU loss, DIoU-NMS for small overlapping targets)
+are shape-agnostic and could in principle transfer, but none of them is
+independently shown in the reported snippets to account for the 16-point
+gain on its own — the ablation, if the paper has one, was not recovered.
+
+**Effort vs. payoff.** Low effort spent (four searches, one blocked direct
+fetch, no downloads). Payoff is low and mostly cautionary rather than
+actionable: this is an existence-only finding with no code, no licence,
+and a headline mechanism that does not transfer to this model's object
+shape without unverified extrapolation. Recommend against spending further
+engineering time chasing LHM-Net specifically; if a future run wants to
+pursue the shape-prior idea it gestures at, the buildable, honestly-scoped
+version is a from-scratch experiment — fit a Hough line/ellipse detector
+to this project's own elongated blur-streak boxes as an auxiliary input
+channel — not a port of LHM-Net's own (unavailable) code.
+
