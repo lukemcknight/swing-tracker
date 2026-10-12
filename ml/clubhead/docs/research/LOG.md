@@ -11287,3 +11287,105 @@ spent integrating this repo directly; its value is as two more data
 points toward decisions this log has already made the case for (real
 indoor capture, real blurred-frame collection over new architectures),
 not as a new direction.
+
+---
+
+## 2026-10-12 (third run) — CADDIE's content is no longer unreadable: architecture, a new 72K-frame multi-location golf-club dataset, and a 69→238 FPS speedup confirmed, licence/release status still unresolved
+
+**Area covered.** Golf-specific pose/club tracking — continuing, not
+repeating, the 2026-08-21 entry ("CADDIE ... existence-only result") rather
+than opening a new topic. That entry logged the paper's existence (title,
+authors, venue, page range) but explicitly flagged everything about its
+actual content as unverified, because `openaccess.thecvf.com` returned
+`EGRESS_BLOCKED` from this sandbox on every fetch attempt — and its own
+"effort vs. payoff" section named the exact next step: "pull the actual PDF
+... and read the method." I re-attempted that direct fetch this run
+(`WebFetch` on the same CVF PDF URL) and got the identical failure
+(`getaddrinfo ENOTFOUND openaccess.thecvf.com`) — the sandbox restriction
+is unchanged, confirmed rather than assumed. What's new this run is that
+targeted web search was able to surface substantive, specific content from
+that PDF (exact parameter counts, FPS numbers, dataset composition) that
+no prior run's search queries happened to retrieve — likely a difference in
+query phrasing, not a change in access. Logging the *content*, which is
+genuinely new information this log did not have, while being explicit that
+the access method (search-engine synthesis of a blocked primary source) is
+no better than several already-logged entries flag as a lower confidence
+tier than a direct fetch.
+
+**What it is.** "CADDIE: Compact Adaptive Detection-Driven Inference for
+Real-Time Golf Club Pose Estimation" (Jung, Yang, Blanchard, Wong — Fujitsu
+Research of America / Colorado State University, CVPR 2026 Workshops,
+CVsports). Confirmed architecture: a two-stage pipeline pairing a
+lightweight **ConvNeXtV2-Atto** backbone with **RetinaNet** for club
+detection, feeding **heatmap-based keypoint regression** over a
+**5-keypoint schema spanning the shaft and club head** — total model size
+**14.3M parameters**. The paper also introduces a new dataset, **Golf-Club**:
+**~72,000 annotated frames**, **7 subjects**, **6 capture locations**, **3
+club types**, with **synchronized multiview sequences**. Reported speed
+result: an "adaptive temporal smoothing" mechanism raises throughput from
+**69 FPS to 238 FPS** (device/hardware not confirmed from available
+snippets).
+
+**URL.**
+https://openaccess.thecvf.com/content/CVPR2026W/CVsports/papers/Jung_CADDIE_Compact_Adaptive_Detection-Driven_Inference_for_Real-Time_Golf_Club_Pose_CVPRW_2026_paper.pdf
+— still unreachable directly from this sandbox; every figure above comes
+from search-engine summarization of that PDF's actual text (specific
+enough — exact parameter/frame/FPS counts — to be confident it reflects the
+paper's real content, not a hallucinated gloss), not from reading the PDF
+myself.
+
+**Licence and release status — still UNKNOWN, now checked more
+specifically.** Multiple targeted searches this run (for "Golf-Club
+dataset licence," "CADDIE github," "Changsoo Jung Fujitsu dataset
+release") found **no GitHub repository, no dataset download link, and no
+licence statement** for either the CADDIE model or the Golf-Club dataset.
+One search did surface a same-author-adjacent fact worth separating out
+clearly so it isn't confused with this paper: GolfPose (already logged,
+2026-08-13/08-17, a *different* paper) uses "a custom EULA that permits
+commercial model training but prohibits redistribution" — that licence
+belongs to GolfPose, not CADDIE, and must not be assumed to carry over.
+CADDIE/Golf-Club's own terms remain completely unstated in every source
+found. **Do not treat as available for any use, commercial or otherwise.**
+
+**Which failure mode.** Primarily camouflage-and-detection-architecture
+relevant, not blur. "Detection-driven inference" confirms the guess the
+2026-08-21 entry flagged as unverified: RetinaNet performs club detection
+first, and the keypoint head only runs on that crop — the same two-stage
+shape as the already-logged GolfPose entry, now with a concrete, modern,
+compact backbone (ConvNeXtV2-Atto) named instead of guessed at. The
+dataset's "6 locations" is the more interesting unresolved thread for the
+blur/camouflage split specifically: multi-location, multi-subject,
+synchronized-multiview golf-club capture is exactly the kind of source
+that could — if even one of the 6 locations is indoor or low-light — be
+the first *golf-club-specific* (not table-tennis, not badminton) real
+footage this log has found with the diversity property this project's own
+test set structurally lacks. No source found this run states whether any
+of the 6 locations are indoor, low-light, or simulator-bay; this remains
+an open, specifically-named question for a future run rather than an
+assumption in either direction.
+
+**Why it matters for this model specifically.** If Golf-Club ever becomes
+available with a commercial-compatible licence, it would be the strongest
+dataset candidate this log has found to date for the project's own stated
+top data-engine priority (more non-own-swing, non-Roboflow golf-club
+footage, ideally including locations beyond bright outdoor capture) —
+better-targeted than GolfDB (swing *sequencing*, not club boxes, NC
+licence), CaddieSet (joint/ball features, no imagery at all), or any of
+the Roboflow sets already logged (outdoor-only, as repeatedly confirmed).
+The architecture is a secondary, lower-priority interest: 14.3M params is
+roughly 5-6x this project's YOLO11n (~2.6M), so it is not a drop-in
+replacement for the on-device model, but the detection-then-keypoint
+pattern and ConvNeXtV2-Atto backbone are a concrete reference point if the
+project ever considers a club-pose (not just club-head-box) feature.
+
+**Effort vs. payoff.** Low effort this run (search only, no new fetches
+succeeded beyond confirming the standing block). Payoff: informational,
+not actionable yet — the one fact that would make this a real asset
+(licence/release terms for Golf-Club) is exactly the fact that remains
+unfound after two separate runs' worth of searching, 2026-08-21 and today.
+Recommend keeping this as a named, open lead rather than re-running the
+same kind of search a third time: the next useful step is the same one the
+2026-08-21 entry already named — someone with institutional CVF/IEEE
+access reading the paper's actual data-availability statement — not more
+search-engine queries from this sandbox, which have now been tried twice
+with real but incremental returns.
