@@ -11389,3 +11389,92 @@ same kind of search a third time: the next useful step is the same one the
 access reading the paper's actual data-availability statement — not more
 search-engine queries from this sandbox, which have now been tried twice
 with real but incremental returns.
+
+
+---
+
+## 2026-10-12 (fourth run) — Cut-and-Splat: Gaussian-splatting-based synthetic compositing for camouflage, checked and ruled out on a two-layer licence block
+
+**Area covered.** Synthesizing/augmenting training data for the camouflage
+failure mode — a mechanism not yet in this log. Prior entries in this area
+cover copy-paste (2026-08-14), diffusion-based background/scene synthesis
+(CamDiff, 2026-08-20 second run; "Preserve the Hard, Regenerate the Rest,"
+2026-08-30 second run), and procedural 3D-CG rendering (BlenderProc,
+2026-08-18 second run; Kubric, 2026-09-06 fourth run). This is a fourth,
+distinct mechanism: reconstructing the *real* target object photorealistically
+via neural rendering (3D Gaussian Splatting) from a short video, then
+compositing that reconstruction onto diverse backgrounds — not a CG asset,
+not a diffusion hallucination, not a 2D crop-and-paste.
+
+**What it is.** "Cut-and-Splat: Leveraging Gaussian Splatting for Synthetic
+Data Generation" (Bram Vanherle, Brent Zoomers, Jeroen Put, Frank Van Reeth,
+Nick Michiels — Hasselt University; presented at ROBOVIS 2025, DOI
+10.1007/978-3-032-00986-9_4). The pipeline: film the target object on a flat
+surface from multiple angles, train a 3D Gaussian Splatting model of it
+(background-subtracted automatically from the flat-surface setup), then
+render that object into arbitrary background photos with depth-aware
+placement (via a DepthAnything depth map of the background) so scale and
+occlusion look physically plausible, producing an image + per-object
+instance mask + class label with zero manual annotation. The authors report
+it beats both copy-paste and diffusion-based synthesis baselines on their own
+benchmark. It does not model motion blur — it's a static-scene compositing
+method, not a blur-synthesis one — so despite the paper's "and beyond"
+generality claims, it's a camouflage-relevant tool only, not a dual-purpose
+one.
+
+**URLs:**
+- Code (fetched directly, confirmed to exist today): https://github.com/EDM-Research/cut-and-splat
+- Paper DOI: https://doi.org/10.1007/978-3-032-00986-9_4 (Springer, paywalled
+  — not fetched directly; existence/authorship/venue corroborated via a
+  Zenodo software archive, a ResearchGate listing, and a Hasselt University
+  institutional repository page, three independent sources agreeing on
+  title/authors/venue)
+- Dependency: https://github.com/graphdeco-inria/gaussian-splatting (fetched
+  directly, including its `LICENSE.md`)
+
+**Licence — commercial use: blocked, two independent ways.**
+1. **Cut-and-Splat's own repo has no LICENSE file** (confirmed directly from
+   the GitHub file listing) — default all-rights-reserved, same posture
+   already logged for SmashSpeed (2026-10-12 first run) and
+   `nishsm/golf-club-tracking`'s claimed-but-unfiled licence (2026-10-12
+   second run). A Zenodo archive of the code lists CC BY 4.0 for that
+   specific archived version, but the live GitHub repo itself states no
+   licence — treat the repo as unlicensed until a LICENSE file actually
+   appears in it. (The paper's own text/figures are separately listed as
+   CC BY-NC-ND 4.0 on ResearchGate — not reusable regardless.)
+2. **Independent of (1), the pipeline cannot run without the original 3D
+   Gaussian Splatting codebase as a dependency** (`graphdeco-inria/gaussian-splatting`,
+   explicitly required per Cut-and-Splat's own README). That repo's
+   `LICENSE.md`, quoted verbatim: "THE USER CANNOT USE, EXPLOIT OR
+   DISTRIBUTE THE SOFTWARE FOR COMMERCIAL PURPOSES" — research/evaluation
+   use only, commercial use requires a separate licence negotiated directly
+   with Inria. This is the well-known, famously restrictive licence on the
+   original Gaussian Splatting release, and it means even a cleanly-licensed
+   wrapper around it would still be commercially blocked at the dependency
+   layer.
+
+**Which failure mode.** Camouflage. Not motion blur.
+
+**Why it would have helped this model, if usable.** The camouflage failure
+mode's root cause per the brief is appearance similarity to background
+(dark clubhead against dark clothing/foliage) — exactly the kind of
+background diversity a compositing method can manufacture cheaply, and
+unlike copy-paste (crude edges, no relighting) or diffusion inpainting
+(can distort or hallucinate the object itself, the problem CamDiff's
+licence entry already flagged), splatting the *real* clubhead captured from
+the project's own footage would preserve genuine appearance while varying
+background clutter and lighting arbitrarily — plausibly a sharper, more
+controllable tool than either already-logged alternative for this specific
+failure mode. That is now moot given the licence block above.
+
+**Effort vs. payoff.** Low effort this run (two direct GitHub fetches
+settled both licence questions cleanly, no ambiguity to chase further).
+Payoff: zero as a usable asset — ruled out on two independent, verified
+licence grounds, so no engineering time should be spent on this pipeline
+specifically. Logging it mainly to close the "neural-rendering compositing"
+sub-category of the synthesis area so a future run doesn't re-discover Cut-
+and-Splat and re-spend effort finding the same Inria licence block. If this
+category is worth revisiting, the open lead is a *commercially-licensed*
+Gaussian Splatting implementation (several permissively-licensed
+reimplementations of the core splatting technique exist in the ecosystem;
+none was checked this run) rather than this specific paper's own code.
