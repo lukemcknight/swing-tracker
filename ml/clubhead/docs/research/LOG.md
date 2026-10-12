@@ -11183,3 +11183,107 @@ whatever this log's own 2026-10-11 entry already flagged (fix the
 Albumentations `MotionBlur` gap) plus collecting more real blurred phone
 footage, not a new architecture search.
 
+
+## 2026-10-12 (second run) — `nishsm/golf-club-tracking` / `swingtrace`: an independent, near-identical open-source project (YOLO11m club-head detector on phone video) gives an outside data point on both failure modes, including real indoor-video numbers this project has never measured for itself
+
+**What it is.** A real, independently-developed GitHub project —
+https://github.com/nishsm/golf-club-tracking, with a companion tool
+repo (`nishsm/swingtrace`, also mirrored as
+`nishsm/golf-club-detection-swingtrace`) — that does almost exactly what
+this project's own README describes: fine-tune a YOLO11m on phone-shot
+golf swing video to detect the club head (plus shaft and hands here) and
+trace the swing path. Confirmed directly from the repo's own README
+(fetched via `github.com`, which is reachable from this sandbox, unlike
+`universe.roboflow.com`, `arxiv.org`, and `huggingface.co`, all of which
+are blocked here and were not used to source any claim below):
+
+- **Model:** YOLO11m (not the `n` nano variant this project uses — a
+  larger, slower checkpoint), fine-tuned from Ultralytics YOLO.
+- **Training data:** a Roboflow Universe dataset, "golf-club-tracking"
+  by "club-head-tracking," credited in the README as **CC BY 4.0**. Size
+  not stated in the README; export requires a Roboflow account, and I
+  could not independently browse the dataset page itself to confirm its
+  outdoor/indoor split or image count (host blocked). This is a genuinely
+  different Roboflow dataset from the ones already logged in this file
+  (ict/golf-lzcqc, vana/golf-npsrd, etc. — checked by name, no overlap).
+- **Validation numbers:** precision 0.930, recall 0.849, mAP@50 0.918,
+  mAP@50-95 0.674 — but the author explicitly flags this as inflated: "91%
+  of validation frames have a near-identical neighbour within 2 frame
+  numbers in the training set," i.e. near-duplicate leakage, the same
+  problem this project's own data-engine doc would call out.
+- **Held-out numbers (7 unseen phone videos, 3,018 frames, the number
+  that actually matters):** club head detected directly in **71.6%** of
+  frames; head-or-shaft in 93.4%. That 71.6% is in the same range as this
+  project's own measured ~77% through-the-swing figure, from a different
+  model, different data, same basic task — a useful outside sanity check
+  that this is roughly where a small YOLO11 variant lands on this problem
+  without anything exotic.
+- **The indoor data point.** Per-video breakdown: "the indoor face-on
+  video had 48.4% head detection" versus 87.7% for one of the outdoor
+  "Range" videos. This project's own brief states its indoor
+  `indoor_test` set is quarantined as unusable and that indoor performance
+  has **never** been measured. This is not a measurement of *this*
+  project's model — it's a different model on different footage — but it
+  is real, external, verified evidence that indoor capture measurably
+  hurts detection on the identical task (club-head-in-phone-video), which
+  directly corroborates this project's own stated caveat rather than
+  just restating it.
+- **Motion blur, in the author's own words:** "the head turns into a blur
+  and normal detectors lose it" at the top of the backswing and at
+  impact — "the head is small and moves fastest at the top and at impact,
+  so that's where detection drops out." Independent, task-identical
+  confirmation that blur-at-speed, not architecture, is where this exact
+  kind of detector breaks.
+- **A camouflage-adjacent false positive, noted by the author:** in the
+  indoor video, "a ceiling light was boxed as a shaft," inflating that
+  video's head-or-shaft number — a concrete instance of indoor clutter
+  producing a wrong-but-confident detection, the mirror image of this
+  project's zero-detection camouflage failure.
+
+**Licence.** The README states "AGPL-3.0, following Ultralytics YOLO,
+which the weights are fine-tuned from" — but I checked directly and
+**there is no `LICENSE` file in the repository** (`raw.githubusercontent.com/nishsm/golf-club-tracking/main/LICENSE`
+returns 404, and the GitHub file listing shows none). So the AGPL-3.0
+claim is the author's own prose statement, not a filed licence grant;
+either way, AGPL-3.0 is the same copyleft-or-Enterprise-licence problem
+this log already has open for the project's own YOLO11n/YOLO26
+dependency (2026-08-17 entry) — nothing new there. **The training
+dataset's CC BY 4.0 licence (per the README's credit line) is separate
+and, taken at face value, commercial-use-permitted with attribution** —
+but I could not reach the Roboflow dataset page itself to confirm that
+licence firsthand (same host-block as every other `universe.roboflow.com`
+entry in this log), so treat it as unverified-at-source, secondhand
+through this README only.
+
+**Which failure mode this addresses.** Both, as corroborating evidence
+rather than a fix: external, task-identical confirmation that (a) indoor
+footage is harder (camouflage-adjacent) and (b) blur-at-speed is the
+acknowledged failure point (motion blur). It supplies no new technique,
+architecture, or dataset this project can directly adopt beyond "maybe
+pull the CC BY 4.0 Roboflow set if it turns out to add real phone-shot,
+non-duplicate frames" — which is unverified and would need the dataset
+page checked from outside this sandbox before acting on it.
+
+**Why it matters for this model specifically.** It is the closest
+real-world analogue to this project found in this log to date — not an
+architecture paper on a different domain, not a non-commercial research
+dataset, but someone else's shipped attempt at the identical task
+(phone-video golf club head detection with a small YOLO model), with
+self-reported numbers in the same ballpark as this project's own. Its
+chief value is as a sanity check and as external pressure toward two
+things this log has already flagged from the project's own data: collect
+real indoor footage (this is now the second piece of evidence, after
+this project's own quarantined/unusable `indoor_test` set, that indoor
+capture is measurably worse) and prioritize real blurred frames over
+architecture search (echoing the 2026-10-12 first-run SmashSpeed entry).
+
+**Effort vs. payoff.** Low effort — one GitHub README fetch plus a
+licence-file check. Payoff is informational, not actionable on its own:
+no code, weights, or dataset from this repo can be taken without
+resolving the AGPL-3.0/no-LICENSE-file ambiguity on the code side, and
+the CC BY 4.0 dataset claim needs independent confirmation from the
+Roboflow page before anyone relies on it. Recommend no engineering time
+spent integrating this repo directly; its value is as two more data
+points toward decisions this log has already made the case for (real
+indoor capture, real blurred-frame collection over new architectures),
+not as a new direction.
