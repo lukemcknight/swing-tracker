@@ -11623,3 +11623,77 @@ folder contains exactly one file, `CaddieSet.csv` — tabular joint-angle/
 ball-flight features only, no raw video or images released. Not usable for
 training a box detector. Recording this so a future run doesn't re-spend
 time on it.
+
+---
+
+## 2026-10-13 (fifth run) — YOLO27: the direct successor to YOLO26 with a small-object-targeted detection head (N/S), unreleased
+
+**What it is.** YOLO27 is Ultralytics' next flagship model family, unveiled at
+their "YOLO Vision 2026" event (mid-September 2026) and previewed in their own
+docs. It succeeds YOLO26 (already logged in this file, 2026-08-17 fourth run)
+in the same `ultralytics` package/`YOLO` class this project already depends
+on. For the compact N/S sizes — the ones relevant to an on-device nano model
+like this project's YOLO11n — the detection head is redesigned specifically
+around small objects: standard detectors (including YOLO11/26) predict on
+three feature-map scales (fine/medium/coarse); YOLO27n/s **drop the medium
+scale** and keep only the fine map (small objects) and coarse map (large
+objects), while **widening the early high-resolution feature stage** so that
+surviving fine map carries more detail. Ultralytics' own stated rationale is
+explicitly "the hardest category for compact models" — i.e. small-object
+accuracy, not inference speed, is the design target, with faster inference
+as a side effect of dropping the medium head. A second, orthogonal change —
+"foreground alignment supervision," an extra training-only branch that
+narrows the train/inference accuracy gap — is stated to cut the
+one-to-many-vs-one-to-one gap from 0.9/0.8 mAP (YOLO26n/s) to 0.4 mAp
+(YOLO27n/s), at zero inference cost since the branch is removed before
+export. The larger M/L sizes switch to a separate query-based, NMS-free
+transformer-decoder architecture (not relevant to a nano/edge deployment).
+
+**URL.** Primary source, fetched directly (not via search-engine summary):
+`https://raw.githubusercontent.com/ultralytics/ultralytics/main/docs/en/models/yolo27.md`
+(HTTP 200, read in full). Ultralytics' own `ultralytics/ultralytics` GitHub
+repo is reachable in this sandbox via `raw.githubusercontent.com` even though
+`docs.ultralytics.com` and `www.ultralytics.com` both fail DNS resolution
+here — worth remembering for future runs needing anything else from this
+same first-party source.
+
+**Licence.** The `ultralytics` package itself is **AGPL-3.0** (confirmed by
+direct fetch of `raw.githubusercontent.com/ultralytics/ultralytics/main/LICENSE`
+— this is an existing, already-accepted constraint for this project since it
+already trains YOLO11n with this same package, not a new blocker introduced
+by YOLO27). No separate licence terms are stated for YOLO27 itself because
+**no weights, configs, or code have been released** — the docs page states
+explicitly, twice, "Model weights, configurations, and implementation code
+are not being released at this time" and "no launch date has been set."
+
+**Which failure mode: camouflage** (small/low-contrast object detection,
+specifically). Not applicable to motion blur — nothing in the YOLO27 preview
+mentions blur, elongated boxes, or temporal/multi-frame input; this is a
+single-frame small-object accuracy architecture change.
+
+**Why it helps this model specifically.** This model already runs YOLO11n
+and the log already flagged YOLO26 as a same-family upgrade path. YOLO27n is
+the next rung on that same upgrade ladder, and unlike YOLO26's listed change
+(a general small-object training improvement, STAL), YOLO27n/s's headline
+change is architected around exactly this model's "zero candidate detections
+even at confidence 0.05" camouflage symptom: a clubhead is a small object in
+most frames, and a detection head that was redesigned because three-scale
+prediction underserves small objects on compact models is a closer match to
+the actual failure than a generic capacity bump (c.f. the already-logged,
+ruled-out-as-"generic lever" FastViT entry). It would also be a drop-in swap
+in this project's existing training pipeline (same `YOLO` class, same
+CoreML export path YOLO26 already uses) once available, so adopting it would
+cost retraining time, not new infrastructure.
+
+**Effort vs. payoff.** Zero effort possible right now — there is nothing to
+integrate; this is a "watch and adopt on release" item, not an actionable
+finding today. Payoff, if/when it ships, is plausibly the single
+cheapest-to-adopt fix in this entire log for the camouflage failure mode,
+since it requires no new data, no new labeling, and no new licensing beyond
+what the project already accepts for YOLO11n/26 — just a checkpoint swap and
+a retrain once `yolo27n.pt` exists. Recommended action: no engineering work
+now; revisit this entry once Ultralytics actually publishes weights (check
+`pypi.org/project/ultralytics/#history` for a version that adds `yolo27`
+support, since `pypi.org` itself is blocked from this sandbox — a future run
+should try `raw.githubusercontent.com/ultralytics/ultralytics/main/ultralytics/cfg/models/27/`
+to check directly whether the model configs have landed).
