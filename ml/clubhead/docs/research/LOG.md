@@ -11697,3 +11697,125 @@ now; revisit this entry once Ultralytics actually publishes weights (check
 support, since `pypi.org` itself is blocked from this sandbox — a future run
 should try `raw.githubusercontent.com/ultralytics/ultralytics/main/ultralytics/cfg/models/27/`
 to check directly whether the model configs have landed).
+
+---
+
+## 2026-10-13 (sixth run) — ARKit `ReferenceObject` high-frame-rate tracking, coming to iOS 27: a first-party, purpose-built "handheld fast-moving object" tracker, distinct from every Apple Vision API already logged
+
+**Area covered.** Rotated off today's first five entries (all motion-blur
+synthesis or single-frame architecture) onto Apple-first-party APIs, the
+same sub-area as this log's already-logged `VNTrackObjectRequest`,
+`VNDetectTrajectoriesRequest`, and `VNGenerateOpticalFlowRequest` entries —
+but this is a different framework (ARKit, not Vision) and a different
+mechanism (trained 6-DOF reference-object pose tracking, not per-frame
+optical flow or a tracked bounding box), confirmed not already in this log
+by grepping for "ARKit," "ReferenceObject," and "WWDC26" first.
+
+**What it is.** WWDC26 session 283, "Explore enhancements to visionOS
+object tracking," announces that ARKit's reference-object tracking is
+**coming to iOS via ARKit in iOS 27** (currently visionOS-only). The
+headline addition relevant here is a new per-object
+`highFrameRateTrackingEnabled` flag on `ReferenceObject.Configuration`,
+which the session's own framing is explicit about: it exists specifically
+to track **handheld, fast-moving objects** (their own demo is a handheld
+medical probe), as opposed to the mostly-stationary objects ARKit object
+tracking already handled — on iOS, objects are split into
+`detectionObjects` (stationary, low frame rate) and `trackingObjects`
+(moving, high frame rate). A paired Create ML change — a new
+`--training-mode extended` flag on the `createml objecttracker`
+command-line tool — trains a more robust reference object "especially for
+objects held in hand," at the cost of longer training time, and the
+session explicitly recommends pairing it with high-frame-rate tracking.
+Reference objects are trained once (from a USDZ 3D model, or a photo scan
+of a real physical object) and the resulting `.referenceobject` file works
+identically on both visionOS and iOS — confirmed by direct quote from the
+session transcript: "once trained, all reference objects will be supported
+in both iOS and visionOS apps."
+
+**URL.** https://developer.apple.com/videos/play/wwdc2026/283/ — fetched
+directly (not via search-engine summary); `developer.apple.com` is
+reachable from this sandbox, same as the already-logged WWDC20 entries for
+`VNDetectTrajectoriesRequest`/`VNGenerateOpticalFlowRequest`, unlike
+`arxiv.org`, `universe.roboflow.com`, `epfl.ch`, and
+`bmva-archive.org.uk`, all of which I tried and failed to reach this run
+chasing two other leads before landing on this one (see "also checked"
+below).
+
+**Licence.** N/A in the open-source sense — this is a first-party iOS/
+ARKit system framework shipping in a future OS SDK, not a third-party
+dependency with its own licence terms. The only real constraint is that
+**iOS 27 does not exist yet** ("no launch date... not released," same
+unreleased status as this log's already-logged YOLO27 entry) — nothing to
+integrate today, only something to plan for.
+
+**Which failure mode: both, as a recovery/tracking layer, not a detector
+replacement.** ARKit object tracking does not solve "find a clubhead with
+zero candidate detections" on its own — it tracks a *known, pre-trained*
+reference object's 6-DOF pose once ARKit has locked onto it, it does not
+do open-ended per-frame detection in arbitrary video the way YOLO11n does.
+But the stated purpose — maintaining lock on a handheld object specifically
+*while it is moving fast* — is a close conceptual match to both failure
+modes as a fallback: once the YOLO model detects the clubhead with high
+confidence in an easy frame (address, mid-backswing), an ARKit reference-
+object track could in principle carry that lock through the camouflage
+(dark head against dark clothing/foliage) or motion-blur (impact-speed
+swing) frames where YOLO itself returns nothing, the same recovery role
+this log already assigned to `VNTrackObjectRequest`
+(2026-09-05 third run) — but via 3D geometric pose matching instead of 2D
+appearance correlation, which could be more robust to exactly the
+appearance-based failure (camouflage) that breaks correlation trackers.
+
+**Why it helps this model specifically, and the real caveats.** This would
+require a genuinely new capture pipeline, not a drop-in: (1) the app would
+need to run an ARKit `ARWorldTrackingConfiguration`/`ARSession`, which this
+project's phone-video pipeline is not confirmed to use (the README and v2
+design doc describe a CoreML/YOLO export pipeline, not ARKit); (2) a
+reference object must be trained per physical object from a 3D model
+(USDZ) or photo scan — golf clubheads vary by club type and manufacturer
+(driver/iron/wedge/putter all differ in shape), so this does not generalize
+across arbitrary clubs the way a learned detector does; it would need
+either one reference object per club type the user owns, or a decision
+that this is out of scope entirely. (3) Nothing in the session suggests
+reference-object tracking tolerates the object leaving the frame or being
+heavily occluded any better than the already-logged Apple trackers. Given
+those three caveats, this is closer to a "worth a feasibility spike once
+iOS 27 ships" item than an actionable fix today.
+
+**Effort vs. payoff.** Zero effort possible right now — iOS 27 is
+unreleased, same as the already-logged YOLO27 entry, so this is a
+watch-and-revisit item, not today's engineering work. If pursued later,
+effort is high relative to this log's other recovery-layer entries
+(`VNTrackObjectRequest`, `VNGenerateOpticalFlowRequest`): it requires
+building and shipping per-club-type 3D reference models and very likely
+restructuring the capture pipeline around ARKit, which is a materially
+bigger lift than calling an existing Vision request against frames already
+being captured. Payoff is speculative and unverified (no evidence
+reference-object tracking has ever been tested on a thin, fast-moving,
+partially-blurred object like a club shaft/head rather than a rigid
+hand-sized tool). Recommended action: none now; revisit if iOS 27 ships and
+only after the cheaper, already-logged Vision-framework recovery options
+have actually been tried and found insufficient.
+
+**Also checked and ruled out this run (both dead ends on the same
+sandbox-access wall, logged so a future run doesn't re-spend the search):**
+(1) Visual Golf Club Tracking for Enhanced Swing Analysis (Gehrig, Lepetit
+& Fua, BMVC 2003) — a real, golf-specific, 2D club-head trajectory tracker
+from EPFL's CVLab (per-frame position hypotheses fit to a global swing
+motion model) — exists and is golf-club-tracking-specific, but is
+classical (pre-deep-learning) computer vision with no code release found,
+and both its host (`epfl.ch`) and the paper PDF's host
+(`bmva-archive.org.uk`) are unreachable from this sandbox, so the exact
+method and any stated handling of motion blur could not be verified beyond
+a search-engine abstract summary. (2) A follow-up on the still-open
+2026-09-10 LLOT/H-DCPT licence question: re-fetched the GitHub repo's full
+README directly (not just the previously-fetched top section) looking for
+a dataset-specific licence note below the fold — none exists; the README's
+only licence-adjacent content is a citation block. Also re-attempted
+`ieee-dataport.org` (blocked, unchanged) and the README's two Google Drive
+links (`drive.google.com`, also blocked, unchanged). The open question is
+still genuinely open; this run just confirms the two most obvious next
+steps already named in that entry don't resolve it, so a future run should
+look for a different access path rather than retrying these same three
+hosts a third time.
+
+---
