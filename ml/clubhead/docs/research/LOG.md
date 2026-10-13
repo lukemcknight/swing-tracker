@@ -11478,3 +11478,148 @@ category is worth revisiting, the open lead is a *commercially-licensed*
 Gaussian Splatting implementation (several permissively-licensed
 reimplementations of the core splatting technique exist in the ecosystem;
 none was checked this run) rather than this specific paper's own code.
+
+---
+
+## 2026-10-13 — DeFMO: physically-grounded synthetic motion-blur generation
+
+**What it is.** [DeFMO](https://github.com/rozumden/DeFMO) (Rozumnyi et al.,
+CVPR 2021) is a research codebase for deblurring and shape recovery of fast
+moving objects. The part relevant here is not its deblurring network but its
+**synthetic training-data generator**: it renders a 3D object translating
+along a trajectory during a simulated camera exposure (Blender), producing a
+composited frame with a physically correct directional motion-blur streak —
+including partial transparency/falloff along the streak — pasted onto a real
+background. This is a categorically different approach from generic
+image-level motion-blur augmentation (e.g. an Albumentations motion-blur
+kernel convolved over an already-sharp crop, which the v2 design doc already
+lists as a planned augmentation): it blurs a specific moving foreground
+object against a static background with a controllable trajectory and
+exposure time, which is what a swung clubhead actually does.
+
+**URL.** https://github.com/rozumden/DeFMO
+
+**Licence (verified by fetching the LICENSE file directly,
+`raw.githubusercontent.com/rozumden/DeFMO/master/LICENSE`):**
+
+```
+MIT License
+
+Copyright (c) 2022 Denys Rozumnyi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions: ...
+```
+
+The **code** (including the synthetic-data generation pipeline) is MIT —
+commercial use is permitted. **Caveat:** the authors' own pre-generated 72GB
+training set cannot be used — it was built from ShapeNetCore.v2, DTD
+textures, and Sports1M/VOT backgrounds, and the repo states "we cannot make
+the pre-generated dataset public" because of the ShapeNet licence. That
+restriction attaches to *their* dataset and source assets, not to the
+generation code itself — using the MIT-licensed Blender/Python pipeline with
+your own 3D clubhead proxy meshes (a driver/iron head is a trivial shape to
+model or source under a permissive licence) and your own backgrounds (e.g.
+indoor-bay or outdoor stills already in this project's data) would not
+inherit the ShapeNet restriction. This has not been independently confirmed
+with a lawyer; it is a reasonable reading of the stated scope of the
+restriction, not a guarantee.
+
+**Which failure mode: motion blur.** This directly targets the identified
+gap — the labelled set is dominated by near-square boxes (median elongation
+1.60) despite the spec requiring the full blur streak to be boxed. A renderer
+that can place a clubhead-shaped object along a controllable swing-speed
+trajectory and bake in the correct directional streak would let us
+*manufacture* the high-elongation examples the real data is short of,
+including in indoor/low-light settings by choosing darker synthetic exposure
+and backgrounds — exactly the regime (simulator bays, evening light) the
+current 3-clip outdoor test set cannot speak to.
+
+**Effort vs. payoff.** Non-trivial effort: this is not a drop-in dataset, it
+is a rendering pipeline that needs a 3D clubhead asset, Blender scripting
+knowledge, and care to make the synthetic blur distribution match real swing
+kinematics (speed profile through the swing, not just a uniform streak) or
+risk training on an unrealistic blur prior. Payoff is potentially high and
+precisely targeted at the one quantified, undisputed data gap (elongation
+distribution), rather than at the camouflage finding, which per the caveat in
+this task's brief is itself not yet validated against indoor/blurred footage.
+Recommended next step if pursued: a small pilot (one clubhead proxy mesh, a
+few dozen rendered composites) evaluated by checking whether it moves the
+training-set elongation histogram before investing in a full pipeline.
+
+---
+
+## 2026-10-13 — Synthesize motion-blur training frames by averaging high-fps phone video (the GOPRO-dataset recipe)
+
+**What it is.** The standard method the deblurring literature uses to build
+*paired* blurry/sharp training data: record a scene on a phone/camera in its
+high-frame-rate slow-mo mode (e.g. 240 fps), then average groups of `k`
+consecutive frames together to synthesize one realistic blurry frame, with
+the un-averaged middle frame of the group kept as sharp ground truth. This is
+the construction method behind the GOPRO deblurring dataset (Nah et al.,
+CVPR 2017). Unlike the DeFMO entry above (a from-scratch 3D render of a
+synthetic clubhead asset), this needs no 3D modeling at all — it manufactures
+blur directly from real phone footage of a real swing.
+
+**URL(s).**
+- https://github.com/SeungjunNah/DeepDeblur_release — the CVPR 2017 code
+  release. Confirmed by direct fetch: the README states *"we proposed a new
+  dataset of realistic blurry and sharp image pairs using a high-speed
+  camera"*; the averaging script itself is not in this particular repo (only
+  the deblurring network), and no LICENSE file is visible on the page.
+- The averaging mechanism itself (average k=7–13 or 7–23 consecutive frames
+  from 240fps video, in linear light via inverse gamma, center frame = GT) is
+  corroborated by convergent agreement across 3+ independent later papers
+  surfaced via search — I could not load arxiv.org, nature.com, or
+  pmc.ncbi.nlm.nih.gov directly in this environment (DNS failed on every
+  attempt), so no single primary paper was read end-to-end and the exact
+  k-range should be treated as approximate. The core mechanism is solid and
+  widely repeated, not a one-off claim.
+
+**Licence.** N/A — a technique, not a dataset or dependency. Applied to the
+project's own newly-captured phone footage, so there is no third-party
+content and no licensing question.
+
+**Which failure mode: motion blur.**
+
+**Why it helps this model specifically.** The data engine already runs CSRT
+tracker-propagation that produces a clubhead box on every frame of a tracked
+swing (per the v2 design doc). Averaging a window of `k` consecutive raw
+240fps frames into one synthetic frame, and taking the union of the
+tracker's `k` per-frame boxes as the new label, produces a correctly-labeled
+blurred frame at **zero extra manual-labeling cost** — the box-union matches
+the labeling spec's own convention for real blur (box the full visible
+streak). Varying `k` manufactures a range of synthetic shutter
+speeds/intensities from one slow-mo clip. Compared to the DeFMO entry above,
+this is the cheaper, lower-ceiling option: it can't easily be pointed at
+indoor/low-light conditions the way a renderer can (you'd still need to
+actually film indoors in slow-mo, at which point real cameras typically also
+drop resolution/frame rate in low light — a caveat worth testing early), but
+it has no asset-creation step and uses footage the team already knows how to
+capture.
+
+**Effort vs. payoff.** Low-medium effort: roughly a day of scripting
+(frame-averaging + box-union, slotted into the existing
+`ml/clubhead/label_tools/` pipeline) plus an afternoon of slow-mo capture —
+no new licensing, no new annotation labor, no 3D asset work. Main open
+question is whether 240fps-averaged blur looks close enough to real
+impact-speed blur to transfer, and whether low-light slow-mo footage is even
+usable (sensor noise/frame-rate tradeoffs) — both cheap to check with a small
+ablation against the existing 3-clip test set before investing further. Does
+not touch the camouflage failure mode or the untested-indoor gap on its own;
+it only manufactures better-labeled blur examples from footage the team
+already controls.
+
+**Also checked and ruled out this run:** CaddieSet
+(https://github.com/damilab/CaddieSet, CVPR 2025 workshop paper, MIT
+license — commercial use is fine) looked promising (1,757 golf swing shots,
+"collected using a camera-based launch monitor," which sounded like it could
+mean indoor simulator-bay footage). Verified directly: the repo's `data/`
+folder contains exactly one file, `CaddieSet.csv` — tabular joint-angle/
+ball-flight features only, no raw video or images released. Not usable for
+training a box detector. Recording this so a future run doesn't re-spend
+time on it.
