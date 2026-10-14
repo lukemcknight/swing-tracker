@@ -12047,3 +12047,65 @@ OpenFlight/GrotShotPro) — except this one never had working code to begin
 with, only a four-year-old unfulfilled promise of one.
 
 ---
+
+## 2026-10-14 (fourth run) — Gyroscope-aided deblurring (DeepGyro et al.) checked and ruled out: a real, code-backed technique family that corrects the wrong kind of motion blur for this model
+
+**Area covered.** Bullet 2 (motion blur: deblurring usable as preprocessing),
+a sensor-fusion angle not yet logged — every prior deblurring entry in this
+file (NAFNet, RT-Focuser, DeFMO, SelfHVD, RSBlur, etc.) works from RGB pixels
+alone. Grepped the full log first for "gyro," "IMU," "accelerometer,"
+"CMMotion," and "OIS" — no hits, so this is a genuinely new thread, not a
+repeat.
+
+**What it is.** A real line of research on using a phone's built-in
+gyroscope to deblur photos/video, going back to Joshi et al. (Microsoft
+Research, SIGGRAPH Asia 2010, "Image Deblurring using Inertial Measurement
+Sensors") and continuing through Šindelář & Šroubek (2015, multiframe
+piecewise-uniform kernel estimation from an unmodified smartphone's
+gyroscope), Hu et al. (CVPR 2016, inertial readings as a kernel-estimation
+prior refined by the image itself), and a deep-learning successor,
+**Mustaniemi, Kannala, Rahtu, Liu & Heikkilä, "Gyroscope-Aided Motion
+Deblurring with Deep Networks" (WACV 2019, arXiv:1810.00986)**, which has a
+public reference implementation, **`jannemus/DeepGyro`**
+(https://github.com/jannemus/DeepGyro). I could not reach `arxiv.org` from
+this sandbox (same block every prior run has hit), so the paper's claims
+below are sourced from the GitHub README and search-indexed abstract
+summaries, not the PDF.
+
+**Verified directly from the GitHub repo (fetched successfully — this host
+is not blocked).** The repo contains real Keras code (`deepgyro.py`,
+`deepblind.py`, `models.py`, a `preprocess/` folder that builds per-pixel
+blur fields from gyro readings, timestamps, exposure time, rolling-shutter
+skew, and IMU-to-camera calibration). Trained weights are not bundled in
+the repo itself — the README links out to external Dropbox downloads for
+them. **There is no `LICENSE` file anywhere in the repository and the
+GitHub sidebar lists no license**, which under default copyright means
+all rights reserved — the code and any linked weights cannot be used,
+even for non-commercial purposes, without contacting the authors.
+
+**Which failure mode this addresses, and why it's ruled out anyway.** Motion
+blur — but the wrong half of it. Every method in this family (gyro-based,
+whether classical or learned) estimates and corrects blur caused by the
+*camera's own rotation* during the exposure: the gyroscope measures camera
+motion, not the motion of any specific object in the frame. This project's
+blur problem is the opposite shape: the clubhead moves at ~90-120mph
+relative to a camera that is comparatively near-static (handheld, maybe
+panning slowly to track the golfer), so the dominant blur source on the
+clubhead specifically is the *object's* motion relative to the frame, not
+the frame's motion as a whole. Gyro-deblurring would, at best, sharpen a
+panning background and the golfer's body — it has no signal at all for the
+clubhead's own velocity, since a gyroscope cannot observe what a scene
+object is doing. This is the same category of dead end this log already
+hit with `VNDetectTrajectoriesRequest` (2026-08-27) and the rolling-shutter
+shear entry (2026-09-06): a camera-motion-centric technique applied to an
+object-motion problem.
+
+**Effort vs. payoff.** Low effort (one GitHub fetch plus two WebSearch
+queries to place the paper in its research lineage). Payoff: none. Ruled
+out on two independent grounds — no license to use the one public
+implementation, and a domain mismatch that would make it the wrong fix
+even with a clean license. Not worth revisiting unless this project's
+blur problem is reframed around camera-shake rather than clubhead streak,
+which the brief's own framing does not support.
+
+---
