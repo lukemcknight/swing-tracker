@@ -11992,3 +11992,58 @@ multi-frame entries, both of which *do* have usable licences/code) is the
 right shape, not a reason to look at satellite-detection code specifically.
 
 ---
+
+## 2026-10-14 (third run) — TSFMO / S-KeepTrack: a small-and-fast-moving-object sports tracking benchmark, checked and ruled out (no licence, no data ever shipped, four years on)
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object detection,
+temporal methods), approached from the benchmark side rather than the
+architecture side this run's second entry (DSFNet) used, specifically
+because this project's displacement statistic (54.8% of frames at
+impact-speed) means a benchmark purpose-built around tiny, fast sports
+objects is a closer evaluation analogue than another appearance/motion
+architecture. Grepped the full log first for "TSFMO," "S-KeepTrack,"
+"Guilin," and "CodeOfGithub" — no match, so this is new.
+
+**What it is.** "Tracking Small and Fast Moving Objects: A Benchmark"
+(Zhang et al., Guilin University of Technology; ACCV 2022; arXiv:2209.04284).
+Per several independent secondary sources (alphaxiv, paperswithcode, deepai
+— none of which this sandbox could reach directly; same standing block this
+log has already recorded against `arxiv.org` and `openaccess.thecvf.com`,
+both of which also failed with `ENOTFOUND` this run), it introduces TSFMO:
+250 sequences, ~50k frames, manually boxed, spanning 26 sports categories,
+with mean object area ~0.51×10³ px² — stated as smaller and faster than
+OTB, GOT-10K, LaSOT, TrackingNet, and UAV123. The paper evaluates 20
+existing trackers and proposes a new one, S-KeepTrack, claimed to beat all
+20 of them.
+
+**Licence and availability — blocked, genuine dead end.** The paper's own
+stated code/data location, `https://github.com/CodeOfGithub/S-KeepTrack`,
+was fetched directly and is reachable (unlike the paper's own host).
+Confirmed first-hand: the repo contains only a `README.md` — no `LICENSE`
+file anywhere in the file listing. The README's entire content is
+"S-KeepTrack and TSFMO dataset" followed by "Code coming here soon...".
+Releases and Packages are both empty; there is no dataset download link
+anywhere on the page. This is a 2022 paper, now four years old, whose
+promised code and data release has still never shipped — not a transient
+block like this log's usual sandbox-egress entries, but a verifiably empty
+repository. With nothing published, there is no licence to evaluate:
+commercial-use permission is moot because there is nothing to use.
+
+**Which failure mode.** Would have borne on this project's own under-tested
+regime — frames at or near impact speed, the closest analogue in the log
+to actual intra-frame blur risk — had the dataset existed, since a
+benchmark explicitly built around objects smaller and faster than every
+standard tracking benchmark is a direct proxy for "is my object too small
+and too fast for this architecture class." Whether any of its 26 sports
+categories include golf could not be confirmed, because even the paper's
+own text is unreachable from this sandbox, let alone the data.
+
+**Effort vs. payoff.** Zero — there is no artifact to spend effort
+adopting, so no action is recommended. Logged only so a future run does
+not re-spend a search cycle rediscovering the same empty GitHub stub; this
+sits in the same category as this log's other negative golf/sports-tracking
+results (AICaddy, dj_masters, PiTrac, S-KeepTrack's distant cousin
+OpenFlight/GrotShotPro) — except this one never had working code to begin
+with, only a four-year-old unfulfilled promise of one.
+
+---
