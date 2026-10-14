@@ -11910,3 +11910,85 @@ labeling tool is actually in use, once the OS-version floor is confirmed;
 not worth blocking on today.
 
 ---
+
+## 2026-10-14 (second run) — DSFNet: a static/dynamic dual-stream architecture for tiny moving objects against cluttered backgrounds (satellite-video domain), checked and ruled out on licence
+
+**Area covered.** Rotated to bullet 3 (small/low-contrast/camouflaged object
+detection, temporal methods) after the first run today covered bullet 5
+(labeling tooling). Searched specifically for architectures that fuse a
+"static context" stream with a "motion" stream to find a small moving
+target against complex, visually similar background clutter — the
+mechanism most directly analogous to this project's camouflage failure
+(dark clubhead against dark clothing/foliage, zero detections even at
+confidence 0.05). Checked first that this isn't already logged: grepped
+the full log for "DSFNet," "dual-stream," "static context," and
+"satellite video" — no match. The log's existing camouflage entries
+(SLT-Net, SINet-V2, SAM-PM, EMIP, Vcamba, RefCOD, GreenCOD, GreenVCOD,
+MRCNet/Phantom-Insight, LeanCOD, DTUM, Motion-Informed Enhancement) are
+all from the video-camouflaged-object-detection (VCOD) literature,
+built and benchmarked on scenes like animals blending into foliage. This
+is a different source literature — satellite/remote-sensing small-moving-
+target detection — converging on a similar two-stream idea from a
+different direction, which is itself worth noting once and ruling in or
+out rather than assuming VCOD is the only field with a relevant answer.
+
+**What it is.** "Fast and Accurate: Dynamic and Static Feature Fusion for
+Small Moving Target Detection in Satellite Videos," published in IEEE
+Geoscience and Remote Sensing Letters (2021), proposes DSFNet: a 2D CNN
+backbone extracts static-appearance context from a single frame, a
+lightweight 3D CNN backbone extracts motion cues from a short stack of
+consecutive frames, and the two feature streams are fused before
+detection; SORT is used for the tracking stage on top. Verified directly
+via the project's own code repository,
+https://github.com/ChaoXiao12/Moving-object-detection-DSFNet (fetched the
+page directly, reachable): the repo contains real training/eval code
+(`train.py`, `test.py`, `testTrackingSort.py`, `evaluation.py`, a `lib/`
+folder with evaluation utilities), not just a paper writeup. The README,
+quoted via the fetch: "combine the static context information and the
+dynamic motion cues to detect small moving object in satellite videos."
+
+**Licence.** **Blocked — no licence found, so no commercial use.** The
+repo's file listing and About section show no `LICENSE` file; I confirmed
+this a second way by fetching
+`raw.githubusercontent.com/ChaoXiao12/Moving-object-detection-DSFNet/main/LICENSE`
+directly, which returned a plain HTTP 404 (file does not exist at that
+path on the default branch). No LICENSE file means default copyright,
+all rights reserved — this project cannot reuse the code or the dataset
+without the author's explicit permission. Separately, both the pretrained
+weights and the training dataset (`RsCarData`, part of the VISO benchmark)
+are hosted only on BaiduYun behind a sharing code, not on GitHub, PyPI, or
+any host this sandbox could reach — so even setting licence aside, neither
+artifact is verifiably downloadable today.
+
+**Which failure mode: camouflage.** The static/dynamic split is a direct
+answer to exactly this model's hardest camouflage frames: a single-frame
+appearance model (the "static" stream) cannot separate a dark clubhead
+from dark clothing or foliage by texture or color, which is consistent
+with this project's own failure analysis (zero candidate detections even
+at confidence 0.05 on visually sharp frames) — but a short motion-cue
+stream could, since the clubhead is the only thing in frame moving at
+swing speed while clothing and foliage are static or moving at body-speed
+at most. It does not bear on the motion-blur failure mode; satellite
+targets in this literature are small but not meaningfully blurred within
+a frame the way a fast swing is.
+
+**Effort vs. payoff.** Effort to adopt this specific codebase is not
+assessable as "low" or "high" because it is not actually available to
+adopt — the licence blocks commercial use outright, and the data/weights
+are not reachable regardless. The real payoff here is the architectural
+idea, not the artifact: the log already has several appearance+motion
+fusion entries for the VCOD domain (Motion-Informed Enhancement, channel-
+stacked multi-frame YOLO, DTUM), so DSFNet's two-stream split is a
+corroborating data point from a wholly different field reaching the same
+design conclusion — static appearance alone is insufficient, a dedicated
+motion stream is the fix — rather than a new mechanism this log hasn't
+already pointed toward. Recommended action: none on DSFNet itself (dead
+end, same as this log's other no-licence small-object entries); treat it
+as one more piece of independent evidence that if this project ever
+builds a custom motion-aware head rather than relying on stock YOLO11n
+single-frame inference, a static+motion dual-stream split (already
+covered by this log's Motion-Informed Enhancement and channel-stacked-
+multi-frame entries, both of which *do* have usable licences/code) is the
+right shape, not a reason to look at satellite-detection code specifically.
+
+---
