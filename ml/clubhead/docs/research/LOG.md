@@ -12170,3 +12170,76 @@ hobby repo. Not worth revisiting unless the product itself changes to
 support a club-mounted accessory, which is outside this detector's scope.
 
 ---
+
+## 2026-10-15 (second run) — "Physics-Guided Fusion" (arXiv 2510.20126): a fast-moving-small-object tracker checked and ruled out on an RGB-D hardware mismatch plus no verifiable code (motion blur / small-fast-object area, existence-only, negative result)
+
+**Area covered.** Bullet 2 (datasets of fast-moving blurred small objects in
+sport, and blur-robust tracking methods). Chosen to rotate away from the
+day's first run, which was golf pose/tracking (ClubMaster). First grepped
+this log for "RGB-D," "depth camera," and "kinematic" — no prior entry
+covers a depth-camera-based fusion tracker, so this is a genuinely
+unchecked sub-category distinct from the already-logged Kalman-filter
+(OC-SORT), optical-flow (ReynoldsFlow, EMIP), and parabolic-motion
+(`VNDetectTrajectoriesRequest`) recovery mechanisms.
+
+**What it is.** "Physics-Guided Fusion for Robust 3D Tracking of Fast
+Moving Small Objects" — Prithvi Raj Singh, Raju Gottumukkala, Anthony S.
+Maida, Alan B. Barhorst, Vijaya Gopu (UL Lafayette / Louisiana
+Transportation Research Center), arXiv:2510.20126, submitted 23 Oct 2025
+(cs.CV). It pairs a deep-learning detector with a physics-based tracker
+that uses kinematic equations of motion (not a Kalman filter) to handle
+missed detections and outliers, plus a separate outlier-correction module
+for occlusions and sudden direction changes. Evaluated on a custom
+racquetball dataset — a small (~57mm), very fast object, a reasonable
+proxy for a clubhead near impact — reporting up to 70% lower Average
+Displacement Error than Kalman-filter-based trackers. Framed by the
+authors for robot-perception/autonomous-platform use, with an **RGB-D
+camera** as the sensing input (title says "3D Tracking"; search summaries
+of the abstract consistently describe depth-camera input across two
+independent queries).
+
+**Verification and its limits.** `arxiv.org` is unreachable from this
+sandbox (DNS resolution fails for `arxiv.org`, `export.arxiv.org`, and the
+`papers.cool` mirror — the same block this log's prior entries have
+repeatedly hit), so the primary source could not be read directly. Two
+independent WebSearch queries returned consistent author names, venue,
+method description, dataset, and headline claim (70% ADE reduction),
+which is the strongest corroboration available without primary-source
+access. A plausible author GitHub account
+(`github.com/Prithviraj97/MSThesisworks`, surfaced by search as
+"the complete source code for this thesis") was fetched directly and
+returned **HTTP 404** — the repository does not exist at that path, or is
+private. No other code link was found. **No code, no license, nothing
+downloadable today.**
+
+**Licence.** Unconfirmed — cannot be, without reaching the paper or a
+real code repository. Treat as all-rights-reserved until proven otherwise.
+
+**Which failure mode this addresses.** Motion blur / small-fast-object
+tracking robustness, as a recovery mechanism for frames where the
+detector produces a poor or missing box (the same category as this log's
+already-logged OC-SORT and InpaintNet entries) — not camouflage, which is
+an appearance problem this paper's fusion tracker does not touch.
+
+**Why it doesn't help this model, even setting the licence aside.** The
+method's core input is depth (RGB-D), which this product's single phone
+RGB camera does not provide. A kinematic-fusion tracker built around a
+depth signal cannot be dropped onto a monocular pipeline without either
+synthesizing depth (unverified, extra cost, a different research thread
+entirely) or discarding the paper's actual mechanism and keeping only the
+generic "physics-informed smoothing beats a plain Kalman filter" idea —
+at which point OC-SORT (already logged, training-free, no license risk)
+is the cheaper, verified way to get the same category of benefit. This is
+the same shape of dead end this log already hit with ClubMaster
+(wrong sensor for a vision product) and the DeepGyro/`VNDetectTrajectoriesRequest`
+entries (right-shaped idea, wrong motion source).
+
+**Effort vs. payoff.** Low effort (two WebSearch queries plus one direct
+GitHub fetch to check a candidate repo). Payoff: none — blocked on both an
+unconfirmed licence and a hardware/sensing mismatch that would hold even
+with a clean licence. Logged so a future run does not re-spend a cycle on
+"depth-camera-based physics fusion trackers" as a category; not worth
+revisiting unless this project's own capture pipeline ever adds a depth
+signal (e.g. a LiDAR-equipped iPhone), which is outside the current scope.
+
+---
