@@ -12389,3 +12389,62 @@ Every slice of ClubheadDB's own labelled boxes — even its slow-motion clips, w
 **Effort vs. payoff.** Low-to-medium effort (one `pip download`, one tarball extraction, one small pandas script reading the bundled parquet/csv directly — no network calls beyond PyPI). Payoff is small and directional: a plausibility check on a prioritization call the project would likely make anyway (collect more real varied footage before chasing synthetic-blur architecture), not a new technique, dataset, or number the model can use. Logged mainly so a future run doesn't re-spend a cycle re-opening `clubhead-db` from scratch — the dataset, its licence, and its dead GitHub link are now fully closed; the only thing left unexplored (its exact box-labeling convention, and true pixel-space elongation) is a specific, narrow follow-up, probably not worth another run's time given the licence blocker makes it moot either way.
 
 ---
+
+## 2026-10-17 (second run) — CamSAM2: SAM2-based camouflaged-video segmentation with a "decamouflaged token" (NeurIPS 2025), checked and ruled out
+
+**What it is.** CamSAM2 ("Segment Anything Accurately in Camouflaged Videos,"
+Zhou, Li, Fu, Benini, Konukoglu, Sun — NeurIPS 2025, arXiv:2503.19730) adapts
+Meta's SAM2 video segmentation model to camouflaged objects without touching
+SAM2's own pretrained weights. It freezes a SAM2 (Hiera-Tiny) backbone and
+adds four small trainable modules on top: a "Decamouflaged Token," an
+Implicit-Object-aware Fusion (IOF) module, an Explicit-Object-aware Fusion
+(EOF) module, and an Object Prototype Generation (OPG) module. Third-party
+summaries report sizeable gains on standard VCOD benchmarks (up to +12.2
+mDice on MoCA-Mask with click prompts, +19.6 on SUN-SEG-Hard with mask
+prompts) — not independently reproduced here.
+
+**URL.** https://github.com/zhoustan/CamSAM2 (paper: arXiv:2503.19730,
+NeurIPS 2025 poster). Repo fetched directly: the file listing and README are
+both real and substantive, not a placeholder — `sam2/`, `sam2_configs/`,
+`scripts/eval_MoCA-Mask.py`, `scripts/eval_CAD.py`,
+`scripts/preprocess_cad.py`, `train/train.py`,
+`checkpoints/download_ckpts.sh`, a `work_dir/` for the add-on weights.
+
+**Licence — unresolved, do NOT treat as cleared for commercial use.** The
+repo has no `LICENSE` file and no license statement anywhere in the README
+(verified by fetching the raw README directly — it documents install/train/
+test steps and module names but never once states terms of use). Absent an
+explicit grant, default copyright applies: no reuse, modification, or
+redistribution rights are actually granted for the CamSAM2-specific code
+(the four add-on modules and training/eval scripts), regardless of the fact
+that it builds on Meta's separately-licensed, Apache-2.0 SAM2. Its training/
+eval datasets (MoCA-Mask-Pseudo, MoCA-Mask, CAD2016) are third-party
+benchmarks not re-verified here; MoCA-Mask's non-commercial-leaning licence
+status is already on record from this log's 2026-08-15 SLT-Net entry.
+
+**Which failure mode.** Camouflage.
+
+**Why it helps this model specifically — it doesn't, and that's the useful
+part of checking it.** This is the same category this log already closed
+with the 2026-08-15 SAM-PM entry ("rules out foundation-model VCOD as a
+category for this deployment target") and the 2026-08-29 Vcamba entry
+("unlicensed and CUDA-kernel-locked") — worth the one additional check
+because CamSAM2's mechanism (freeze a large pretrained video foundation
+model, bolt on small trainable modules) differs from either of those, and
+it's a newer, more cited result (NeurIPS 2025 main conference, not a
+workshop). The answer comes out the same way again: it needs the SAM2
+Hiera backbone (even "tiny"), CUDA 11.8+/multi-GPU training infra, and has
+no licence grant for its own novel contribution — none of which changes for
+being a stronger paper. A third structurally-different foundation/attention
+-heavy VCOD mechanism landing on the same two blockers (licensing, compute)
+makes this a safe generalization rather than one paper's quirk.
+
+**Effort vs. payoff.** Low effort (one repo file-listing fetch, one README
+fetch, both direct, no blocked hosts). Payoff is explicitly closing, not a
+new lead: it gives the model nothing to use, but it does retire "check the
+next foundation-model VCOD paper" as a worth-recurring search target for
+this log. Future runs should deprioritize this specific sub-area unless a
+paper explicitly ships a small, licensed, CPU/NPU-viable distillation rather
+than a frozen SAM2 backbone.
+
+---
