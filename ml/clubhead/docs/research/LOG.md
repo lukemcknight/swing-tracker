@@ -12533,3 +12533,71 @@ needle, this is a dead end and should be marked ruled-out rather than
 re-tried.
 
 ---
+
+## 2026-10-17 (fourth run) — WOFTSAM / SAM-H: SAM2-guided re-detection after tracking loss (ECCV 2026), checked and ruled out on licence and task fit
+
+**Area covered.** Rotated into the "recovery after loss, not appearance or
+architecture" sub-category this log has used before (TrackNetV3's
+InpaintNet, 2026-08-17; OC-SORT, 2026-08-26) — adjacent to bullet 3 (small/
+low-contrast object detection) since camouflage's defining symptom here is
+zero candidate detections, which recovery mechanisms address directly
+without needing the model to see the object at all on the failing frame.
+Chosen specifically because its re-detection mechanism (SAM2-mask-guided
+homography, not a Kalman filter or trajectory interpolation) is a third,
+structurally different approach to the same recovery problem, not a repeat
+of either prior entry.
+
+**What it is.** "Segmentation-Guided Homography Estimation for Long-Term
+Planar Tracking" (Šerych & Matas, Czech Technical University, ECCV 2026)
+proposes two trackers: SAM-H, which estimates a target's homography by
+running Meta's SAM2 video segmentation on it and fitting a homography to
+the resulting mask's contour each frame, and WOFTSAM, which extends an
+existing optical-flow-based tracker (WOFT, built on a modified RAFT) by
+calling SAM-H to re-detect the target after the flow tracker loses it.
+Benchmarks are POT-210, PlanarTrack, and MPOT-3K — all **planar**-object
+tracking benchmarks (the README's own term); no small, fast, or non-planar
+object category is mentioned anywhere in the repo.
+
+**URL.** https://github.com/serycjon/WOFTSAM — fetched directly (file
+listing and README both real and substantive: `demo.py`, `experiments/`,
+`evaluation/`, `configs/`, `src/flatsam`, `pyproject.toml`, working install
+steps). Weights: the SAM2.1 Hiera-tiny checkpoint is a separate download
+from Meta; the repo's own trained weights directory exists in the listing
+but its contents weren't inspectable from the fetch. Datasets (POT-210,
+PlanarTrack, MPOT-3K) are third-party and not bundled.
+
+**Licence.** Confirmed from the README's own License section: "This work
+is licensed under the Attribution-NonCommercial-ShareAlike 4.0
+International license" (CC BY-NC-SA 4.0). **Commercial use: NOT
+permitted.** One carve-out: `src/flatsam/woft_stuff/raft_core` is a
+modified copy of RAFT under BSD-3-Clause — but `weighted_raft.py` inside
+that same directory is explicitly re-licensed back to CC BY-NC-SA 4.0, so
+the carve-out doesn't actually free any of the tracking-specific code.
+
+**Which failure mode.** Camouflage (as a recovery mechanism for the
+zero-detection symptom). Not motion blur — the README never mentions blur,
+and nothing in the described mechanism (contour-fitting a homography)
+engages with blur at all.
+
+**Why it doesn't help this model — two independent dead ends, not one.**
+First, the licence (CC BY-NC-SA 4.0, no commercial grant) is the same
+blocker this log has hit repeatedly. Second, and more fundamental even if
+the licence were clear: SAM-H's re-detection assumes the target is a
+**planar** surface with a roughly fixed, segmentable shape frame-to-frame
+(its own benchmarks are things like book covers and signs) — a golf
+clubhead is a small, rigid 3D object that rotates through impact and, in
+the blur failure mode specifically, has no stable segmentable silhouette
+at all (that's what a motion-blur streak is). So this would be a poor
+mechanism fit for the blur failure mode even on a hypothetical commercial
+licence, and for camouflage it inherits every drawback the already-logged
+SAM2-backbone entries (SAM-PM, CamSAM2) have: a heavyweight foundation-
+model backbone wholly unsuited to an on-device YOLO11n nano detector.
+
+**Effort vs. payoff.** Low effort to check (one repo fetch, one README
+fetch, both direct, no blocked hosts). Payoff is purely a closing one: it
+retires "SAM2-guided re-detection/homography trackers" as a sub-area worth
+re-checking for this project, on two independent grounds (licence, task
+fit) rather than one, which makes the negative result sturdier than most
+single-blocker dead ends already in this log.
+
+---
