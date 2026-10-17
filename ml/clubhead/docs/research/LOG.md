@@ -12448,3 +12448,88 @@ paper explicitly ships a small, licensed, CPU/NPU-viable distillation rather
 than a frozen SAM2 backbone.
 
 ---
+
+## 2026-10-17 (third run) — Weighted Boxes Fusion over per-frame test-time augmentation: an inference-time lever for both failure modes, not yet a specific published result
+
+**What it is.** `ZFTurbo/Weighted-Boxes-Fusion` (PyPI package `ensemble-boxes`)
+is a general-purpose library implementing NMS, Soft-NMS, Non-Maximum
+Weighted, and Weighted Boxes Fusion (WBF) — methods for merging the
+bounding-box predictions of several independent inference passes into one
+consensus set, rather than picking a single pass's output. It is normally
+used to ensemble *different models'* predictions (its README's stated
+use case), but it works on any set of box lists with per-box scores, which
+is the mechanism this entry proposes repurposing: run the **same** YOLO11n
+model multiple times per frame, each time on a differently preprocessed
+copy of that one frame, then fuse the resulting box lists with WBF instead
+of committing to one preprocessing choice.
+
+Concretely: for a frame that the live pipeline already flags as
+low-confidence or zero-detection, run inference again on (a) a
+contrast/gamma-boosted copy (targets camouflage — dark head against dark
+clothing/foliage is fundamentally a dynamic-range problem), and (b) a
+sharpened/unsharp-masked copy (targets blur — cheap classical sharpening,
+not a learned deblur network). WBF-fuse all boxes from the original frame
+plus both variants. This is **not** a published paper or an off-the-shelf
+system for this exact use — I built this proposal myself from two
+separately real, separately verified building blocks (WBF as a library; the
+well-established general technique of test-time augmentation). I am
+flagging that distinction clearly so this doesn't get mistaken for a
+verified published result the way most other entries in this log are.
+
+**URL.** https://github.com/ZFTurbo/Weighted-Boxes-Fusion — fetched
+directly. Confirmed real: ~94 commits, ~1.8k stars, 37 open issues, a
+LICENSE file present, and variants beyond plain 2D boxes (3D, 1D, rotated,
+quadrangle) suggesting ongoing maintenance. Installable today via
+`pip install ensemble-boxes`.
+
+**Licence.** MIT (license file confirmed present in the repo; exact text
+not re-quoted here beyond the name since the fetch tool could not return
+more than a short excerpt). **Commercial use: permitted.**
+
+**Which failure mode.** Both — by construction, since the two TTA variants
+are chosen one per failure mode, but this is an inference-time mitigation,
+not a model fix. It does not make the model better at either problem; it
+gives frames a second and third chance under conditions more favorable to
+whichever problem is present, and only adds candidate boxes (never removes
+a box the unmodified frame already found), so the downside risk if the
+fused result is wrong is bounded to "no improvement," not "regression,"
+*provided* the fusion weights are tuned conservatively — an unverified
+assumption, not something I could test without the actual model and test
+clips.
+
+**Why it helps this model specifically, with real caveats.** The failure-
+analysis finding that camouflaged frames produce zero candidate detections
+even at confidence 0.05 means there is nothing in the original frame's
+confidence distribution to threshold or NMS around — the fix has to come
+from giving the model a *different input*, not a different post-processing
+rule on the same input. Classical contrast/gamma correction and sharpening
+are cheap (no training, no new data, no architecture change) and
+orthogonal to every data-engine and architecture fix already logged here.
+But: (1) this is an **inference-cost multiplier** — 3x forward passes per
+frame instead of 1 — and this log has no verified figure for whether the
+app's actual per-frame processing budget (live AR overlay vs. post-hoc
+clip analysis — the README doesn't say which) tolerates that; if it's a
+live real-time overlay rather than a short post-swing analysis pass, 3x
+cost on a phone NPU may simply not fit. (2) WBF's fusion quality depends on
+tuning (IoU threshold, per-pass confidence weighting) that would need to be
+done empirically against this project's own 3-clip test set and camouflage
+failure cases specifically — I have no evidence this helps *this* model
+beyond the general plausibility argument above. (3) Picking "gamma boost"
+and "unsharp mask" as the two TTA transforms is my own reasoning by
+analogy to the two named failure modes, not a tuned or published choice;
+a real implementation would need to sweep transform strength and verify on
+held-out camouflaged/blurred frames before trusting it.
+
+**Effort vs. payoff.** Low-to-medium effort to prototype (the library is a
+one-line pip install; the TTA transforms are a few lines of OpenCV; no
+training, no new data, no licensing risk). Payoff is genuinely uncertain
+and this entry should be read as "worth a half-day experiment on the
+existing 3-clip test set," not as a recommended fix — it is the cheapest
+item logged in a while precisely because it requires no new data and no
+retraining, which also means it's the fastest to falsify: run it against
+the test set's known-camouflaged frames and see whether any of them flip
+from zero detections to a real one. If that experiment doesn't move the
+needle, this is a dead end and should be marked ruled-out rather than
+re-tried.
+
+---
