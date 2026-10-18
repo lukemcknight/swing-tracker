@@ -12687,3 +12687,105 @@ smaller-than-S checkpoint, or a CoreML export someone else has already
 done).
 
 ---
+
+## 2026-10-18 (second run) — SLoDA: real-mask stick-injection augmentation for a thin, fast, broadcast-sports implement (Chomko, U. Waterloo MASc thesis, Sept 2025) — existence-confirmed, no code found
+
+**Area covered.** Rotated to "ways to synthesise or augment training data,"
+specifically a fourth synthesis *mechanism* distinct from the three already
+logged (3D procedural render: BlenderProc/Kubric; static-image inpainting/
+generation: CamDiff, Copy-Paste, "Preserve the Hard, Regenerate the Rest";
+whole-video diffusion: Wan2.2) and from the frame-averaging family (the
+2026-08-12 entry, RSBlur, iPhoneBlur, GoPro/REDS). Grepped the full log
+first for "SLoDA", "SLDA", "Chomko", and "hockey" — zero hits. Also checked
+and ruled out as a path: the Unity Perception package (Apache-2.0, but the
+`Unity-Technologies/com.unity.perception` repo and its `SynthDet` sample
+are both explicitly marked discontinued/archived by Unity, read directly
+off the GitHub repo pages) and Unity-rendered synthetic sports data
+generally (searched for a Unity+motion-blur+sports-detection combination;
+the only real published match, SoccerSynth-Detection, is Unreal-Engine-
+based and already logged here on 2026-09-06).
+
+**What it is.** A University of Waterloo MASc thesis, "Computer Vision in
+Ice Hockey: Realistic Stick Augmentation and Virtual Game Reconstruction"
+(Vasyl Chomko, submitted September 2025, held at UWSpace, item id
+`1fec81cb-a8b7-477a-bc70-a2bab8a6467d`; the method is named "SLDA" in the
+thesis record and "SLoDA" in a March 2025 VIP-lab seminar abstract by the
+same author at `vip.uwaterloo.ca`, same description, same author — treated
+as the same project under two spellings). The technique: segment real
+hockey-stick masks out of broadcast footage, then paste them into other
+broadcast frames with context-aware transforms — motion blur, geometric
+scaling, and lighting adjustment matched to the destination frame — as an
+*instance-level* augmentation that leaves the rest of the scene untouched.
+Per the abstract, this targets exactly the failure pattern it names: motion
+blur and occlusion make a hockey stick (long, thin, fast-moving) hard to
+segment, and labeled data for it is scarce. Reported result, on the
+author's own ~4,000-annotation stick set: up to +5.8% mAP@50 and +4.0%
+F1 over strong baselines, concentrated on occluded and fast-moving sticks.
+A companion piece of the same thesis — a Unity-based 3D hockey simulator
+that replays real game coordinate data into multi-view synthetic video with
+ground-truth labels — is explicitly flagged in the abstract itself as not
+yet quantitatively evaluated, so it is not logged as a finding here, only
+mentioned for completeness.
+
+**Which failure mode.** Motion blur, primarily and directly — the transform
+pipeline composites real motion-blur appearance onto the pasted instance,
+which is a cheaper, real-blur-statistics alternative to this log's
+synthetic-PSF and frame-averaging blur-synthesis entries (no averaging
+rig or high-fps capture needed, just footage with any already-blurred
+stick instances to harvest masks from). Occlusion, which the thesis also
+targets, is a related but genuinely different problem from this project's
+camouflage failure mode (zero detections from background similarity, not
+from another object blocking the view) — it is not logged as a camouflage
+finding, and this entry does not claim it is one.
+
+**Why it's a real but narrow fit.** A hockey stick is the closest
+structurally-analogous object this log has found to a golf clubhead inside
+the "injected real masks" category specifically: long, thin, no fixed
+aspect ratio, moves fast enough to blur in ordinary broadcast capture, and
+sparse in existing labeled data — the same three properties the project's
+own labeling-spec elongation numbers describe for the clubhead. Unlike the
+2026-08-14 Copy-Paste entry (Ghiasi et al.), which pastes arbitrary
+segmented *instance-segmentation* objects for general augmentation with no
+sport-specific or blur-specific framing, SLoDA's pipeline is purpose-built
+around exactly this project's two open problems (scarce blur examples,
+scarce labeled instances of a thin fast implement) and reports a
+quantified, non-trivial gain on the fast/occluded subset specifically. The
+mechanism — harvest real blurred masks from existing footage, composite
+onto new backgrounds with matched scale/lighting — is directly portable:
+this project already has outdoor clips with some blurred clubhead
+instances to harvest from (the labeling spec's own motion-blur convention
+means any already-labelled blurred box is a usable source mask), and the
+compositing step needs no new capture at all.
+
+**Honest caveat.** Every uwaterloo.ca domain (`vip.uwaterloo.ca`,
+`uwspace.uwaterloo.ca`, `openjournals.uwaterloo.ca`) returned `getaddrinfo
+ENOTFOUND` in this sandbox — the thesis, its abstract, and any license or
+code-availability statement were read only via web-search result
+summaries, not fetched directly, despite being corroborated across two
+independent pages (the seminar listing and the UWSpace catalog record,
+same author, same method, consistent description) rather than a single
+source. No GitHub repo, code release, or dataset download was found
+anywhere in the search results; this appears to be a thesis-only result
+with no shippable artifact, which is why nothing here is a licence
+clearance — there is no code or data to clear a licence for. What is
+reusable without needing anyone else's licence is the *technique itself*
+(real-mask harvest + context-aware blur/scale/lighting composite), since
+reimplementing a described augmentation pipeline from a public abstract,
+rather than reusing someone else's code or model weights, raises no
+licensing question for this project.
+
+**Effort vs. payoff.** Low effort to adopt the idea (no new paper to read
+in depth, no code to port — it is a compositing recipe this project could
+implement directly against its own existing footage and labels), but
+correspondingly low-confidence payoff: the reported +5.8%/+4.0% numbers are
+hockey-specific, unreplicated by anyone outside that one thesis, and this
+entry could not verify them against primary-source detail (dataset split,
+statistical significance, exact baseline). Worth a half-day prototype —
+harvest a handful of already-blurred clubhead masks from the existing
+outdoor clips, composite them onto other frames with blur/scale/lighting
+matched to the destination, retrain, and check the blur-specific slice of
+the eval set — before investing further; this is a cheap way to test
+whether the elongation-statistics gap closes at all, not a result to bank
+on sight-unseen.
+
+---
