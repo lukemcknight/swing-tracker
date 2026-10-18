@@ -12601,3 +12601,89 @@ fit) rather than one, which makes the negative result sturdier than most
 single-blocker dead ends already in this log.
 
 ---
+
+## 2026-10-18 — TinyFormer (May 2026): a YOLO-DETR hybrid with two new tiny-object-preservation modules, real Apache-2.0 code, but a parameter/FLOPs profile that rules it out as a drop-in for this model
+
+**Area covered.** Rotated into "techniques for detecting small, low-contrast
+… objects" — specifically the architecture sub-category, not the temporal/
+motion sub-category this log has leaned on heavily in recent runs (CamSAM2,
+WOFTSAM, WBF+TTA). Chosen because its two named mechanisms (a fusion module
+and a semantic adapter aimed at preserving small objects' fine-grained
+spatial detail through the backbone) are structurally different from every
+small-object fix already logged here — P2 detection head (2026-08-23 fourth
+run), NWD loss (2026-08-27 second run), YOLO12's Area Attention (2026-08-30),
+MS-YOLOv11's wavelet/frequency-domain approach (2026-08-29), and the
+MSEAF/ScalCat/SRepD recipe (2026-09-01) are all either loss functions, extra
+heads, or frequency-domain tricks — none of them touch the backbone's
+feature-fusion path the way this paper does. Confirmed by `grep`-ing the
+full log for "TinyFormer", "Bi-fusion", "Spatial Semantic Adapter", and
+"DEIM": none appear before this entry (DEIM itself is only mentioned once,
+in passing, as JFD3's non-core dependency — 2026-08-27 first run).
+
+**What it is.** "TinyFormer: Preserving Tiny Objects in YOLO-DETR Hybrid
+Real-time Detectors" (Hsieh, Kao, Kurniawan & Peng; arXiv:2605.25046,
+submitted 24 May 2026) is a real-time detector built on the DEIM/DEIMv2
+lineage (NMS-free set prediction + a YOLO-style pyramid neck, like RF-DETR
+and D-FINE already logged here) that adds two new components aimed
+specifically at small/tiny objects: a **Parallel Bi-fusion Module (PBM)**
+and a **Spatial Semantic Adapter (SSA)**, which the README describes as
+jointly preserving fine-grained spatial information that would otherwise be
+lost through the backbone's downsampling — precisely the mechanism behind
+this model's "zero candidate detections" camouflage symptom (a small,
+low-contrast clubhead's few activating pixels getting diluted away before
+the detection head ever sees them). It is benchmarked on COCO and on
+VisDrone2019, a small/tiny aerial-object-in-clutter dataset this log has
+cited before (MS-YOLOv11, ATDIoU) as the closest public proxy for "small
+object against a busy background."
+
+**Verification.** The GitHub repo
+(`github.com/mmpmmpmmpjosh/TinyFormer`) was fetched directly and is real:
+14 commits, 18 stars, 4 forks, a substantive README, and actual code
+(`train.py`, `configs/`, `engine/`, `tools/`, `requirements.txt`,
+`LICENSE`). The `LICENSE` file itself was fetched directly (raw file, not a
+search summary) and is the **Apache License, Version 2.0** — commercial
+use is permitted, consistent with the DEIM lineage it's built on (DEIM
+itself is also Apache-2.0, per the 2026-08-27 JFD3 entry). The README's own
+reported numbers (not an abstract-only claim) give, for the smallest PBM
+variant: TinyFormer-S-PBM — 51.5 AP (COCO), 10.8M params, 32.6 GFLOPs,
+2.36ms latency on an RTX 3090 (batch 1, FP16, TensorRT 10.14.18); larger
+variants scale up to 125.5M params / 437.9 GFLOPs. VisDrone2019 AP across
+PBM variants runs 28.9–34.7, with no tiny-object-specific (vs. whole-dataset)
+breakdown given in the README itself.
+
+**Which failure mode.** Camouflage / small-object, by the paper's own
+framing (VisDrone is a clutter-and-small-object benchmark, not a blur one).
+Motion blur is not mentioned anywhere in the README; the paper's "video
+inference supported" claim is about accepting `.mp4` input for single-frame
+detection, not about temporal or blur-aware processing, so it adds nothing
+to the blur failure mode.
+
+**Why it mostly doesn't help this model.** The smallest released variant
+(10.8M params, 32.6 GFLOPs) is roughly 4x YOLO11n's parameter count and
+several times its typical nano-scale GFLOPs, and every benchmark in the
+README is measured on a desktop RTX 3090 via ONNX/TensorRT — there is no
+CoreML, no on-device, no mobile-NPU numbers anywhere in the repo, the same
+gap this log has flagged repeatedly for other architecturally-promising but
+desktop-benchmarked papers (RF-DETR, D-FINE, MS-YOLOv11's enhanced-YOLO11n
+family). Reusing the *whole* TinyFormer model is not viable at this
+project's deployment budget. What's left as a real option is narrower:
+lifting just the PBM/SSA fusion idea into YOLO11n's own neck, the same way
+the P2-head and NWD-loss entries proposed targeted, scaled-down borrowing
+rather than wholesale architecture swaps — but that is unverified
+engineering work this entry does not do, and the paper gives no evidence
+the two modules retain their benefit at 4x-smaller scale.
+
+**Effort vs. payoff.** Low-to-medium effort to verify (one repo fetch, one
+raw LICENSE fetch, both direct). Payoff is modest and mostly it is a
+negative-with-a-narrow-opening result: ruled out as a drop-in architecture
+for the same capacity-mismatch reason several prior entries hit, but it
+does add one specific, scoped idea (PBM/SSA as a neck-level fusion
+mechanism, distinct from every fusion/attention mechanism already logged)
+that would be worth a half-day spike of porting into YOLO11n's neck at
+native nano scale *if* a future run runs out of cheaper levers first — it
+should not be adopted wholesale, and this log should not re-check TinyFormer
+itself again without a materially different question (e.g. a released
+smaller-than-S checkpoint, or a CoreML export someone else has already
+done).
+
+---
