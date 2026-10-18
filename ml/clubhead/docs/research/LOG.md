@@ -12789,3 +12789,102 @@ whether the elongation-statistics gap closes at all, not a result to bank
 on sight-unseen.
 
 ---
+
+## 2026-10-18 (third run) — EventVCOD: SAM2 + motion-compensated polarity-event encoding (AAAI 2026), real code but no enforceable licence despite the README's Apache-2.0 claim
+
+**Area covered.** Bullet 3 (small/low-contrast/camouflaged object detection,
+temporal methods). Chosen deliberately over bullet 2 (motion blur), which
+the immediately preceding run (SLoDA) just covered, and over bullet 1
+(datasets): a fresh dataset sweep this run (Roboflow Universe's
+`clubheadtrack`/SwingFeed listing, plus a GitHub search for an MIT-licensed
+clubhead dataset) hit the same standing `universe.roboflow.com`/
+`roboflow.com` `EGRESS_BLOCKED` wall every prior run has hit, and surfaced
+nothing beyond ClubheadDB (CC BY-NC 4.0, already logged repeatedly) and
+generic Roboflow Universe pages with no license/content visible from search
+snippets alone — so this run pivoted to a technique search instead.
+
+**What it is.** "Towards Explainable Video Camouflaged Object Detection:
+SAM2 with Eventstream-Inspired Data" (Zhang, Lyu et al., Beihang University,
+AAAI 2026, `ojs.aaai.org/index.php/AAAI/article/view/38245`). The idea:
+convert ordinary RGB video into an event-camera-style signal — not captured
+by a real event sensor, synthesized from frame differences — and feed that
+alongside RGB into a fine-tuned SAM2 to supply an explicit temporal-motion
+cue, the same "motion breaks camouflage" premise behind this log's
+already-logged CamSAM2, Vcamba, and MIE entries, but via a different
+encoding and a different backbone.
+
+Code is real and substantial, verified directly on GitHub
+(`github.com/lyu-yx/EventVCOD`, 363 commits, populated `sam2/`, `training/`,
+`datasets/`, `eval/`, `data_manipulate/` directories, `train.py`/`test.py`
+present — not a placeholder). Two different event-generation scripts exist
+in `data_manipulate/`, and they are **not the same mechanism**:
+- `eventgemerate.py`'s `generate_event_data()` is just unsigned
+  `torch.abs(frame_diff)`, thresholded or not — functionally identical to
+  the frame-differencing core of this log's already-logged MIE entry
+  (2026-08-18), with no polarity split and no accumulation.
+- `eventflow-like_gen.py`'s `generate_event_data()` is a genuinely different
+  mechanism: it first compensates global camera motion (ORB keypoints +
+  RANSAC homography) between consecutive frames, *then* computes
+  `cv2.subtract(current, prev)` and `cv2.subtract(prev, current)` separately
+  (so brightening and darkening go to distinct positive/negative maps),
+  each independently thresholded (threshold=50 in the caller). This is the
+  one that matches the README's "positive/negative polarity" description.
+
+**Which failure mode.** Camouflage — same category as MIE, CamSAM2, Vcamba.
+Not motion blur: a signed-difference-after-motion-compensation map doesn't
+represent or box an elongation streak any more usefully than a plain
+difference map would.
+
+**Why the motion-compensation step matters for this model specifically.**
+MIE's own caveat #2/#3 (logged 2026-08-18) flagged that MIE's naive
+`absdiff` has no defense against camera shake — a handheld-phone-shot swing
+video's background motion would pollute the motion channel with
+camera-motion signal indistinguishable from object motion, precisely the
+regime this app's footage lives in (handheld phone, not a static-mounted
+camera trap like MIE's insect dataset). `eventflow-like_gen.py`'s
+ORB+RANSAC global-motion compensation step is a direct, generic, licence-
+clean fix for exactly that open question: compensate the frame pair for
+camera motion before differencing, so static background cancels out and
+only genuine object motion (plus residual compensation error) survives in
+the signed map. It is standard OpenCV (ORB, `findHomography`,
+`warpPerspective`) — a well-known, non-original technique fully
+reimplementable from this description without touching the repo's own
+code, the same stance this log already took on MIE's GPL-3.0 code.
+
+**Licence — a real, concrete problem, not a copy of a prior finding.** The
+README states "This project is licensed under the Apache License 2.0 - see
+the LICENSE file for details" and the badge links to `/blob/main/LICENSE`.
+Checked directly: **no `LICENSE`, `LICENSE.md`, or `LICENSE.txt` file
+exists anywhere in the repo root** (confirmed via the GitHub file-tree
+listing for `main`, and `raw.githubusercontent.com/.../LICENSE` 404s on
+both `main` and the attempted alternate path). GitHub's own repo sidebar
+correspondingly shows no "License" entry at all — GitHub only populates
+that badge when it detects an actual license file, and it didn't detect
+one here. **The badge and README sentence are simply false as the repo
+currently stands.** Absent a real license file, the repo's code defaults to
+full copyright reservation by the authors regardless of what the README
+claims — commercial (or any) reuse of the actual `sam2/`, `training/`, or
+`data_manipulate/` source is not permitted without contacting the authors
+directly. This is a different, newly-checked instance of this log's
+recurring "verify claims, don't trust the README" pattern (distinct from
+the 2026-09-08 VCP-DCN code-availability debunking and the 2026-08-17
+GolfPose licence-fixed update — this one goes the opposite direction, a
+claimed-permissive licence that isn't actually there).
+
+**Effort vs. payoff.** The reusable part — ORB+RANSAC motion compensation
+before a signed frame-difference, as a camera-shake-robust upgrade to the
+already-logged MIE channel-recolor idea — is low effort (a few dozen lines
+of standard OpenCV, no code to license-clear, no SAM2 backbone needed) and
+plausibly real payoff for this model's handheld-camera regime specifically,
+since it fixes the exact caveat MIE's own entry flagged as open. The
+SAM2+explainability half of the actual paper is not a fit: same deployment
+mismatch already established for CamSAM2/WOFTSAM (foundation-model
+segmentation backbone, no path to an on-device YOLO11n nano detector), so
+it adds no new option there. Recommended next step, if MIE's cheap
+same-week spike (already recommended 2026-08-18) gets attempted: swap its
+naive `absdiff` for a from-scratch ORB+RANSAC-compensated signed-difference
+version before concluding MIE "doesn't help," since handheld camera shake
+is a specific, plausible reason a naive version could fail where a
+motion-compensated one wouldn't.
+
+---
