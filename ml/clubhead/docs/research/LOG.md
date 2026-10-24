@@ -87,3 +87,89 @@ dataset-sourcing research area for this entry.
   citation is a placeholder for an unpublished/anonymous workshop
   submission, so there's no independent review of label quality — spot-check
   before trusting it even for the offline experiment.
+
+---
+
+## 2026-10-24 (second run) — BlurBall / WASB-SBDT: blur-aware heatmap tracking instead of box-IoU detection
+
+Rotated to the motion-blur / small-object-tracking research area (dataset
+sourcing is covered by the entry above; don't repeat it).
+
+**What it is:** *BlurBall: Joint Ball and Motion Blur Estimation for Table
+Tennis Ball Tracking* (Gossard, Radovic, Ziegler, Zell — Uni Tübingen,
+partial Sony AI funding), arXiv 2509.18387, also at CVPR Workshops 2026
+(CVSports). It tracks a small, very fast, frequently blurred ball (table
+tennis) by regressing a per-frame heatmap of ball location *plus* an
+explicit blur vector (orientation + half-length of the motion streak) as a
+second output, over a short window of consecutive frames with
+Squeeze-and-Excitation attention across the frame stack. It builds on
+**WASB-SBDT** ("Widely Applicable Strong Baseline for Sports Ball
+Detection and Tracking," Tarashima et al., BMVC 2023, arXiv 2311.05237),
+an HRNet-based multi-frame heatmap tracker already shown to generalize
+across several ball sports.
+
+**URLs:**
+- Paper: https://arxiv.org/abs/2509.18387 (found via web search; arxiv.org
+  itself is denied by this session's network policy — confirmed via the
+  agent-proxy status endpoint — so the paper's full text was read only via
+  search-result summaries, not fetched directly).
+- BlurBall project/dataset page: https://cogsys-tuebingen.github.io/blurball/
+  — exists per search results (project page + per-video CSVs of ball
+  position and blur orientation/half-length), but **could not be fetched**
+  this run (`github.io` is also denied by network policy, `getaddrinfo
+  ENOTFOUND`). BlurBall's own code release status is therefore
+  **unconfirmed** — don't assume it's downloadable until someone checks
+  from an unrestricted network.
+- Base code (independently fetched and confirmed): https://github.com/nttcom/WASB-SBDT
+  — real, public, MIT-licensed (`LICENSE.md`), 201 stars / 40 forks. Has a
+  Dockerfile, `GET_STARTED.md`, and a `MODEL_ZOO.md` with pretrained
+  weights for evaluation. Whether full *training* code (not just eval of
+  pretrained models) is included wasn't independently confirmed — check
+  `src/` before committing effort.
+
+**Licence:** WASB-SBDT is **MIT — commercial use permitted**, verified by
+fetching the repo directly. BlurBall's own licence is unknown (page
+unreachable this run); its dataset is table-tennis-specific anyway, so it
+isn't a training-data candidate for this project regardless of licence —
+the value here is the *method*, not their data.
+
+**Which failure mode: motion blur, primarily** (with a secondary tie to
+camouflage via its multi-frame design). This is directly relevant to the
+diagnosed blur-labeling problem in this repo's `docs/labeling-spec.md`:
+annotators are told to box the full motion-blur streak, but boxes come out
+near-square anyway (per the brief's elongation stats) because drawing a
+tight, consistent box around a smeared streak is a genuinely hard manual
+task — people default to a box around the visible "core." BlurBall's
+approach sidesteps that labeling problem entirely: instead of asking for
+one box that has to simultaneously encode position *and* blur extent,
+it labels and predicts **center position and blur vector as separate
+targets**. That's an easier, more consistent thing for a human to label
+(mark the streak's center, then draw a line along its length) and a more
+natural thing for a network to regress than box corners. The multi-frame
+input also directly targets **camouflage**: a static dark clubhead against
+dark clothing/foliage has near-zero single-frame signal (hence the
+brief's zero-candidate-at-0.05-confidence failures), but it still *moves*
+frame to frame, which a heatmap tracker conditioned on a short frame stack
+can exploit in a way a single-frame YOLO detector structurally cannot.
+
+**Effort vs. payoff:** High effort, uncertain-but-potentially-high payoff
+— this is an architecture swap, not a tweak. Moving from single-frame
+YOLO11n box detection to a multi-frame heatmap tracker means: a different
+training pipeline, different label format (center + blur vector instead of
+xyxy boxes — would need re-deriving labels from the existing box
+annotations, not a full re-label), and an unproven CoreML export/on-device
+latency path (YOLO11n→CoreML is working today per this repo's README;
+HRNet-based multi-frame models are heavier and the multi-frame input
+changes the on-device buffering story — nothing here confirms it would
+still hit real-time on an iPhone). Don't start a rewrite on this alone.
+What's cheap to try first: (1) adopt WASB-SBDT/BlurBall's blur-vector
+*labeling convention* for a small re-labeled subset to see if it's more
+consistent across annotators than box-elongation, without changing the
+model yet; (2) read WASB-SBDT's actual multi-frame heatmap loss and see if
+a lightweight auxiliary blur-vector head could bolt onto the existing
+YOLO11n backbone instead of a full architecture swap. Both are
+order-of-a-day spikes; the full tracker swap is not. As with the first
+entry in this log: this is still aimed at a problem (blur) that hasn't
+been measured indoors yet, so treat it as a candidate to revisit once
+real indoor/low-light clubhead footage actually shows blurred failures,
+not as something to build against today's camouflage-only evidence.
