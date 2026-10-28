@@ -13452,3 +13452,107 @@ motion-compensated one wouldn't.
 3. **Sport motion-blur augmentation search** — surfaced BlurBall, the Rozumnyi FMO lineage, and the Aakanksha/IIT-Madras thesis, all already logged (2026-08-16, 2026-08-20/09-13/10-26 (fourth run), 2026-10-24 (second/third run) respectively); the 2026-10-24 entry already explicitly recommends future runs skip the Aakanksha thesis specifically unless new code/text surfaces, which it hasn't.
 
 **Effort vs. payoff.** Low-moderate effort (three searches, two live fetches, one documentation read). Zero new model-improvement payoff — sixth consecutive run with that outcome — but the network-policy fix is a real, concrete, previously-undiagnosed lever on *why* the rotation keeps dead-ending on unverifiable Roboflow/arXiv/academic-site leads. Escalating both standing issues (trigger cadence, network allowlist) to the user directly this run via push notification, since four-per-day log entries documenting them has not produced a fix in the 1.5 days since first diagnosis.
+
+---
+
+## 2026-10-28 — Knowledge-distillation deblurring subnet for small-object detection (YOLOv8-based)
+
+**What it is:** A published technique (not a dataset) for detecting small
+objects in motion-blurred frames: a teacher/student knowledge-distillation
+setup where a teacher network is trained on sharp images and a student
+network — built on a YOLOv8 detector plus a lightweight "deblurring subnet"
+with attention modules — is trained on *synthetically motion-blurred*
+versions of the same images, with the student distilling features from the
+teacher. At inference the student (detector + deblur subnet) runs alone, no
+separate deblur-then-detect pipeline or teacher network needed. Reported
+gains: +4.3% accuracy on a synthetic-motion-blur version of VisDrone and
++4.6% on synthetic blur applied to the authors' own small-object UAV dataset
+("SOD-Dataset").
+
+Paper: Jobaer, Tang, Zhang, Li, Ahmed — "A novel knowledge distillation
+framework for enhancing small object detection in blurry environments with
+unmanned aerial vehicle-assisted images," *Complex & Intelligent Systems*,
+published 2024-12-04. DOI: https://doi.org/10.1007/s40747-024-01676-w
+(article page: https://link.springer.com/article/10.1007/s40747-024-01676-w)
+
+**Licence:** Open access under **CC BY-NC-ND 4.0** (confirmed via the
+OpenAlex and DOAJ bibliographic records, which both list the article's
+license as `cc-by-nc-nd`). That licence governs redistribution of the
+*paper itself* (the PDF/text/figures) — it does not cover the underlying
+method. Algorithms and techniques described in a paper are not copyrightable
+in themselves (only the author's specific expression of them is, and no
+patent is mentioned anywhere I could find), so **re-implementing the
+described teacher/student distillation + deblur-subnet architecture in our
+own code for commercial use is not blocked by this licence.** What *would*
+be blocked is copying the paper's text/figures/PDF verbatim, or using any
+dataset of theirs that itself carries a non-commercial term (I found no
+public release of their SOD-Dataset or code — no GitHub repo under these
+author names turned up a code/data release, so this is a from-the-paper
+reimplementation, not a drop-in asset).
+
+**Failure mode addressed:** Motion blur (primary). Not camouflage.
+
+**Why it matters for this model specifically:** It is the first concrete,
+published technique I found that targets exactly our documented gap: a
+detector that has to find a small fast-moving object in a frame where the
+object itself is a motion-blur streak, built on the same YOLO lineage
+(YOLOv8) we're one version away from (YOLO11n). Two things line up neatly
+with our failure analysis:
+1. Their synthetic-blur generation step is a reusable recipe for turning our
+   existing *sharp*, near-square-labelled clips into genuinely blurred
+   training frames — directly answering the data-engine gap that median
+   labelled-box elongation is only 1.60 despite the labeling spec asking
+   annotators to box the full blur streak. We don't need new footage to try
+   this, only a blur-synthesis augmentation step on what we already have.
+2. The deblur subnet runs as part of the student network at inference, with
+   no separate preprocessing pass — this is the right shape for an
+   on-device, CoreML-exportable pipeline, unlike approaches that bolt a full
+   deblurring GAN in front of the detector.
+
+**Verification caveats (read before acting):** This session's network
+policy blocks direct fetches to link.springer.com, doi.org, api.openalex.org,
+proquest.com, and library.kab.ac.ug — I could not pull the primary PDF or
+read the full methodology myself. What's above is corroborated by multiple
+independent bibliographic sources converging on the same title, authors,
+DOI, venue, date, licence, architecture summary, and the two reported
+percentage gains (OpenAlex, DOAJ listing, X-MOL abstract, and the Springer
+search snippet all agree) — so I'm confident the paper exists, is real, and
+says roughly what's summarized above. But I have NOT independently read the
+attention-module design, the exact blur-kernel/synthesis parameters, or the
+baseline architecture details, and could not locate a code or dataset
+release to inspect directly. Treat the architecture summary as "verified to
+exist and roughly match this description," not "verified down to
+implementation detail."
+
+**Effort vs. payoff:** Medium-high effort, honestly — there is no code or
+dataset to drop in; this means reading the full paper (needs network access
+to Springer, or a university/library proxy) and reimplementing a
+teacher-student training loop, which is meaningfully more complex than our
+current single-model training pipeline. Payoff could be high *if* the blur
+hypothesis in the failure analysis is right (which is plausible but, per the
+caveat in our own failure analysis, unproven — our test set structurally
+can't surface blur failures). Recommended next step is cheap and doesn't
+require implementing the full distillation architecture: borrow just their
+blur-synthesis step, apply it to our existing sharp own-footage clips to
+generate elongated-box training examples, and see if that alone moves the
+needle before investing in the full teacher/student training setup.
+
+**Also checked and ruled out (saving a future run the trip):** GolfDB
+(https://github.com/wmcnally/golfdb, arXiv:1903.06528) — confirmed via its
+own GitHub README: "The code in this repository is licensed under a
+Creative Commons Attribution-NonCommercial 4.0 International License."
+Non-commercial, source videos are also uncleared YouTube content. Not usable
+for this product. Do not re-log this.
+
+---
+
+## 2026-10-28 (second run, branch-corrected) — No new verified finding; seventh consecutive — fresh Roboflow/freelance/Ultralytics leads all dead-end on already-known blocks
+
+**Process note.** This firing's canonical branch (`research/clubhead-2026-10-28`) was itself created from the raw `mvp/club-path-replay` tip instead of from `research/clubhead-2026-10-27-corrected-3`, so it carried only one entry and silently dropped this entire accumulated log — the eleventh+ recurrence of the branch-base bug this log has tracked since 2026-08-21 (root cause: the standing `23 */6 * * *` 6-hourly schedule, already diagnosed and escalated to the user on 2026-10-26/10-27). That branch's one entry — knowledge-distillation deblurring subnet for small-object detection (Jobaer, Tang, Zhang, Li, Ahmed, *Complex & Intelligent Systems*, 2024, DOI 10.1007/s40747-024-01676-w, CC BY-NC-ND 4.0 on the paper text only, re-implementation of the described method not blocked) — was genuinely new and not a duplicate of anything above; it has been copied forward verbatim into this corrected branch immediately above this entry so it isn't lost. Continuing the correct chain as `research/clubhead-2026-10-28-corrected`. The network-allowlist fix and trigger-cadence fix from the 2026-10-26/10-27 entries are still unresolved as of this run, but both are already fully diagnosed and escalated in this log and via push notification — not re-documenting them here, only this run's actual research attempts.
+
+**Research attempted this run, all negative.** Checked three leads, each against this log by grep first:
+1. **Roboflow Universe, indoor/simulator-specific sweep.** Searched specifically for workspace/account names suggesting simulator-bay capture (the task's top dataset priority, still unmet after 180+ entries). Surfaced two previously-unlisted slugs — `golfsimulator/golfclub-quclm` ("GolfClub", 2 classes, 201 views, 0 downloads, no published description, cited author "GolfSimulator" 2024) and the `golfprosimulator` workspace (several keypoint/posture projects — Abdomen/Chest/Head/Neck/Shoulders classes — not clubhead detection at all). Neither's licence, image count, nor actual indoor/low-light/blur content could be confirmed: `universe.roboflow.com` is still unreachable from this sandbox (`getaddrinfo ENOTFOUND`, the same block recorded continuously since 2026-08-13, independently reconfirmed this run). Per this log's own established bar (e.g. 2026-10-19/10-24/10-27), an unverifiable Roboflow listing behind this block is not logged as a finding. The `golfsimulator` slug's thin stats (0 downloads, no description, 2 classes) also make it a weak lead even once the block is lifted — logging this name so a future run with network access doesn't re-search for it, but not as a finding.
+2. **Freelance-portfolio lead.** A Contra (freelancer marketplace) listing, "Golf Swing Analyzer — AI-Powered Golf Club Tracking" by Valentin Vieux, claims YOLOv11 segmentation for club+head tracking. No GitHub repo, no code, no licence, no dataset — only a self-reported marketing description, unverifiable past the author's own claim (`contra.com` is also unreachable from this sandbox). Does not clear this log's "confirm the data/code is genuinely downloadable today" bar. Not logged as a finding.
+3. **Ultralytics releases.** Refetched `github.com/ultralytics/ultralytics/releases` live (reachable, unlike the above): still at **v8.4.191** (27 Oct), one version ahead of the 2026-10-27 (third run) check at the same tag — no new release since. v8.4.190 (26 Oct, confirmed already current as of the last check) and v8.4.191 remain export/NMS/RKNN-INT8 fixes with nothing touching motion blur, Albumentations, OBB-for-blur-elongation, P2/small-object heads, or camouflage. Consistent with prior runs' practice, not logged as a separate entry.
+
+**Effort vs. payoff.** Moderate effort (five searches/fetches across two blocked hosts and one reachable one). Zero new model-improvement payoff — the seventh consecutive run with that outcome in this log's most recent stretch. This confirms, rather than discovers, that the two already-escalated standing issues (6-hourly firing cadence outpacing genuinely-new verifiable research in this narrow domain, and the network allowlist blocking exactly the platform — Roboflow — this project already sources 54% of its training data from) are the binding constraints on this task's output right now, more than any remaining unsearched corner of the literature.
