@@ -13976,3 +13976,143 @@ Standard MIT, no additional restriction. **Commercial use is permitted.** The re
 **Effort vs. payoff.** Low-moderate effort (three `WebSearch` calls, two direct `WebFetch` reads of the GitHub README and LICENSE to verify first-hand, one blocked attempt to cross-check the Hugging Face model card). Low payoff as a standalone recommendation: it is genuinely new and the licence/existence claims are solidly verified, but it is dominated by the already-logged EdgeTAM on the one dimension (CoreML export) this project actually needs, so the honest recommendation is "keep EdgeTAM as the primary spike candidate; treat EfficientTAM as a fallback worth a second look only if EdgeTAM's own CoreML spike underperforms, and only after someone independently confirms whether EfficientTAM's "10+ FPS on iPhone 15" figure was ever actually measured through a CoreML export rather than assumed." Logged mainly so a future run doesn't re-spend a cycle rediscovering it and over-stating it as a fresh alternative to EdgeTAM without this caveat attached.
 
 **Consolidated notification sent this run (not a new finding, a process action).** Per the process note above, a single push notification is being sent covering both standing environment bugs (6-hourly trigger cadence since 2026-08-12, never fixed; egress allowlist blocking `arxiv.org`/`huggingface.co`/`universe.roboflow.com`/`*.github.io`/`wikipedia.org` since at least 2026-08-21, now confirmed broader than previously documented) and a recommendation that, given this log's size (200 entries) and the rising rate of "no new finding" / "existence-only, no code" / "licence-blocked" runs relative to usable results, the user consider either fixing both environment issues or pausing this scheduled task and converting its short list of already-actionable leads into real implementation work instead of continuing broad web search at the current (effectively 4x-daily) cadence.
+
+---
+
+## 2026-11-03 — ClubheadDB (PyPI/GitHub) — verified, but not usable for this product
+
+**Process note (branch continuity).** This entry was originally pushed on a
+stray `research/clubhead-2026-11-03` branch cut directly from
+`mvp/club-path-replay` instead of from this log's chain tip
+(`research/clubhead-2026-11-02-corrected-3`) — the same recurring
+branch-base bug this log has tracked since 2026-08-12, caused by the
+standing trigger cadence bug (`trig_01RAGReowhpJf3BCRtRvGD7m`, still
+`23 */6 * * *`, still `created_via: "http_api"` so unfixable by an agent;
+most recently escalated to the user in the 2026-11-02 fourth-run
+consolidated notification). The entry below is genuinely new and not a
+duplicate of anything above, so it is copied forward verbatim into this
+corrected branch rather than lost, per this log's established practice.
+
+**What it is:** `ClubheadDB` is a reproducible-dataset package (not a direct
+download — it's a build pipeline): `pip install clubhead-db` then run
+`clubhead-build`, which uses `yt-dlp` to re-download the source clips and
+`ffmpeg` to extract frames, then writes YOLO-format single-box clubhead
+labels (empty `.txt` for null/no-clubhead frames — same convention as this
+repo's negative-frame handling). Per its own README: 10,180 annotated
+frames, 67+ golfers (42% pro / 58% amateur), down-the-line angle only,
+clubs mixed irons 70% / drivers 27% / woods 3%, sourced 46% YouTube / 54%
+Reddit.
+
+**URLs:**
+- Package (verified live, real wheel + sdist on PyPI today):
+  https://pypi.org/project/clubhead-db/
+- Claimed homepage (checked today, returns **HTTP 404** — not reachable):
+  https://github.com/unknownauthor23/ClubheadDB
+
+**Licence — verbatim from the PyPI metadata (`license` field) and the
+README badge:** `License: CC BY-NC 4.0` (`CC-BY-NC-4.0`).
+**Commercial use is NOT permitted.** This is a non-commercial-only licence,
+full stop — do not train the shipping model on this data.
+
+There's a second, independent problem beyond the stated licence: the
+dataset doesn't ship images, it ships a *recipe* (video URLs + timestamps)
+that re-scrapes frames from arbitrary public YouTube/Reddit posts at build
+time. The CC-BY-NC-4.0 grant covers the dataset authors' own annotations/
+metadata/code — it says nothing about the underlying video footage, whose
+copyright still belongs to whoever posted it. Nothing in the README
+indicates the source clips were filtered for a redistributable licence.
+So even a non-commercial research use of this data carries copyright
+exposure independent of the CC-BY-NC terms, and because videos are fetched
+live rather than bundled, `metadata.csv` is exposed to ordinary link rot
+(deleted YouTube videos, removed Reddit posts) — reproducibility isn't
+guaranteed either.
+
+**Which failure mode this addresses:** Neither cleanly. It's a general
+diversity/volume dataset (more golfers, more backgrounds, a chunk of
+casual Reddit footage that might include more varied lighting/clothing
+than our current 54%-Roboflow mix) — closer to camouflage-adjacent than
+blur-specific. **The README makes no mention of motion blur, indoor
+footage, or shutter speed at all**, so this should NOT be read as evidence
+it fills the motion-blur gap — I'm flagging that absence explicitly rather
+than assuming it helps.
+
+**Why it's relevant to this model specifically:** The label *shape* is an
+exact match for our pipeline — single clubhead-only box per frame, YOLO
+format, empty label file for negative frames — so structurally it's the
+right shape of data. That's the only thing worth taking from it.
+
+**Effort vs. payoff:** Verification was cheap (PyPI metadata + README
+inspection only; did not run the build pipeline, since doing so means
+bulk-downloading other people's videos via `yt-dlp`, which is exactly the
+copyright exposure flagged above). Payoff for this product is **zero** —
+blocked twice over (explicit NC licence, plus unclear rights on the
+re-scraped source video). The only transferable value is the *methodology*
+(scrape → yt-dlp → ffmpeg → hand-annotate YOLO boxes, with explicit empty
+labels for negatives) as a template to apply to our own rights-cleared
+footage — not the dataset itself. Logging this mainly to close off this
+lead so a future run doesn't re-discover it.
+
+---
+
+## 2026-11-03 (second run, branch-corrected) — "Enhancing YOLOv11n for Reliable Child Detection in Noisy Surveillance Footage" (arXiv 2602.10592, Feb 2026): checked, ruled out — no licence, and the one claim that would have made it distinctive (SAHI tiled inference) doesn't survive contact with the primary repo
+
+**What it is:** A Feb 2026 paper (Tran et al., Posts & Telecommunications
+Institute of Technology, Hanoi) that fine-tunes a stock YOLOv11n — the same
+base architecture family as this model's YOLO11n — on a filtered,
+child-only subset of a Roboflow "Daycare" dataset, using a custom
+image-compositing augmentation pipeline (collision-aware object placement,
+background-aware alpha blending, size-aware scaling, plus generic "blur,
+noise, histogram equalization, contrast stretching" effects) to improve
+detection of a small, easily-degraded target class without any
+architecture change. Secondary sources (alphaxiv, sotaverified,
+emergentmind) report mAP50 0.967 / mAP50-95 0.783 vs. baseline and claim
+the inference pipeline adds SAHI (slicing-aided hyper inference).
+
+**URLs:**
+- Paper: arXiv 2602.10592. **Could not load arxiv.org directly — this
+  sandbox's network policy still blocks it, the same standing block this
+  log has carried since 2026-08-21 (reconfirmed first-hand this run, one
+  attempt each on `arxiv.org` and `alphaxiv.org`, both `getaddrinfo
+  ENOTFOUND`; not retrying further hosts per this log's own established
+  practice of not re-escalating an unchanged, already-diagnosed
+  environment bug).**
+- Code (verified live by direct fetch, not just search snippets):
+  https://github.com/html-ptit/Data-Augmentation-YOLOv11n-child-detection
+
+**Licence:** **None.** Read the actual repo page directly: no `LICENSE`
+file, no licence declaration anywhere in the file listing or README.
+Default copyright applies — nothing here is usable, commercially or
+otherwise, without contacting the authors.
+
+**Which failure mode this addresses:** Camouflage/low-contrast-adjacent at
+best (small, degraded-footage detection on a YOLO11 base), **not confirmed
+motion-blur**: the README's augmentation list says plain "blur," not
+motion blur specifically, and the blocked arXiv PDF is the only place that
+distinction could plausibly be resolved. Separately, the SAHI claim
+reported by three secondary sources **does not check out**: the actual
+repo README mentions no SAHI or inference workflow at all — it ships only
+two augmentation scripts (`add_image.py`, `add_effect.py`) and no
+training/inference code. Logging this discrepancy explicitly rather than
+carrying an unverified secondary claim forward, per this log's standing
+rule.
+
+**Why relevant to this model specifically:** The only thing worth taking
+is the architecture match — it's one more data point (alongside this
+log's Copy-Paste and CamDiff entries) that a YOLO11-family detector can
+absorb heavier synthetic-composite augmentation on a small/degraded target
+class and gain mAP without touching the architecture. It does not transfer
+as a reusable technique: the repo is augmentation-tooling-only, unlicensed,
+and the one differentiating claim (SAHI) turned out to be a secondary-source
+error, not a real exemplar of a tiled-inference-plus-blur-augmentation
+model.
+
+**Effort vs. payoff:** Low effort (two `WebSearch` calls, one direct
+`WebFetch` of the GitHub repo; arXiv itself unreachable). Payoff is
+near-zero as a direct lift — blocked on licence, and the one claim that
+would have made it worth a closer look didn't survive checking the
+primary source instead of the secondary summaries. Logging mainly to close
+the lead (YOLO11n-family search terms will keep resurfacing this paper)
+and to reconfirm, first-hand, that the arXiv/alphaxiv egress block is
+still live — not re-escalating that to the user in a new notification
+since nothing about it has changed since the 2026-11-02 (fourth run)
+consolidated notice.
