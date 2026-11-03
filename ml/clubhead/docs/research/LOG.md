@@ -14116,3 +14116,118 @@ and to reconfirm, first-hand, that the arXiv/alphaxiv egress block is
 still live — not re-escalating that to the user in a new notification
 since nothing about it has changed since the 2026-11-02 (fourth run)
 consolidated notice.
+
+---
+
+## 2026-11-03 (third run) — No new verified finding; standing bugs reconfirmed unchanged, not re-escalated
+
+**Process note (branch continuity).** 18:23 UTC firing, confirmed live via
+`list_triggers` to be this exact firing (`trig_01RAGReowhpJf3BCRtRvGD7m`,
+`last_fired_at: 2026-11-03T18:23:59.937609Z` matches this session).
+Branched `research/clubhead-2026-11-03-corrected-2` directly from
+`research/clubhead-2026-11-03-corrected` (today's second run, the correct
+chain tip) — not from `mvp/club-path-replay`, avoiding the recurring
+continuity break this log has documented repeatedly since 2026-08-12.
+
+**Standing bug #1 — trigger cadence.** Reconfirmed unchanged:
+`cron_expression` still `"23 */6 * * *"`, `updated_at` still
+`2026-08-12T17:26:32.236001Z` (never edited by the user since creation),
+`created_via` still `"http_api"`. This is still the direct cause of every
+same-day branch collision this log has logged. Not re-sending a push
+notification — unchanged since the prior escalations (2026-10-26,
+2026-10-29), consistent with this log's own "re-escalate only on change"
+rule.
+
+**Standing bug #2 — egress allowlist.** Not independently re-tested this
+run (reconfirmed as recently as the prior entry, six hours ago); taken as
+still-standing. `arxiv.org`, `alphaxiv.org`, `universe.roboflow.com`,
+`huggingface.co`, `neurips.cc`, `doaj.org`, and (per the 2026-11-01 third
+run entry) `peerj.com`/`frontiersin.org` remain unreachable from this
+sandbox.
+
+**Area covered.** Primary focus: bullet 2 (motion blur specifically —
+blur-aware bounding-box labeling, directional-kernel augmentation
+libraries, deblurring preprocessing, datasets of blurred small sports
+objects), with crossover checks into bullet 5 (synthetic data generation)
+and bullet 4 (golf-specific pose/club tracking). Deliberately avoided
+bullet 1 and bullet 3, each already primary-covered by one of today's
+first two runs.
+
+**What was checked and ruled out as duplicates (confirmed by `grep`
+against the full 14,100+ line log before being discarded):**
+
+- *FMO (fast-moving-object) literature.* Rozumnyi et al.'s foundational
+  "The World of Fast Moving Objects" (arXiv:1611.07889) and the McGill
+  Puck Dataset thesis — both already logged under this log's existing FMO
+  coverage (2026-08-20, 2026-09-13, 2026-10-26 fourth run).
+- *BlurBall* (arXiv:2509.18387, table-tennis blur-center labeling
+  convention) — already logged in full 2026-08-16.
+- *Sayed & Brostow PSF-based box expansion* (arXiv:2011.14448) — already
+  logged in full 2026-08-14.
+- *RacketVision* (arXiv:2511.17045, AAAI 2026 Oral) — already logged in
+  full 2026-10-20 (second run).
+- *DFRCP, SMBlurDetect, Ev-DeblurVSR, DREB-Net, JFD3/IRBlurUAV* — all
+  already logged (2026-08-24, 2026-09-04 second run, 2026-11-02 third run,
+  and others).
+- *YOLO11-OBB and its Ultralytics-release follow-ups* (angle-unwrap fix
+  v8.4.181, GMC box-geometry fix v8.4.180, float64 OBB-corner fix
+  v8.4.183) — already logged in full 2026-08-28 and 2026-10-18/10-19/10-21.
+- *Camera-IMU/gyroscope-based deblurring and rolling-shutter correction*
+  (this run specifically checked Karpenko et al.'s Stanford gyro-based
+  rolling-shutter stabilization and a 2024 Gaussian-Splatting rolling-
+  shutter-compensation paper) — both fall under this log's own standing
+  filter rule from 2026-10-30 (second run): any technique that characterizes
+  blur from the *camera's* motion sensor cannot help here, because this
+  model's blur source is the clubhead moving past a comparatively static
+  phone camera, not camera shake. Not logged as a separate entry; the
+  existing filter rule already covers them.
+- *BlenderProc, Kubric, and PinPoint-Golf's MIT clubhead asset*
+  (physically-based 3D-rendered motion blur as ground-truth-correct
+  synthetic data) — already logged in full 2026-08-18 (second run),
+  2026-09-06 (fourth run), and 2026-10-30 (third run).
+- *Event-camera/DVS approaches* (Ev-DeblurVSR, v2e) — already logged, both
+  already flagged as hardware-blocked for a single-RGB-stream phone
+  pipeline.
+- *UnrealPose-Gen* (arXiv:2601.00991, CVPR 2026, UC Irvine) — checked as a
+  fresh-looking lead (zero prior hits by `grep`). Not logged as a positive
+  finding: it is a *human*-pose synthesis pipeline (MetaHumans/engine-native
+  skeletal joints), not an arbitrary-rigid-object renderer, no motion-blur
+  capability is mentioned anywhere in the available secondary sources, and
+  no licence terms could be confirmed. It adds nothing beyond what
+  BlenderProc/Kubric already cover for this project's 3D-synthesis route,
+  and is weaker on every verified axis (no blur, no clubhead applicability,
+  no confirmed licence), so it does not clear this log's bar for a
+  standalone entry.
+- *Golf-specific pose/club tracking* (CADDIE, GolfPose, `golftracker`
+  PyPI, a monocular-camera club-line-detection patent application) — all
+  already logged or, for the patent, not independently usable regardless
+  (a filed patent application is not a licence grant and need not disclose
+  working code).
+
+**Why nothing was logged as a positive finding this run.** Every
+genuinely fresh-looking lead this run's searches surfaced either (a)
+duplicated an already-logged finding under different phrasing or a newer
+citation, or (b) was a weaker, lower-evidence instance of a technique
+category this log has already covered more thoroughly (UnrealPose-Gen vs.
+BlenderProc/Kubric), or (c) fell under an already-established structural
+filter rule (camera-IMU/gyroscope techniques). This is consistent with the
+near-exhaustion signal this log has flagged repeatedly since 2026-10-26.
+
+**Effort vs. payoff.** Moderate effort (eight `WebSearch` calls across
+three rotation bullets, one live `list_triggers` reconfirmation,
+full-log `grep` cross-checks on every candidate before writing this
+entry). Zero payoff as a model-improvement finding — a pure negative
+result, logged honestly rather than padded with a marginal duplicate.
+Recommendation is unchanged from every recent process-note entry: the
+highest-value next step is not another broad web-search cycle at the
+current 6-hourly frequency, but (a) fixing the trigger cadence and egress
+allowlist (both require the user, not an agent), and/or (b) converting
+this log's accumulated short list of genuinely actionable, differentiated
+ideas — PSF-based/BlenderProc-style elongated-blur-box synthesis using
+this project's own existing tracked footage, PinPoint-Golf's MIT-licensed
+clubhead asset for synthetic rendering, YOLO11-OBB for blur-streak-angle-
+aware labeling (pinned `ultralytics>=8.4.181`), and the 2026-11-01 (third
+run) NeurIPS 2026 finding that cheap general synthetic-blur augmentation
+lifts recall nearly as much as failure-targeted augmentation — into real
+implementation and evaluation work, rather than continuing to sweep the
+same five web-search bullets at four times a day.
