@@ -248,3 +248,87 @@ audio (sample-accurate) actually maps usefully onto video's much coarser
 frame timing (potentially off by half a frame at 30fps). None of those three
 were tested this run. Worth a cheap pilot before investing further, not
 worth building the full pipeline on faith.
+
+---
+
+## 2026-11-04 (fourth run today) — ClubheadDB: a third-party clubhead bounding-box dataset with measurably higher motion-blur elongation than ours, but NC-licensed and its own GitHub source is dead
+
+**What it is:** A purpose-built, web-sourced dataset for exactly this task —
+clubhead bounding-box detection in golf swing video. Published as the PyPI
+package `clubhead-db` (v1.0.1, released 2025-06-30), which ships a build
+tool (`clubhead-build`) that re-downloads 67 source clips (46% YouTube, 54%
+Reddit; 42% pro / 58% amateur footage; all single-camera "down-the-line"
+(dtl) view) via `yt-dlp`+`ffmpeg` and emits 10,180 YOLO-format labelled
+frames (9,405 with a box, rest negative).
+URL: https://pypi.org/project/clubhead-db/
+
+**Licence — verbatim:** The package's own METADATA states `License:
+CC-BY-NC-4.0`, and the README badge reads "License: CC BY-NC 4.0". The
+canonical CC BY-NC 4.0 deed's NonCommercial clause: *"You may not use the
+material for commercial purposes."* **Commercial use: NOT permitted.**
+Unusable for training or fine-tuning this (commercial) model. Logged as
+research-only, per the task rule for NC-licensed finds.
+
+**Verification performed (this is the substantive part of this entry):**
+Did not take the PyPI description at face value.
+1. Downloaded the actual wheel from PyPI (`pip download`-equivalent via
+   direct `files.pythonhosted.org` URL) and unzipped it — confirms the
+   package is real and genuinely downloadable today, not just a listing.
+2. The wheel ships the real data inline: `clubhead_db/data/metadata.csv`
+   (67 rows: video_id, youtube_id, timestamps, fps, club, view, named
+   source e.g. "dustin_johnson", "amateur_014") and
+   `clubhead_db/data/annotations.parquet` (10,177 rows: image_path,
+   class_id, YOLO-normalized x_center/y_center/width/height, video_id).
+   Loaded both directly with pandas — both parse cleanly and the row counts
+   match the README's claimed 67 videos / 10,180 frames.
+3. Computed box elongation (`max(w,h)/min(w,h)`) on all 9,405 non-empty
+   boxes directly from the shipped parquet: **median 1.83, p90 3.23, p99
+   3.97, 44% of boxes >2:1, 14% >3:1.** This is a real, like-for-like
+   comparison against our own stats from `labeling-spec.md`/README
+   (median 1.60, p90 3.01) — ClubheadDB's annotators captured *more*
+   motion-blur elongation than ours did, on the same labeling task (box the
+   visible clubhead extent).
+4. Checked the project's own claimed GitHub source,
+   `https://github.com/unknownauthor23/ClubheadDB` (linked as the PyPI
+   Homepage) — it does not exist. Confirmed authoritatively via
+   `add_repo`, not just a flaky fetch: *"repository
+   'unknownauthor23/clubheaddb' was not found on github.com, or this
+   session's GitHub credential doesn't have access to it."* The author is
+   listed only as "anonymousauthor23" with a placeholder, unaccepted
+   citation. The data is real and usable (it ships inside the wheel,
+   independent of GitHub) but the project is either abandoned, deleted, or
+   was never fully published — a reliability flag, not a usability
+   blocker, since the wheel is a frozen, self-contained artifact.
+5. All 67 source videos are the single "down-the-line" camera angle, all
+   sourced from public YouTube/Reddit swing clips (professional
+   instructional content and amateur social posts) — no indoor, low-light,
+   or simulator-bay footage; no metadata field for lighting/venue at all.
+   This does **not** touch the indoor/low-light gap this project actually
+   needs filled.
+
+**Which failure mode this addresses:** Motion blur — specifically as an
+external calibration point for the existing annotation process, not as a
+training-data source (blocked by licence) and not as evidence relevant to
+camouflage.
+
+**Why it matters for this model specifically:** This is the first entry in
+this log with a *directly comparable, same-unit statistic* against our own
+measured elongation numbers, from an independent annotator population doing
+the same task. That ClubheadDB's annotators landed meaningfully higher
+(1.83/3.23 vs our 1.60/3.01) is a small but real data point that our own
+labeling pipeline may be under-boxing blur relative to what's achievable on
+the same kind of footage — useful as a sanity-check target when revisiting
+annotator QA, even though the underlying frames can never be mixed into our
+training set. The parquet's per-frame box trajectory (x_center/y_center
+across consecutive frames of one swing) could also be visualized to spot-
+check what a "well-boxed" blur streak looks like, as a reference image set
+for retraining annotators.
+
+**Effort vs. payoff:** Low-moderate effort to use for its only legitimate
+purpose here (a visual/statistical reference for annotator calibration —
+a few hours to pull sample frames and compare side-by-side with our own
+labeled set); zero payoff as training data because the licence forbids it
+outright, and zero payoff toward the indoor/low-light gap because the
+footage doesn't cover it. Net: a minor, free calibration aid, not a fix for
+either failure mode. Not worth more investment than that one-time
+comparison.
