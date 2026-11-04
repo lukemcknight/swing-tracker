@@ -158,3 +158,93 @@ would still need to be collected or synthesized to train on. Net: treat
 this as confirming *which* architectural direction (temporal/motion, not
 appearance) is worth the next research run's effort, not as something to
 integrate today.
+
+---
+
+## 2026-11-04 (third run today) — Audio impact-onset detection as a labeling-QA signal for the motion-blur regime (new modality: no prior entry in this log uses audio)
+
+**What it is:** Not a vision technique — a different modality entirely. A
+golf club striking a ball produces a short, sharp acoustic transient. Two
+things were checked: (1) whether a close-sport analog validates using sound
+to localize the exact impact frame in video, and (2) whether a generic,
+commercially-usable tool exists to actually do that onset detection.
+
+1. **Gossard et al., "Spin Detection using Racket Bounce Sounds in Table
+   Tennis"** (arXiv:2409.11760) and its released dataset/code, **TT sounds**
+   — a table-tennis racket/ball bounce-sound dataset (3,396 racket-bounce
+   samples across 10 rackets, plus table/floor/other classes) used to train
+   a sound-event-detection (SED) model that localizes and classifies bounce
+   sounds from audio alone.
+   URL: https://github.com/cogsys-tuebingen/tt_sounds
+2. **librosa** — a general-purpose Python audio-analysis library with a
+   standard onset/transient-detection function (`librosa.onset.onset_detect`),
+   usable with no training at all (classic amplitude-envelope peak-picking,
+   not an ML model).
+   URL: https://pypi.org/project/librosa/
+
+**Licence — verbatim where checked:**
+- TT sounds README's own License section: *"published under the Creative
+  Commons Attribution-NonCommerial 4.0 International License"* and
+  explicitly states the material may not be used *"for commercial
+  purposes."* **Commercial use: NOT permitted.** This is the
+  dataset/paper's specific recordings and training code — not usable for
+  this product as a dataset.
+- librosa's PyPI package metadata license field: `ISC`. ISC is a short,
+  permissive licence materially equivalent to MIT. **Commercial use:
+  permitted.**
+
+**Verification performed:** Fetched the `tt_sounds` GitHub repo README
+directly and confirmed the dataset composition, the NC license text
+(verbatim above), and that `raw_sounds`/`sounds` folders plus a `src` code
+folder are described as present (could not fetch the linked Nextcloud
+storage itself to confirm the ~5,700 audio samples are still live — that
+host is outside this session's reachable domains). Confirmed librosa's ISC
+license via its PyPI metadata. Did **not** find any golf-specific
+impact-sound dataset, paper, or open-source tool anywhere in this session's
+searches — the only prior art for "use sound to locate golf swing impact"
+that surfaced is a cluster of golf-specific **patents** (e.g. US6567536,
+US10080947B2 "Golf swing analysis from pre-strike sound", US10478700) going
+back to the 1990s–2010s, which is a reason for caution if this were ever
+turned into a *shipped, user-facing* feature (e.g. "swing speed from
+sound") — using a generic open-source onset detector as an **internal
+labeling/QA tool** is a materially different use than those patents' claimed
+methods, but this is not a legal clearance and shouldn't be treated as one
+if the use case changes.
+
+**Which failure mode this addresses:** Motion blur, and specifically the
+*labeling-consistency* half of that problem, not a new source of footage
+and not camouflage. The labeling spec already instructs annotators to box
+the full blur streak, yet median labelled elongation is only 1.60 — i.e.
+annotators are plausibly under-boxing blur because nothing tells them,
+objectively, which frames are actually at peak clubhead speed. An
+audio-derived impact timestamp (impact is the single most audio-detectable
+moment in the whole swing, and frames immediately before/after it are
+exactly where blur should be most severe) gives a frame-accurate, non-visual
+ground truth for "this is the fast window" that a human labeler's eye
+cannot argue with the way a visually-ambiguous blurred crop can.
+
+**Why it matters for this model specifically:** Two concrete, low-build
+uses: (1) a **pre-labeling aid** — run onset detection on each training
+clip's audio track (if the capture pipeline keeps one; unconfirmed, since
+`docs/data-engine.md` doesn't exist in this repo yet) and hand annotators
+the computed impact frame number, with an instruction to specifically check
+elongation on the N frames straddling it; (2) a **QA pass over already-
+labeled data** — flag any already-boxed frame within a few frames of the
+detected impact whose box elongation is suspiciously close to 1.0 (near-
+square) for manual re-review, which directly targets the exact anomaly this
+project has already measured (p90 elongation only 3.01) without requiring
+new footage or a model change.
+
+**Effort vs. payoff:** Low effort — `librosa.onset.onset_detect` is a
+handful of lines, ISC-licensed, needs no training, and could be piloted
+against a handful of existing clips in under an hour *if* their audio
+survived capture/export. Payoff is real but narrow and unverified: this is
+a labeling-QA multiplier, not a source of new images or a model fix, and it
+is contingent on three unverified assumptions — that the app's captured
+clips retain an audio track, that outdoor wind/ambient noise doesn't bury
+the impact transient (the table-tennis analog is a controlled indoor
+recording, not outdoor phone video), and that impact timing precision in
+audio (sample-accurate) actually maps usefully onto video's much coarser
+frame timing (potentially off by half a frame at 30fps). None of those three
+were tested this run. Worth a cheap pilot before investing further, not
+worth building the full pipeline on faith.
