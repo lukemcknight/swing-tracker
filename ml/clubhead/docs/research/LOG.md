@@ -672,3 +672,101 @@ becomes a hard requirement, note that *most* simulator bays and indoor
 setups are exactly where users are least likely to be holding a brand-new
 Pro-model phone on a tripod, compounding the coverage problem rather than
 easing it.
+
+---
+
+**Process note (18:23 UTC firing, fourth run today).** Branched
+`research/clubhead-2026-11-05` directly on top of itself (confirmed via
+`git diff origin/mvp/club-path-replay origin/research/clubhead-2026-11-05`
+that the only difference is this file) — no branch-continuity break this
+run. Separately: the recurring "trigger cadence bug" this log has escalated
+roughly ten times since 2026-10-26 (including at least two push
+notifications to the user) is being described imprecisely and should stop
+being called a bug. Pulled this routine's own record directly via
+`list_triggers`: `trig_01RAGReowhpJf3BCRtRvGD7m` has `cron_expression: "23
+*/6 * * *"` and `updated_at: 2026-08-12T17:26:32Z` — identical to what
+every prior entry already quoted. That expression **is** "every 6 hours,
+starting at :23," unconditionally — not a once-daily schedule that
+sometimes misfires. Four firings a day (roughly 00:23, 06:23, 12:23, 18:23
+UTC) is not a malfunction; it is what this exact, never-edited cron
+expression has always meant, since the day the user created it. Every
+"Nth run today" note in this log, going back to the first few days, is a
+correctly-observed symptom of a correctly-configured schedule, not evidence
+of drift or breakage. This is worth recording once, plainly, so the next
+run does not re-open or re-escalate it: there is nothing here for the user
+to fix, and nothing to recommend they change, unless they want the
+*cadence itself* (4x/day) to be different — which is a product decision
+about this routine, not a bug report. Not re-escalating; not re-notifying.
+
+## 2026-11-05 (fourth run today) — No new verified finding
+
+**Area covered this run:** primarily bullet 3 (temporal/multi-frame
+techniques for detecting small or camouflaged objects against clutter),
+with a secondary check into bullet 4 (golf-specific tracking) and a
+licensing follow-up from today's second-run entry (SwingTrace/Ultralytics
+AGPL). Deliberately avoided bullets 1 and 2, already primary-covered by
+today's first and second runs.
+
+**What was checked and why nothing was logged:**
+
+- *GL-YOMO / "Real-Time Detection for Small UAVs: Combining YOLO and
+  Multi-frame Motion Analysis"* (Liu, Plotegher, Roura, de Souza Junior,
+  He; arXiv:2411.02582, first posted Oct 2024, later published in *IEEE
+  Transactions on Aerospace and Electronic Systems* vol. 61 iss. 5, Oct
+  2025). Confirmed to exist independently of this log via four separate
+  indexes/mirrors (the official arXiv abstract as surfaced in search, a
+  Beijing Institute of Technology institutional repository entry, and two
+  independent third-party review/translation mirrors) — but `arxiv.org`,
+  `pure.bit.edu.cn`, `themoonlight.io`, and `bohrium.dp.tech` are all
+  DNS-blocked from this sandbox (consistent with the standing egress
+  allowlist gap), so none could be fetched directly and no code repository
+  was found anywhere in search results. The method — a global-then-local
+  template-matching motion check layered on top of a YOLO detector,
+  specifically to recover small targets the detector alone misses — is
+  genuinely not yet in this log under any other name (checked by name and
+  by mechanism against all ~220 prior entries). It was **not logged** as a
+  standalone finding because it adds nothing actionable this log doesn't
+  already have in a stronger form: this log already carries multiple
+  *code-available*, permissively-licensed implementations of the same
+  underlying idea (motion/temporal confirmation recovers detections a
+  single-frame model misses) — `rucv/golf_ball`'s MIT-licensed Kalman
+  search patch (today's first entry), WASB-SBDT (MIT), OC-SORT
+  (training-free) — on top of which GL-YOMO is UAV-domain, not
+  sports/golf, and unverifiable past a search snippet. Logging it would be
+  padding, not adding signal.
+- *`nishsm/golf-club-detection-swingtrace`* — found via a fresh GitHub
+  search and briefly suspected to be a second, newer project by the same
+  author. Fetched directly (GitHub, reachable) and confirmed it reports
+  the *identical* indoor/simulator-bay/outdoor numbers, identical AGPL-3.0
+  licence wording, and the identical Roboflow dataset citation as
+  `nishsm/golf-club-tracking`, already logged in full earlier today. Same
+  project under a different repo name, not a new finding.
+- *Ultralytics PyPI releases v8.4.192 through v8.4.202* (current latest;
+  the most recent version this log had previously checked was v8.4.191).
+  Fetched the GitHub releases page directly (reachable) and read every
+  changelog entry in that range: CUDA 13/PyTorch 2.15 DDP support, stream
+  FPS handling, PIL plotting speed, dataset-name fixes, per-channel ONNX
+  INT8 quantization, Python 3.15 CI, AutoBatch changes, faster CPU
+  ONNX/OpenVINO inference. None touches blur, small-object detection,
+  OBB, tracking, or CoreML export — nothing in range was worth a standalone
+  entry.
+- *Ultralytics' own commercial-licensing wording*, re-read directly from
+  the GitHub README (reachable) to try to resolve the open question
+  today's second-run entry flagged (does shipping only exported/trained
+  weights, not source, in a closed-source app require an Enterprise
+  licence?). Found a slightly fuller quote — "For development and
+  production use, this license enables seamless integration of Ultralytics
+  software **and AI models** into business products and services" — but
+  this is a restatement of the same position already quoted in full
+  earlier today, not new information, and it still does not resolve the
+  underlying legal question (whether AGPL's copyleft actually attaches to
+  trained weights) one way or the other. Not logged separately.
+
+**Effort vs. payoff:** Medium search effort (five distinct search queries
+across the rotation bullets, plus direct verification attempts on every
+candidate), zero net payoff this run. Honest outcome, not a padded one:
+every fresh lead this run either duplicated existing, better-sourced
+entries or failed to clear this log's own bar once checked. The process
+correction above (cadence) is the one piece of genuinely new, verified
+information this run produced, and it is about this log's own
+housekeeping, not the model.
