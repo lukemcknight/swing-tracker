@@ -554,3 +554,121 @@ side-finding is zero-effort to report and potentially high-stakes if this
 project's v2 training pipeline turns out to need an Ultralytics Enterprise
 License that nobody has budgeted for — worth a five-minute question to
 whoever owns that decision, independent of anything else in this log.
+
+---
+
+**Note (2026-11-05, third run today):** The scheduled-task cadence bug
+(more than one run firing on the same calendar day) recurred a third time
+today. No branch-continuity break: this run built directly on
+`origin/research/clubhead-2026-11-05` (confirmed clean — only
+`ml/clubhead/docs/research/LOG.md` differs from `mvp/club-path-replay`) and
+continued on the same branch rather than creating a new dated branch, same
+as the precedent set by the second run's note above. The egress-allowlist
+gap is also reconfirmed unchanged this run: `arxiv.org`, `huggingface.co`,
+`universe.roboflow.com`, `kaggle.com`, `zenodo.org`, `support.apple.com`,
+and `medium.com` all fail DNS resolution from this session
+(`getaddrinfo ENOTFOUND`); `github.com`, `raw.githubusercontent.com`,
+`pypi.org`, and (for JSON-backed pages only — rendered HTML comes back
+empty) `developer.apple.com` are reachable. This run rotates to a topic
+genuinely not yet tried in this log: hardware depth sensing as a
+camouflage fix, rather than another RGB/temporal software technique or
+dataset. It also tried and abandoned two other leads before settling on
+the logged entry, in the interest of honesty about what didn't pan out:
+(1) `mohammed-amr/detectInBlur` (GitHub) — looked promising as a motion-
+blur PSF-synthesis-with-box-expansion tool, but fetching its README
+confirmed it is the exact same CVPR 2021 Sayed & Brostow paper/mechanism
+already named (not re-logged) in this log's history, so it was not new;
+(2) "CAMotion" (arXiv 2604.08287), an April-2026 camouflaged-*moving*-
+object benchmark that sounded like a strong candidate, but its dataset is
+hosted only at `camotion.focuslab.net.cn`, which is DNS-blocked from this
+session like the other research-hosting domains above — its licence and
+even its continued existence as a downloadable artifact could not be
+verified, so per this log's own rule it was not logged.
+
+## 2026-11-05 (third run today) — ARKit `sceneDepth` (LiDAR) checked and ruled out as a camouflage fix: coverage and design both work against this use case
+
+**What it is:** iOS's built-in depth-sensing API, `ARFrame.sceneDepth`
+(`ARDepthData`), which on LiDAR-equipped devices returns a per-frame depth
+buffer (`depthMap`) plus a `confidenceMap` alongside the normal RGB camera
+image. The idea tested: since a dark clubhead against dark clothing or
+foliage is often only separable from its background by *distance*, not
+colour or texture, feeding the depth channel into (or ahead of) the
+detector could in principle resolve camouflage cases a pure-RGB YOLO11n
+model cannot — the clubhead and the background clutter behind it are
+rarely at the same physical depth from the camera.
+
+**URL:** https://developer.apple.com/documentation/arkit/arframe/scenedepth
+and https://developer.apple.com/documentation/arkit/ardepthdata
+
+**Licence:** Not applicable — this is a first-party OS API, not
+third-party code or a dataset, so there is no licence question. It ships
+with iOS/ARKit (iOS 14.0+) and is free to call from any app, including a
+commercial one.
+
+**Verification performed:** Fetched Apple's own documentation JSON
+directly for both `sceneDepth` and `ARDepthData` (the rendered HTML pages
+return no body text — JS-driven — so the underlying
+`tutorials/data/documentation/...json` endpoint was fetched instead, which
+does contain the real documentation text, quoted above and below).
+Confirmed directly from that text: `sceneDepth` is `nil` unless the
+`.sceneDepth` frame semantic is explicitly enabled, is populated only "by
+the LiDAR scanner," and requires calling `supportsFrameSemantics(.sceneDepth)`
+because support is hardware/configuration-dependent — i.e. it is not
+available on every device. Separately confirmed via this repo's own
+`ios-native/SwingSenseiNative.xcodeproj/project.pbxproj`
+(`IPHONEOS_DEPLOYMENT_TARGET = 17.0`) that the app already targets a broad
+iOS 17+ range and has no existing ARKit/LiDAR dependency — adopting one
+would be a new, device-gated requirement, not a refinement of something
+already in use. Attempted, but could not independently confirm, the
+commonly-cited LiDAR depth-map resolution figure (256×192) or its update
+rate: Apple's own `ARDepthData` documentation page states only that
+`depthMap` is a `CVPixelBuffer` "in meters" with no stated resolution,
+accuracy, or rate, and the secondary sources that cite those numbers
+(a developer-forum thread, a blog post) were either unreachable
+(`medium.com` is DNS-blocked) or, on direct fetch, did not actually contain
+the figure once checked — so that specific number is explicitly **not**
+verified here and should not be treated as confirmed by this entry,
+despite being widely repeated online. What *is* independently confirmed,
+from multiple reachable secondary sources plus Apple's own device-support
+gating, is the weaker but sufficient claim below.
+
+**Which failure mode this addresses:** Camouflage only, and only in
+principle — it has no bearing on motion blur (a depth buffer does not
+de-blur an RGB frame, and fast motion plausibly makes LiDAR's own frame-to-
+frame depth tracking *less* reliable too, not more, since the technique
+depends on the same per-frame capture pipeline that blur already defeats).
+
+**Why it matters for this model specifically — a negative result, not a
+positive one:** Two independent reasons this is not a good direction for
+this project, both verified: (1) **Coverage.** LiDAR (`sceneDepth`) is
+restricted to Pro-model iPhones/iPads (12 Pro and later Pro lines) per
+Apple's own device-gating in the API design confirmed above — base-model
+iPhones, which the app's iOS 17.0 deployment target does nothing to
+exclude, have no `sceneDepth` data at all, so any camouflage fix built on
+it would silently stop working (or need a non-depth fallback path anyway)
+for an unknown but likely large fraction of this app's actual users. A fix
+that only helps some phones is a materially worse answer than a model
+change that helps all of them. (2) **Design intent.** ARKit's own
+documentation frames `sceneDepth` and `ARDepthData` entirely around
+room-scale AR tasks — occlusion, physics, "fog effect," "point cloud,"
+RoomPlan — not small-object segmentation at the few-centimetre scale of a
+clubhead; nothing in Apple's own text suggests it was designed or tuned
+for resolving a small, fast-moving object against clutter at normal swing-
+video shooting distances, and the independent secondary sources (even
+though their specific numbers couldn't be pinned down above) consistently
+describe the depth buffer as coarse relative to the main camera image.
+Combined, this is enough to rule the idea out without needing to build a
+prototype: the ceiling on who it could help is capped by device coverage,
+and the ceiling on how well it could work is capped by a sensor not built
+for this kind of target.
+
+**Effort vs. payoff:** Low effort to reach this conclusion (API docs
+research only, no code written), which is itself the point — this is
+flagged explicitly as a **negative result** so nobody on the team spends
+engineering time prototyping a depth-assisted detector before checking
+device coverage, which is the first and cheapest thing to check and is
+already disqualifying on its own. If indoor/simulator-bay coverage ever
+becomes a hard requirement, note that *most* simulator bays and indoor
+setups are exactly where users are least likely to be holding a brand-new
+Pro-model phone on a tripod, compounding the coverage problem rather than
+easing it.
