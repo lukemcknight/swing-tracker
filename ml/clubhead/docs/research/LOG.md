@@ -332,3 +332,96 @@ outright, and zero payoff toward the indoor/low-light gap because the
 footage doesn't cover it. Net: a minor, free calibration aid, not a fix for
 either failure mode. Not worth more investment than that one-time
 comparison.
+
+---
+
+## 2026-11-05 — rucv/golf_ball: Kalman-filter-predicted search patch + CNN detector, built specifically to beat motion blur on a fast small golf object, in MIT-licensed code
+
+**What it is:** Not clubhead-specific — it's the companion problem, golf
+*ball* detection and tracking, from the paper "Efficient Golf Ball Detection
+and Tracking Based on Convolutional Neural Networks and Kalman Filter"
+(Zhang et al., arXiv:2012.09393) and its released implementation. The method:
+a discrete Kalman filter predicts where the ball will be in the next frame
+from its recent track, a small image patch is cropped around that
+prediction, and a CNN detector (the repo evaluates YOLOv3/YOLOv3-tiny,
+YOLOv4, Faster R-CNN, SSD, RefineDet) runs only on that cropped patch to
+refine the exact location, which then updates the filter. The paper states
+its own motivation explicitly: at low camera frame rates the ball produces
+"significant blur," making full-frame single-shot detection unreliable.
+
+**URL:** https://github.com/rucv/golf_ball (paper: arXiv:2012.09393, not
+independently fetchable this run — see Verification).
+
+**Licence:** Confirmed by fetching the raw `LICENSE` file directly
+(`raw.githubusercontent.com/rucv/golf_ball/master/LICENSE`): **MIT**
+(inherited from the upstream `jwyang-faster-rcnn.pytorch` base, copyright
+2017 Jianwei Yang), full permissive text, no NC clause. **Commercial use:
+permitted** — for the *code*. The dataset itself is a separate Google Drive
+link in the README with no stated licence or terms at all; Google Drive is
+outside this session's reachable domains so the link's current validity and
+any usage terms on the data (as opposed to the code) could not be checked.
+Treat the dataset as unverified/unlicensed and do not rely on it for
+training without separately confirming terms; the code (an implementable
+*technique*, not the data) is the part that's cleanly usable.
+
+**Verification performed:** Fetched the GitHub repo page directly (confirms
+it's real, public, not archived, 74 stars/22 forks/4 open issues, and shows
+the actual file tree: `trainval_net.py`, `test_net.py`, `demo.py`, `lib/`,
+`cfgs/`), fetched the raw `LICENSE` file verbatim (quoted above), and fetched
+the raw `README.md` (confirms the Kalman-filter-then-crop-then-detect
+pipeline description and the Google Drive dataset link, but the README
+states no licence for the data). Could not fetch the arXiv paper itself
+(`arxiv.org` and its `ar5iv.labs.arxiv.org` mirror are both outside this
+session's allowed network domains, consistent with prior entries in this
+log) to confirm the paper's own quantitative claim of improvement specifically
+on blurred vs. sharp frames — only the GitHub README's restatement of the
+method and motivation could be verified directly.
+
+**Which failure mode this addresses:** Both, asymmetrically. Primarily
+motion blur — it's the paper's explicit, stated reason for the design
+(low-frame-rate blur defeats full-frame detection on a small fast object,
+so narrow the search instead of forcing one detector call to find it cold).
+But the mechanism is also directly relevant to camouflage: by using the
+prior track to constrain *where* to look rather than relying on the
+detector to re-discover the object purely by appearance across the whole
+frame, it sidesteps exactly the zero-candidate-detections failure this
+project measured for camouflaged clubhead frames too — a small, tightly
+cropped patch gives any detector (even a CNN that's already struggling on
+the full-frame crop) a much easier job, since local contrast against a
+smaller, more homogeneous background patch is higher than against the full
+scene.
+
+**Why it matters for this model specifically:** This is a concrete,
+trainable-today, no-new-data technique, as opposed to the architecturally
+heavy VCOD/Mamba work logged on 2026-11-04 (research-grade, no mobile
+export path) or the purely evidentiary SoccerSynth entry. The current
+pipeline runs YOLO11n once per frame on the full image; this paper's
+pattern — maintain a simple Kalman (or even a basic linear/constant-velocity)
+state over the last few accepted clubhead detections, and when the
+full-frame pass returns zero candidates (the project's own stated
+camouflage failure signature) or a low-confidence candidate, re-run
+detection on a small crop centered on the predicted location at a lower
+confidence threshold — is implementable entirely at inference time on top
+of the existing CoreML model, with no retraining, no new labelled data, and
+no change to the exported model graph (the crop-and-rerun logic lives in the
+iOS app's post-processing, not the network). It would not fix either failure
+mode's root visual cause, but it directly targets the "zero candidate
+detections even at confidence 0.05" symptom by giving the same detector a
+smaller, easier image to search, and it's orthogonal to (and stackable
+with) any of the training-side fixes in prior entries.
+
+**Effort vs. payoff:** Low-to-medium effort — no training pipeline changes,
+just an inference-time tracker-plus-recrop loop in the app layer, a few
+days of engineering at most since the CoreML model and its output format
+already exist. Payoff is plausible but unproven for *this* object and this
+pipeline: the paper's result is for a ball (round, higher-contrast against
+turf/sky in most of its own dataset) under blur, not a dark, irregularly-
+shaped clubhead against dark clothing, and the quantitative blur-vs-sharp
+improvement number couldn't be verified since the paper itself was
+unreachable. Also contingent on a non-trivial assumption this run did not
+test: that a Kalman/constant-velocity model is a good fit for clubhead
+motion specifically, which is highly non-linear through impact (the exact
+region where camouflage and blur failures concentrate) — a linear predictor
+may extrapolate poorly right where it's needed most. Worth a cheap
+prototype against the existing 3-clip eval set (no new data needed) before
+committing further engineering time.
