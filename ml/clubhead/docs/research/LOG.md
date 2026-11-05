@@ -425,3 +425,132 @@ region where camouflage and blur failures concentrate) — a linear predictor
 may extrapolate poorly right where it's needed most. Worth a cheap
 prototype against the existing 3-clip eval set (no new data needed) before
 committing further engineering time.
+
+---
+
+**Note (2026-11-05, second run today):** This branch and file already had
+today's entry above (Kalman-predicted-patch) when this run started — the
+trigger-cadence bug (scheduled task firing more than once per day) noted on
+2026-11-04 recurred again today. No branch-continuity break this time: this
+run built directly on `origin/research/clubhead-2026-11-05`, confirmed clean
+(only `ml/clubhead/docs/research/LOG.md` differs from `mvp/club-path-replay`)
+before writing. Separately, the egress-allowlist gap is also reconfirmed
+unchanged: `universe.roboflow.com` still fails DNS resolution from this
+session (`getaddrinfo ENOTFOUND`), same as the block already logged on
+2026-11-04 for `arxiv.org`/`huggingface.co`/`universe.roboflow.com`. This run
+picks a different rotation topic (golf-specific open-source tracking
+implementations) since blur-focused tracking (golf_ball/Kalman) was already
+logged earlier today.
+
+## 2026-11-05 (second run today) — nishsm/golf-club-tracking (SwingTrace): the closest existing open-source implementation to this project's own detector, measured on indoor-studio and simulator-bay footage — but AGPL-3.0, and it surfaces a licensing question for this project's own planned pipeline
+
+**What it is:** An open-source golf swing tracer, "SwingTrace"
+(`nishsm/golf-club-tracking`): a YOLO11m model fine-tuned from Ultralytics'
+pretrained YOLO11m weights to detect three classes per frame — club shaft,
+club head, hands — in ordinary phone video. A separate reconstruction step
+then builds the clubhead path through the whole swing: when the head itself
+isn't detected in a frame, it's estimated from the detected shaft box
+(the head sits at a known offset along the shaft), remaining gaps are
+bridged with a cubic spline, and the result is smoothed with a 5-frame
+moving average. Runs on CPU, CUDA, or Apple Silicon (`--device mps`).
+
+**URL:** https://github.com/nishsm/golf-club-tracking
+
+**Licence:** README states: *"AGPL-3.0, following Ultralytics YOLO, which
+the weights are fine-tuned from."* Confirmed independently against
+Ultralytics' own repo (`github.com/ultralytics/ultralytics`), which states
+the YOLO family ships under **AGPL-3.0** and that commercial users must
+*"Request an Enterprise License for commercial use"* to bypass AGPL's
+copyleft/network-use obligations. **Commercial use: NOT permitted as-is** —
+this repo's code and fine-tuned weights cannot be incorporated into
+SwingSensei's closed-source app without either an Ultralytics Enterprise
+License or open-sourcing the derivative work under AGPL-3.0 terms (which
+also has network-use/SaaS implications, not just distribution).
+
+**Important side-finding, flagged for the team, not just this log:** this
+project's own approved v2 design doc (`docs/superpowers/specs/
+2026-05-21-clubhead-detector-v2-design.md`) commits to "Ultralytics YOLO11n,
+trained in Python, exported to Core ML" as the production path. The
+standard, free way to do that is the `ultralytics` PyPI package, which is
+itself AGPL-3.0-licensed per Ultralytics' own repo page — the same clause
+that blocks reusing SwingTrace's weights. Whether training with that package
+and shipping the resulting exported Core ML weights in a closed-source app
+triggers AGPL's copyleft obligations is a genuinely contested question in
+the ML community (Ultralytics' own commercial pitch is built on monetizing
+that ambiguity), and this run did not resolve it — it is a licensing/legal
+question, not a modeling one, and belongs in front of whoever owns that
+decision, not buried in a research log. Flagging it here only because
+checking SwingTrace's licence is what surfaced it, and no earlier entry in
+this log had checked it yet.
+
+**Verification performed:** Fetched `github.com/nishsm/golf-club-tracking`
+directly and confirmed it's real, public, and non-archived, with a working
+`train.py` / inference pipeline and the specific per-clip numbers quoted
+below (not just a description — actual reported results in the README).
+Fetched `github.com/ultralytics/ultralytics` directly and confirmed the
+AGPL-3.0 / Enterprise License wording verbatim as quoted above. Attempted to
+fetch the Roboflow Universe dataset SwingTrace credits as its training data
+source (`club-head-tracking` by `club-head-tracking`, stated as CC BY 4.0 in
+the README) to check whether *that* might be independently usable even
+though SwingTrace's own code isn't — `universe.roboflow.com` failed DNS
+resolution from this session (confirmed blocked, see note above), so the
+claimed CC BY 4.0 licence on that underlying dataset is unverified this run.
+Did not attempt `add_repo` for this third-party repo since public README
+content via `WebFetch` was sufficient to verify licence and claims; this
+repo was not attached to the session and nothing beyond its public GitHub
+page was accessed.
+
+**Which failure mode this addresses:** Both, concretely. The repo's own
+measured per-clip numbers are a direct, independent data point for exactly
+the gap this project has never measured — **indoor studio: 644 frames, head
+detected directly in only 48.4%** (head-or-shaft 99.4%, but the README's own
+footnote admits that figure is inflated because the model also boxes a
+ceiling light as a shaft in that clip); **simulator bay: 391 frames, head in
+71.4%** (head-or-shaft 84.1%); **outdoor backlit: 311 frames, head in 77.2%**
+(head-or-shaft 92.9%). An independent team's independent model, on
+different footage, sees the same pattern this project suspects but has never
+measured: indoor is the weakest setting, worse than a simulator bay, worse
+than outdoor. That's the camouflage/generalization half. The bridging
+mechanism — treat a missed or blurred head detection as recoverable from the
+shaft, not as a dead frame — is the motion-blur/dropout half: the shaft is a
+longer, higher-contrast, less-blurred target than the head through impact,
+so using it as a fallback cue is a plausible, mechanism-level answer to
+"what do you do on the frames where the head itself is genuinely
+undetectable," independent of whether that undetectability is caused by
+blur or by camouflage.
+
+**Why it matters for this model specifically:** Two separable takeaways.
+(1) The licence means SwingTrace's code/weights/dataset-citation cannot be
+adopted wholesale, but the *technique* — detect a secondary, more-robust
+proxy target (the shaft) alongside the head, and fall back to a
+shaft-derived head estimate plus spline-bridging when the head detector
+alone returns nothing — is a simple idea, not a protected implementation,
+and is independently buildable: add a `shaft` class to this project's own
+label set (the labeling spec already excludes the shaft from the `clubhead`
+box, so shaft boxes would be new, additional annotation work, not a
+redefinition of existing labels) and add the same bridging logic to the
+existing CoreML post-processing. This is a second, independently-sourced
+vote for the already-logged "use a cheap recovery mechanism at inference
+time instead of only chasing raw per-frame accuracy" direction (the
+2026-11-05 Kalman-patch entry above made the same point from a different
+paper). (2) The indoor/simulator-bay numbers, while not this project's own
+data and not on golf clubs with camouflage backgrounds specifically, are the
+first external, quantified signal in this log that indoor performance is
+measurably worse across an independently-built system too — useful
+corroboration when prioritizing the (currently unmeasured, per the
+quarantined `indoor_test` set) indoor gap against the outdoor-camouflage
+finding the 3-clip test set already quantified.
+
+**Effort vs. payoff:** Low effort to extract the *idea* (already done —
+this entry); medium effort to implement it properly, since it requires new
+shaft annotations on a meaningful slice of existing footage (not a pure
+inference-time change like the Kalman-patch idea), re-training, and testing
+whether shaft visibility actually survives the same camouflage/blur
+conditions that defeat head visibility (untested assumption — a shaft
+against dark clothing may be just as low-contrast as the head it's meant to
+rescue). Payoff is plausible and now has two independent sources behind it,
+but still unproven for this project's specific footage. The licensing
+side-finding is zero-effort to report and potentially high-stakes if this
+project's v2 training pipeline turns out to need an Ultralytics Enterprise
+License that nobody has budgeted for — worth a five-minute question to
+whoever owns that decision, independent of anything else in this log.
