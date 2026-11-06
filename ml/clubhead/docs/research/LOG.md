@@ -930,3 +930,108 @@ this run: no trainable clubhead model comes out of this, and the
 blur-robustness rationale is architectural reasoning, not demonstrated
 evidence, so it should not be oversold as more than a lead worth
 benchmarking later.
+
+---
+
+## 2026-11-06 (third run today) — EventVCOD: closing the two leads the 2026-11-04 VCOD entry explicitly deferred, plus a real finding — its README claims a licence that the repo does not actually ship
+
+**Follow-up context, not a repeat:** The 2026-11-04 VCOD entry named two repos it
+found but deliberately did not verify — `EventVCOD` and `YUV20K` — "for a
+future run to check independently rather than re-discovering." This run
+closes both, per that entry's own instruction, rather than re-covering VCOD
+as a topic from scratch.
+
+**YUV20K, briefly:** `github.com/K1NSA/YUV20K` is real but is a dataset
+landing page only — the repo holds just `LICENSE`, `README.md`, and
+`.gitignore` (44 commits, no source code; the README's own roadmap lists
+"Release source code" for 2026, unchecked). The README's licence section
+states verbatim: *"The YUV20K dataset is available under the CC BY-NC 4.0
+License"*, with an explicit note that the underlying videos are third-party
+web content "for academic research only." **Commercial use: NOT
+permitted.** Not pursued further — same NC dead-end pattern as GolfDB and
+ClubheadDB, already logged.
+
+**EventVCOD — the substantive finding.** `github.com/lyu-yx/EventVCOD` is
+the official implementation of *"Towards Explainable Video Camouflaged
+Object Detection: SAM2 with Eventstream-Inspired Data"* (Zhang, Lyu, et
+al., Beihang University, **AAAI 2026**, vol. 40 pp. 12511–12519 — confirmed
+via the paper's AAAI OJS listing, which this run could reach even though
+`arxiv.org` itself remains blocked). Mechanism: instead of Vcamba's
+frequency-domain Mamba scanning, this method synthesizes a cheap
+event-camera-*like* signal directly from ordinary RGB video — per-pixel
+frame differences, thresholded into positive/negative "polarity" (brighter
+vs. darker than the previous frame), accumulated over a short time window
+— and feeds that motion-only representation into SAM2 through a
+memory-augmented dual-branch design (Time Bridge Attention + Visual Bridge
+Attention), with a Prompt Embedding Generator that removes the need for a
+human-drawn prompt box/point SAM2 normally requires.
+
+**URL:** https://github.com/lyu-yx/EventVCOD (paper: AAAI 2026,
+ojs.aaai.org/index.php/AAAI/article/view/38245)
+
+**Licence — the actual finding:** The README states *"This project is
+licensed under the Apache License 2.0 - see the LICENSE file for details"*
+and links to `/blob/main/LICENSE`. **That file does not exist.** Verified
+by fetching `raw.githubusercontent.com/lyu-yx/EventVCOD/main/LICENSE`
+directly (HTTP 404), then `.../master/LICENSE` (also 404), then the repo's
+own root file listing directly, which lists `assets/`, `checkpoints/`,
+`data_manipulate/`, `datasets/`, `eval/`, `sam2/`, `tools/`, `training/`,
+`.gitignore`, `README.md`, `__init__.py`, `requirements.txt`,
+`sod_metric.py`, `test.py`, `train.py`, `utils.py` — no `LICENSE`,
+`LICENSE.md`, or `LICENSE.txt` anywhere in it. A claimed-but-missing
+licence is a worse state than Vcamba's silently-absent one (logged
+2026-11-04): it's more likely to be taken at face value and copied from
+without a second check. Per the same default-copyright reasoning as every
+prior unlicensed-repo entry in this log, **treat as not usable
+commercially** — the README's stated intent is not a substitute for an
+actual licence grant in the repository, and should not be relied on even
+informally without the authors adding the file or confirming it elsewhere
+(e.g. contacting them directly).
+
+**Verification performed:** Direct fetch of the GitHub repo root listing
+(real, non-placeholder — `train.py`/`test.py`/full SAM2 integration code
+are present, not a stub); direct fetch attempts on both branch names for
+`LICENSE` (both 404, see above); confirmed the AAAI 2026 venue and page
+range via the paper's own OJS listing (reachable, unlike arxiv.org).
+**Not verified:** the three named datasets (`MoCA-Video-Train_event`,
+`MoCA-Video-Test_event`, `CAD2016_event`) and the fine-tuned checkpoints are
+hosted on a Baidu-style netdisk (`bhpan.buaa.edu.cn`), outside this
+session's reachable domains, so this run could not confirm the links
+resolve, whether access requires registration, or what (if any) terms
+attach to the data itself as opposed to the code.
+
+**Which failure mode this addresses:** Camouflage, same category as the
+2026-11-04 Vcamba entry — not motion blur (a synthetic event/polarity
+channel encodes *that* something moved, not *how blurred* it looks within
+a frame).
+
+**Why it matters for this model specifically — distinct from the Vcamba
+entry, not a restatement of it:** Vcamba's architecture (a hand-written
+Mamba selective-scan CUDA kernel) is not something to reimplement
+independently of its own code. EventVCOD's core data trick is: thresholded
+inter-frame pixel differences, which is a few lines of OpenCV, requires no
+exotic architecture, no SAM2 dependency, and no training to *generate* —
+only the SAM2/prompt-generator half of their pipeline is heavy and
+unlicensed. That means the genuinely reusable idea here — stack a cheap
+polarity/frame-difference channel alongside RGB as extra detector input,
+so the model has direct access to "this pixel just changed" rather than
+inferring motion only implicitly through weights — is realistically
+buildable as an experiment on top of this project's own YOLO11n pipeline,
+independent of EventVCOD's licence problem, and is a concrete instance of
+the "extra motion channel" pattern the 2026-11-04 entry mentioned finding
+in UAV small-object papers but never verified. It would need its own
+from-scratch implementation and its own clubhead-specific validation —
+nothing here proves it works on a golf swing — but it is now a specific,
+cheap-to-prototype idea rather than a vague direction.
+
+**Effort vs. payoff:** Low effort to extract the idea (frame-differencing
+is trivial to implement, no dependency on the unlicensed SAM2 pipeline);
+unproven payoff specific to clubheads — thresholded frame-differencing
+degrades on its own fast camera pans/handheld shake (common in phone
+footage of a swing) and may fire just as strongly on a swaying tree branch
+in foliage as on the clubhead itself, which is exactly the kind of
+background clutter the camouflage failures already involve. Worth a cheap
+same-day prototype (compute a frame-diff channel over the existing 3-clip
+eval set and look at it visually on the known camouflage-failure frames)
+before investing in wiring it into training — this run did not build or
+test that prototype, only identified and licence-checked the idea.
