@@ -1035,3 +1035,124 @@ same-day prototype (compute a frame-diff channel over the existing 3-clip
 eval set and look at it visually on the known camouflage-failure frames)
 before investing in wiring it into training — this run did not build or
 test that prototype, only identified and licence-checked the idea.
+
+---
+
+## 2026-11-06 (fourth run today) — YOLOV / YOLOV++: a YOLOX-based *video* detector that aggregates features across frames specifically to recover degraded frames, fully Apache-2.0 end to end (unlike the already-flagged Ultralytics AGPL-3.0 chain)
+
+**Rotation context:** Targets bullet 3 (temporal/multi-frame methods for
+detecting objects that are hard to see in a single frame) — the same bullet
+Vcamba and EventVCOD covered, but this is a structurally different family:
+a one-stage YOLO-lineage detector with a lightweight attention-based
+temporal aggregation head, not a Mamba kernel or a SAM2 pipeline, and
+licence-clean rather than unlicensed/license-claimed-but-missing like those
+two.
+
+**What it is:** `YuHengsss/YOLOV` — the official PyTorch implementation of
+**YOLOV** ("YOLOV: Making Still Image Object Detectors Great at Video Object
+Detection," Shi, Wang, Guo, AAAI 2023) and its follow-up **YOLOV++**
+("Practical Video Object Detection via Feature Selection and Aggregation").
+Built directly on **YOLOX** (one-stage, anchor-free — the same detector
+family lineage as this project's own YOLO11n, not an unrelated architecture).
+The stated motivation, from the paper's own abstract (via search, since
+`arxiv.org` remains DNS-blocked from this session — see Verification): video
+object detection is hard because of "high variation of object appearance as
+well as the diverse deterioration in some frames," and "a frame can borrow
+evidence from its neighbors." Mechanism: a Feature Selection Module first
+picks a small set of candidate region features per frame (cheap, since it
+runs after the one-stage detector head, not before, unlike older two-stage
+video-detection aggregation methods); a Feature Aggregation Module then
+computes attention-style affinity between the current (target) frame's
+candidates and reference frames' candidates, using both classification and
+IoU scores, and aggregates across frames before final classification. On
+ImageNet VID, the released weights report **87.5% AP50 at 30+ FPS on a single
+2080Ti** (YOLOV), with YOLOV++ variants reported higher still.
+
+**URL:** https://github.com/YuHengsss/YOLOV (papers: arXiv:2208.09686 / AAAI
+2023, and the YOLOV++ follow-up — not independently fetchable this run, see
+Verification).
+
+**Licence — verbatim, checked at both ends of the dependency chain:**
+Fetched `raw.githubusercontent.com/YuHengsss/YOLOV/master/LICENSE` directly:
+the Apache License, Version 2.0, January 2004, standard text, no added
+restriction. Separately fetched the upstream base detector's licence,
+`raw.githubusercontent.com/Megvii-BaseDetection/YOLOX/main/LICENSE`: also
+Apache License 2.0, with the appendix naming "Copyright (c) 2021-2022 Megvii
+Inc." **Commercial use: permitted**, for both the video-aggregation code and
+the base detector it's built on. This is a direct, useful contrast with the
+2026-11-05 SwingTrace entry's licensing side-finding: that entry flagged
+Ultralytics YOLO (and this project's own planned `ultralytics` dependency) as
+AGPL-3.0, requiring an Enterprise Licence for unambiguous commercial closed-
+source use. YOLOX/YOLOV sits in the same one-stage-YOLO lineage but is
+entirely outside that AGPL chain — Megvii's YOLOX predates and is legally
+unrelated to Ultralytics' licensing choice.
+
+**Verification performed:** Fetched the GitHub repo page directly (real,
+public, has a root `LICENSE` file, working `tools/vid_train.py` /
+`tools/vid_demo.py` / `tools/yolov_demo_online.py` / `tools/REPPM.py`
+scripts, pip-installable, and released pretrained weights for YOLOV-s/l/x
+and several YOLOV++ variants, some linked via Hugging Face, with per-variant
+ImageNet VID mAP@50 numbers in the README table). Fetched both raw `LICENSE`
+files verbatim (quoted above) for YOLOV and its YOLOX base. Could not fetch
+the arXiv paper bodies directly (`arxiv.org` still DNS-blocked, consistent
+with every prior entry in this log) — the "diverse deterioration in some
+frames" / "borrow evidence from its neighbors" motivation and the FSM/FAM
+mechanism description above come from secondary summaries of the abstract
+found via search, not a direct read of the PDF, so the exact wording and any
+explicit mention of motion blur or occlusion specifically (as opposed to
+"deterioration" generically) is **not confirmed verbatim**. The README's own
+TODO list still shows unchecked items ("Finish Swin-Transformer based
+experiments," "Release updated code, model and log"), so treat the repo as
+real and usable today but not fully finished per its own authors.
+
+**Which failure mode this addresses:** Both, by mechanism rather than by
+explicit golf-specific design — a frame where the clubhead is blurred past
+recognition, or briefly camouflaged against clothing/foliage, is exactly the
+"deteriorated frame" case the FAM is designed to recover by borrowing
+evidence from nearby frames where the same object was clearly detected. This
+is mechanistically closer to the already-logged `rucv/golf_ball` Kalman-patch
+idea (use temporal context to rescue a bad frame) than to the VCOD/EventVCOD
+entries (which specifically target single-frame appearance-camouflage via
+motion-as-a-cue, not frame quality in general) — it does not single out
+"this pixel moved" the way those do, so it is a weaker, more generic claim
+for camouflage specifically than the VCOD line of work, but a comparably
+strong claim for motion blur (a genuinely deteriorated frame, not a
+same-background-color frame).
+
+**Why it matters for this model specifically:** Three concrete reasons this
+is a stronger lead than Vcamba/EventVCOD for this project's actual
+constraints, and one real gap. (1) **Licence-clean**, unlike both prior VCOD
+entries (Vcamba: no licence; EventVCOD: claimed but missing licence) — usable
+today without a legal question mark. (2) **Architecturally closer to the
+existing pipeline** — a one-stage YOLO-family detector with an added
+attention module, not a hand-written CUDA Mamba kernel or a SAM2 dependency,
+so the engineering distance from "YOLO11n single-frame" to "YOLO-family
+multi-frame with an aggregation head" is smaller than adopting either VCOD
+architecture, even though it would still mean moving off Ultralytics'
+specific codebase (or re-implementing just the FSM/FAM idea on top of
+YOLO11n's own one-stage head, which is architecturally compatible in
+principle). (3) **Reported speed (30+ FPS on a 2080Ti for a reference
+GPU)** is in a plausible range to reason about an on-device budget, unlike
+VCOD architectures with no stated inference speed at all. **The real gap:**
+nothing here is CoreML-exportable or validated on a phone — this is a
+PyTorch research codebase for desktop/server GPUs, multi-frame by
+construction (needs a short window of reference frames, not one still
+image), and no entry in this log, including this one, has verified that a
+multi-frame-aggregation head survives Core ML export or runs at acceptable
+latency on-device. That is a materially bigger unknown than the model
+architecture claims above, and should not be glossed over.
+
+**Effort vs. payoff:** Medium effort to prototype the *idea* (a feature-
+selection + cross-frame-attention aggregation head on top of YOLO11n's
+existing feature maps is a non-trivial but bounded research experiment, not
+a rewrite), high effort and unproven payoff to actually ship it on-device
+(multi-frame input changes the Core ML export shape, the Vision integration
+in `ClubHeadDetector.swift`, and the inference-time latency budget in ways
+none of this log's entries have scoped). Realistic near-term use: a GPU-side
+research experiment to test whether frame-aggregation measurably recovers
+this project's own blurred/camouflaged failure frames (using the existing
+3-clip eval set's known failures as a cheap sanity check) before committing
+to any on-device integration work — the licence and architecture are no
+longer blockers; the open question is purely whether the payoff clears the
+on-device engineering cost, which this run did not attempt to estimate
+further.
