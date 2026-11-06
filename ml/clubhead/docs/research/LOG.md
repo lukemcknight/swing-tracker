@@ -840,3 +840,93 @@ as log hygiene: this closes off a dataset name that would otherwise keep
 surfacing near the top of "golf dataset license" searches for every future
 run on this rotation bullet. The commercially-clean-dataset-with-real-blur
 gap this project actually needs filled remains unfound.
+
+---
+
+## 2026-11-06 (second run today) — WASB-SBDT: a real, MIT-licensed, heatmap-based multi-sport ball tracker, actually verified for the first time — correcting an unverified assumption this log was carrying
+
+**Correction first, substance second:** The 2026-11-05 (fourth run today)
+entry justified *not* logging a UAV small-object paper by asserting this
+log "already carries multiple code-available, permissively-licensed
+implementations of the same underlying idea... WASB-SBDT (MIT), OC-SORT
+(training-free)." That was wrong to state as settled fact: neither
+WASB-SBDT nor OC-SORT has an actual dedicated entry anywhere in this log —
+both were only name-dropped, never fetched, licence-checked, or verified.
+This run closes that gap for WASB-SBDT (OC-SORT remains unverified and
+should not be treated as confirmed either, until a future run actually
+checks it).
+
+**What it is:** `nttcom/WASB-SBDT` — "Widely Applicable Strong Baseline for
+Sports Ball Detection and Tracking" (Tarashima et al., BMVC 2023). A
+cross-sport ball detection/tracking baseline, with evaluation code and
+pretrained weights for soccer, tennis, badminton, volleyball, and
+basketball, benchmarked against DeepBall, DeepBall-Large, BallSeg,
+TrackNetV2, ResTrackNetV2, and MonoTrack. The `src/models/` directory
+contains `hrnet.py`, `unet2d.py`/`unet2d_parts.py`, `resunet2d.py`,
+`segbase.py` — HRNet and U-Net-family dense-prediction backbones, not a
+YOLO-style box-regression head — and the eval config exposes a
+`detector.postprocessor.use_hm_weight` flag, confirming the output is a
+**heatmap** (per-pixel confidence/centre map), not a bounding box. This
+architecture choice is the standard one in small-ball-tracking literature
+(TrackNetV2 and its relatives) specifically because a heatmap only needs
+to localise a plausible centre, not agree on tight box edges, which is far
+more forgiving when the object's visible extent is ambiguous — exactly the
+situation a motion-blur streak creates for a box-regression detector like
+this project's YOLO11n.
+
+**URL:** https://github.com/nttcom/WASB-SBDT
+
+**Licence — verbatim:** Fetched `raw.githubusercontent.com/nttcom/WASB-SBDT/main/LICENSE.md`
+directly: standard MIT License text, "Copyright (c) 2023 NTT Communications
+Corporation," no additional restriction clause. **Commercial use:
+permitted.**
+
+**Verification performed:** Fetched the GitHub repo page, the raw
+`LICENSE.md`, `MODEL_ZOO.md`, `GET_STARTED.md`, and the `src/` and
+`src/models/` directory listings directly (all reachable). Confirmed: repo
+is real, public, not archived (208 stars, 41 forks). Confirmed **training
+code is explicitly not available** — `GET_STARTED.md`'s Training section
+reads only "TBA"; the repo ships evaluation/inference code for pretrained
+weights only. Confirmed pretrained weights are distributed via Google Drive
+links in `MODEL_ZOO.md`, which could not be followed (Google Drive is
+outside this session's reachable domains) — so whether the weights
+actually still download, and under what terms (the MIT licence covers the
+*code* repo; the weights' own terms are not separately stated anywhere
+fetched), is **not verified**. The word "blur" does not appear anywhere in
+the README, GET_STARTED.md, or MODEL_ZOO.md — the heatmap-vs-blur
+connection above is this run's own architectural inference from the code
+structure, not a claim the authors make themselves. Could not fetch the
+paper abstract (arxiv.org blocked, as in every prior entry) or two
+secondary mirrors tried (`www.emergentmind.com`,
+`bmvc2022.mpi-inf.mpg.de`) — both newly confirmed DNS-blocked from this
+session, added to the standing egress-gap list.
+
+**Which failure mode this addresses:** Motion blur, as an architectural
+pattern — not golf-specific, not camouflage-relevant (heatmaps don't help
+when there are zero candidate activations at all, which is the camouflage
+failure signature; they only help make localisation of a *present but
+blurred* object more forgiving).
+
+**Why it matters for this model specifically:** This is the first entry in
+this log that points at the detection *head* design itself, rather than at
+data, augmentation, or inference-time recovery tricks, as a lever for the
+blur problem. The current pipeline is committed to YOLO11n's native box
+head. If a future retrain shows blur-conditioned frames are still missed
+or badly localised even after real blurred training data exists (per the
+2026-11-04 SoccerSynth entry's recommendation), a heatmap-style auxiliary
+head or a heatmap-based small-object detector family is a concretely
+different, verified-available, commercially-clean architecture to
+benchmark against — not a hypothetical. The caveat is real, though: no
+training code exists in this repo to actually produce a clubhead-specific
+heatmap model, no golf or clubhead data is involved, and the blur-robustness
+argument is this run's inference, not the paper's own claim.
+
+**Effort vs. payoff:** Low-moderate effort to verify (direct fetches only,
+no code run); the genuine payoff is narrow — it upgrades an unverified
+assumption into a confirmed one, and gives a named, real, licence-clean
+architectural reference point for "heatmap vs. box regression" if the blur
+problem survives better training data. It is not something to build on
+this run: no trainable clubhead model comes out of this, and the
+blur-robustness rationale is architectural reasoning, not demonstrated
+evidence, so it should not be oversold as more than a lead worth
+benchmarking later.
