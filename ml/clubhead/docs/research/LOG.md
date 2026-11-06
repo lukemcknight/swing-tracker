@@ -770,3 +770,73 @@ entries or failed to clear this log's own bar once checked. The process
 correction above (cadence) is the one piece of genuinely new, verified
 information this run produced, and it is about this log's own
 housekeeping, not the model.
+
+---
+
+## 2026-11-06 — CaddieSet (damilab/CaddieSet): genuinely MIT-licensed and commercial-use-clean, but a dead end for this model — it ships zero video or image data
+
+**What it is:** A dataset paper, "CaddieSet: A Golf Swing Dataset with Human
+Joint Features and Ball Information" (Jung et al., arXiv:2508.20491, CVPR 2025
+Workshops), with an accompanying GitHub repo. It pairs 1,757 golf shots
+(924 face-on, 833 down-the-line camera views) from swing video captured with
+a camera-based launch monitor against derived data: per-shot ball-flight
+metrics (ball speed, spin axis, etc.) and 15 pose/swing-phase features
+computed from body-joint tracking across 8 swing phases.
+
+**URL:** https://github.com/damilab/CaddieSet (paper: arXiv:2508.20491, not
+independently fetchable this run — `arxiv.org` is still DNS-blocked from
+this session, consistent with every prior entry in this log; two unofficial
+mirrors tried, `airaxiv.com` and `newx.sg`, are also DNS-blocked and were not
+previously known blocks, so this run adds them to the standing egress-gap
+list without re-escalating the gap itself).
+
+**Licence — verbatim:** Fetched `raw.githubusercontent.com/damilab/CaddieSet/main/LICENSE`
+directly. Full text is the standard MIT License, copyright "(c) 2024
+damilab," with the standard permissive grant ("Permission is hereby granted,
+free of charge, to any person obtaining a copy of this software... to deal
+in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies...") and no additional restriction clause. **Commercial use:
+permitted** — this is a real, clean, permissive licence, not a mislabeled
+NC one.
+
+**Verification performed:** Fetched the GitHub repo page directly (confirms
+it's real, public, 38 commits, a `README.md`, a `LICENSE` file, and a `data/`
+folder — not just a paper citation with no artifact). Fetched the raw
+`LICENSE` file verbatim (quoted above). Fetched the `data/` directory listing
+directly: it contains exactly **one file, `CaddieSet.csv`** — tabular
+ball-flight and joint-angle metrics — and **no video files, no image files,
+no bounding boxes, and no frame-level annotations of any kind**. Could not
+reach the arXiv paper body (blocked, see above) to confirm the capture
+setting (indoor/simulator bay vs. outdoor, lighting, camera model/frame
+rate) that the research prompt specifically wants evidence on; this remains
+unverified and should not be assumed either way.
+
+**Which failure mode this addresses:** Neither, in practice, despite being
+the first dedicated search this log has done for bullet 1 (a commercially-
+licensed dataset, especially one covering indoor/low-light/simulator
+footage where real motion blur would appear). The underlying capture used a
+camera-based launch monitor, which is exactly the kind of fixed, controlled
+rig that plausibly operates indoors/in simulator bays — but that's
+speculation, not something this run could verify, because the raw
+video/images were never published in the repo at all. There is nothing
+here to extract a single clubhead frame from, so it cannot help motion
+blur or camouflage.
+
+**Why it matters for this model specifically:** It's a clean negative
+result worth recording so a future run doesn't re-discover and re-verify
+the same dead end. CaddieSet clears the licence bar this log has turned
+away ClubheadDB and GolfDB on (both CC-BY-NC) — but a permissively licensed
+dataset with no imagery is exactly as useless to a vision model as a
+restrictively licensed one with imagery, just for a different reason. The
+genuine unresolved question the prompt cares about (does any commercially-
+usable dataset contain real indoor/simulator-bay/low-light golf footage
+with visible motion blur) is still open after this run.
+
+**Effort vs. payoff:** Low effort (two direct GitHub fetches settled it
+conclusively — no ambiguity, no speculation needed on the licence or the
+file contents). Zero payoff toward either failure mode, but non-zero payoff
+as log hygiene: this closes off a dataset name that would otherwise keep
+surfacing near the top of "golf dataset license" searches for every future
+run on this rotation bullet. The commercially-clean-dataset-with-real-blur
+gap this project actually needs filled remains unfound.
