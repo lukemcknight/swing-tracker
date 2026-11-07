@@ -1156,3 +1156,109 @@ to any on-device integration work — the licence and architecture are no
 longer blockers; the open question is purely whether the payoff clears the
 on-device engineering cost, which this run did not attempt to estimate
 further.
+
+---
+
+## 2026-11-07 — RT-Focuser: a small, MIT-licensed, CoreML-deployable motion-deblurring network, actually benchmarked on an iPhone — the first on-device deblur-as-preprocessing candidate this log has verified
+
+**Rotation context:** Bullet 2 (motion blur specifically — "video deblurring
+usable as preprocessing" sub-bullet). Prior entries covering blur
+(SoccerSynth, 2026-11-04; WASB-SBDT, 2026-11-06) addressed training-data
+synthesis and detector-head architecture respectively. Neither touched
+deblurring as an inference-time preprocessing step ahead of the detector,
+and none of this log's entries have a concrete, verified, on-device-deployed
+deblur network. This run fills that specific gap.
+
+**What it is:** `ReaganWu/RT-Focuser` — a small CNN trained for single-image
+motion deblurring on the GoPro dataset, with a second, newer repo
+(`ReaganWu/RT-Focuser-v2`) adding an efficient global-attention module and
+four selectable speed/quality "exits." V1 ships a pretrained checkpoint
+(`GoPro_RT_Focuser_Standard_256.pth`, 5.85M parameters, 15.76 GMACs) plus
+pre-converted ONNX variants (`rt_focuser_wint8_afp16.onnx`,
+`rt_focuser_wint8_afp32.onnx`, `rt_focuser_wint8_aint8.onnx`) in its
+`Pretrained_Weights/` folder. Its README reports a direct CoreML benchmark:
+**146.72 FPS on an iPhone 15 (A16 Bionic)**. V2 is smaller still at its
+fastest exit (Y1: 1.25M params, 259.06 FPS on iPhone 15/CoreML per its own
+README) but — important caveat below — ships no pretrained weights yet.
+
+**URL:** https://github.com/ReaganWu/RT-Focuser and
+https://github.com/ReaganWu/RT-Focuser-v2
+
+**Licence — verbatim:** Fetched `raw.githubusercontent.com/ReaganWu/RT-Focuser/main/LICENSE`
+directly: standard MIT License, "Copyright (c) 2025 ReaganWu," no added
+restriction. Fetched `raw.githubusercontent.com/ReaganWu/RT-Focuser-v2/main/LICENSE`
+directly: also standard MIT License, "Copyright (c) 2026 RT-Focuser-V2
+Authors," no added restriction. **Commercial use: permitted**, for both
+repos' code and (V1 only) its shipped pretrained weights. The training data
+itself — the GoPro deblurring dataset (Nah, Kim, Lee, CVPR 2017) — is
+separately confirmed via its own listing page (surfaced by search; the
+canonical host, `seungjunnah.github.io`, is DNS-blocked from this session
+like every other `*.github.io`/academic-page host this log has hit, so this
+specific claim rests on the search engine's synthesis of that page, not a
+direct fetch) to be released under **CC BY 4.0** — permissive, commercial
+use allowed, attribution required. No NC clause found anywhere in the
+training-data chain, unlike most dataset entries this log has logged so far.
+
+**Verification performed:** Fetched the RT-Focuser GitHub repo page directly
+(real, public, 29 stars, 28 commits — a small but genuine project, not a
+placeholder); fetched its `Pretrained_Weights/` directory listing directly
+and confirmed the four weight files actually exist in the repo (not just
+named in the README); fetched both raw `LICENSE` files verbatim (quoted
+above); fetched the RT-Focuser-v2 repo page directly and confirmed its file
+tree (`rt_focuser_v2.py`, `inference.py`, `train.py`, `evaluate.py`,
+`data.py`, `losses.py`, no `.mlmodel`/`.mlpackage` artifact — CoreML export
+is a code path invoked via `coremltools` on macOS, not a pre-exported file)
+and confirmed, directly from its README, that **V2 ships no pretrained
+checkpoint** ("Pretrained checkpoints... are not included in this repository
+yet") — its 259 FPS figure is an architecture/throughput claim, not
+something downloadable and runnable today. Could not fetch the GoPro
+dataset's own license page directly (blocked, see above) and could not
+independently verify RT-Focuser's claimed 30.67 dB PSNR deblurring quality
+figure against any held-out benchmark (no paper/arXiv entry found for this
+project — it appears to be an independent engineering project, not a
+peer-reviewed publication, which is a reliability flag by itself).
+
+**Which failure mode this addresses:** Motion blur only. Has no bearing on
+camouflage — a deblur network sharpens an already-visible-but-smeared
+object; it does nothing for a sharp, non-blurred frame where the clubhead
+is simply low-contrast against its background (the camouflage failure
+signature), and could plausibly do nothing useful on such a frame either
+way.
+
+**Why it matters for this model specifically:** Every blur-related entry so
+far in this log is either training-side (SoccerSynth's synthetic blur
+augmentation) or architecture-side (WASB-SBDT's heatmap head). This is the
+first candidate for a third lever: an inference-time preprocessing step —
+deblur the frame, then run the existing YOLO11n detector on the sharpened
+result — that requires no retraining of the detector at all and is
+demonstrated, not hypothesized, to run fast enough on an actual iPhone via
+CoreML, the project's own exact deployment target. That makes it a real
+alternative (or complement) to the already-logged inference-time-recovery
+ideas (`rucv/golf_ball`'s Kalman-patch re-crop, 2026-11-05) which work by
+changing *where* the detector looks; this works by changing *what* the
+detector sees. Two serious unverified risks, though: (1) RT-Focuser was
+trained on GoPro's camera-shake/general-scene blur, which is dominated by
+whole-frame or large-object blur from an unstable handheld camera — a golf
+clubhead's blur is a small, fast-moving object streaking against a
+comparatively stable background, a different blur geometry the network has
+never been shown to handle, and deblurring could just as easily erase the
+elongated streak shape (the only cue this project's own labeling spec asks
+annotators to preserve) as sharpen it usefully; (2) stacking a 5.85M-param
+deblur pass ahead of YOLO11n adds real on-device compute even if each piece
+individually benchmarks fast alone — nothing here measures the combined
+pipeline's actual end-to-end framerate on a phone, only the deblur model in
+isolation.
+
+**Effort vs. payoff:** Low effort to pilot — the V1 checkpoint and ONNX
+weights are already downloadable and the model is small; a credible first
+test is running the existing CoreML export path (or the ONNX weights
+directly) over the known blurred/failing frames in the project's own 3-clip
+eval set and visually checking whether the output looks like a recognizable
+clubhead or a hallucinated artifact, before touching the detector or
+training pipeline at all. Payoff is genuinely unproven and specifically
+two-sided risk (helps detection vs. destroys the one blur cue the model
+might already be partially learning from) rather than a confident
+improvement, and V2's higher numbers are not currently usable for anything
+beyond "a cheaper version may exist soon" since it has no weights. Worth
+the cheap pixel-level pilot described above; not worth wiring into the
+production pipeline on the strength of this entry alone.
