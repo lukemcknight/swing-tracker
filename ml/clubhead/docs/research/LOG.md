@@ -1366,3 +1366,96 @@ production pipeline on the strength of this entry alone.
 **Effort vs. payoff:** The labeling-spec change (item 1) is cheap to pilot — no new data, no new model, just a revised annotation convention and a small re-label-and-measure experiment to see if explicit blur fields move the needle on consistency — and plausible payoff is real since it targets a gap this project has already measured but not yet explained. The architecture reuse (item 2) is a bigger, unproven lift: different backbone, multi-frame input, table-tennis-ball domain rather than golf-clubhead, and the dataset that would make it directly comparable is unverified and possibly unreachable from this session's network. Recommend piloting (1) before considering (2) at all.
 
 ---
+
+## 2026-11-08 (third run today) — RFR / IRSatVideo-LEO: a third distinct architecture for temporal/multi-frame small-target detection (recurrent feature refinement, not frame-differencing or Mamba), checked and ruled out the same way as the other two
+
+**Rotation context:** The first two runs today covered bullet 3 (YOLOMG,
+motion-vs-appearance fusion) and bullet 2 (BlurBall, blur-aware labeling).
+This run also lands on bullet 3 — multi-frame/temporal methods for
+low-contrast small objects — but deliberately pulls from a different
+literature stream than any prior entry: infrared/satellite dim-small-target
+detection, not video camouflaged-object-detection (VCOD) or UAV-to-UAV
+motion fusion. The goal was to check whether a third architectural family
+(recurrent temporal refinement across many frames, rather than a 2-frame
+difference channel like YOLOMG or frequency-domain Mamba scanning like
+Vcamba) changes the license/deployability conclusion this log keeps
+reaching, not to re-survey VCOD again.
+
+**What it is:** `XinyiYing/RFR`, the official repo for "Infrared Small
+Target Detection in Satellite Videos: A New Dataset and A Novel Recurrent
+Feature Refinement Framework" (Ying et al.). It ships two model variants,
+`ISTUDNet_RFR` and `ResUNet_RFR`, plus a deformable-convolution (DCN) module,
+and introduces `IRSatVideo-LEO`: a semi-simulated dataset (a real satellite
+background composited with synthesized target appearance, trajectory, and
+intensity) of 200 sequences / 91,021 frames / 218,038 targets with
+instance-level segmentation masks. The mechanism — predicting a target mask
+per frame by recurrently refining features across a sequence, rather than
+differencing or stacking a fixed window of frames — is architecturally
+distinct from every temporal method logged so far in this project.
+
+**URL:** https://github.com/XinyiYing/RFR (paper discovered via search;
+arXiv remains DNS-blocked from this session per the standing egress-gap
+list, so the paper body itself was not read — repo README is the primary
+source).
+
+**Licence:** **None.** Fetched the repo directly: the file listing is only
+`codes/`, `pics/`, `README.md` — no `LICENSE` file, and GitHub's own "About"
+sidebar shows no detected license. Same default-all-rights-reserved
+situation already logged three times now (Vcamba and EventVCOD, 2026-11-04
+and 2026-11-06; CamDiff, 2026-11-07). **Commercial use: not permitted —
+no rights are granted without contacting the authors.** The `IRSatVideo-LEO`
+dataset itself is not in the repo at all; access requires submitting a
+Microsoft Forms request linked from the README, with no stated turnaround
+or guarantee of grant — a stricter gate than WASB-SBDT/BlurBall's open
+downloads, closer to GolfPose's author-gated access (2026-11-07).
+
+**Verification performed:** Fetched the GitHub repo page directly and
+confirmed it is real, public, and contains actual training/testing code
+(`train.py`, `test.py` under `codes/`) rather than a placeholder, plus a DCN
+module requiring separate compilation (Python 3.8, PyTorch 1.10.1 — an
+older, specific environment, itself a minor deployability flag). Confirmed
+the dataset composition (200 sequences / 91,021 frames / 218,038 targets)
+and the Microsoft Forms gating directly from the README text. Could not
+verify the paper's claimed PA/mIoU/PD-FA benchmark numbers, and the README
+does not itself explain the recurrent-refinement mechanism beyond naming it
+and pointing at a figure — the exact method (e.g. whether it's LSTM/GRU-style
+recurrence or something else) was not confirmed, only that it is not simple
+frame-differencing or a Mamba selective-scan kernel (ruling that in/out was
+possible from the file listing: no `kernels/selective_scan/` directory,
+unlike Vcamba).
+
+**Which failure mode this addresses:** Camouflage — the same "appearance
+alone is ambiguous, motion/temporal structure across frames is the
+separating signal" premise as every other VCOD-adjacent entry in this log.
+Has no bearing on motion blur.
+
+**Why it matters for this model specifically:** It does not change this
+log's running conclusion about camouflage from the 2026-11-04 VCOD entry —
+if anything it reinforces it a third time: another real, code-shipping,
+multi-frame architecture for exactly this class of problem (small,
+low-contrast, hard-to-see-in-a-single-frame moving target) exists, and is
+again blocked from direct reuse by licensing and a gated dataset rather than
+by the idea being unsound. The one new fact this run adds is architectural
+breadth, not a new blocker: this project now has three independently
+verified, structurally different ways multi-frame temporal information gets
+used for exactly this problem elsewhere (frame-differencing fusion —
+YOLOMG; frequency-domain Mamba scanning — Vcamba; recurrent feature
+refinement — RFR), which narrows what a from-scratch reimplementation for
+the clubhead detector would need to choose between, rather than inventing
+the design space from nothing. Domain transfer from satellite infrared to
+golf-clubhead-on-phone-video is unverified and should be treated as weak
+evidence either way — point targets in satellite video have essentially no
+shape, unlike a clubhead, so the *segmentation*-style output here is less
+directly relevant than YOLOMG's detection-style output.
+
+**Effort vs. payoff:** Low effort to check (one repo fetch, ~10 minutes),
+low payoff beyond confirming a pattern this log has now established three
+times over: real multi-frame architectures for this exact class of problem
+keep existing in the literature, and keep being unusable as-is because of
+license or data-access gates, not because the underlying idea is weak.
+Given that pattern is now well-established, a future run would get more
+value spending bullet-3 time on a from-scratch architecture sketch (reusing
+only the *ideas*, already distilled across YOLOMG/Vcamba/RFR) or on
+collecting the project's own motion-paired camouflage frames to test any of
+them against, rather than continuing to search for a fourth license-clean
+implementation of the same mechanism.
