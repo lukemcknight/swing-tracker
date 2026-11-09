@@ -1459,3 +1459,115 @@ only the *ideas*, already distilled across YOLOMG/Vcamba/RFR) or on
 collecting the project's own motion-paired camouflage frames to test any of
 them against, rather than continuing to search for a fourth license-clean
 implementation of the same mechanism.
+
+---
+
+**Branch-continuity note (2026-11-09):** Two earlier runs today both branched
+from `mvp/club-path-replay` (commit `406f8cd`) directly instead of from this
+chain (`research/clubhead-2026-11-08-corrected-3`), so each wrote a fresh,
+empty `LOG.md` and re-logged topics already closed out above —
+`research/clubhead-2026-11-09` re-discovered SoccerSynth-Detection (already
+the 2026-11-04 entry) and ClubheadDB (already the 2026-11-04 fourth-run
+entry); `research/clubhead-2026-11-09-corrected` added one entry, "Lightweight
+Multi-Frame Integration for Robust YOLO Object Detection in Videos" (ECMR
+2025, arXiv:2506.20550), that is *not* a duplicate of anything above, but
+it's bullet 3 (small/camouflaged/temporal detection), the same bucket as both
+of 2026-11-08's logged entries (YOLOMG, RFR) — so, per the rotation rule, it
+is noted here rather than copied in, and should be the pick-up point for the
+next run due on bullet 3. This run continues properly from
+`research/clubhead-2026-11-08-corrected-3` and is pushed as
+`research/clubhead-2026-11-09-corrected-2`. Future runs: continue from
+whichever of today's three branches is newest by this note, not from
+`mvp/club-path-replay` directly — `LOG.md` does not exist on that branch and
+never will unless one of these research branches is merged.
+
+## 2026-11-09 — "One-Shot Badminton Shuttle Detection for Mobile Robots" (ETH Zurich RSL) checked and ruled out: real paper and repo, but AGPL-3.0'd and its dataset link is a dead placeholder
+
+**Rotation context:** The three prior runs today (two orphaned, documented
+above) covered bullet 3 twice and bullet 3 again. This run targets bullet 2 —
+motion blur specifically, via datasets of fast-moving blurred small objects
+in sport — after bullet 1 (commercial indoor/low-light golf datasets) and
+bullet 4 (golf-specific tracking) were both searched this run and turned up
+nothing beyond what's already logged (ClubheadDB, GolfDB, CaddieSet, GolfPose
+— all already closed out above; no new golf-specific dataset or tracking
+paper was found this run).
+
+**What it is:** A one-shot shuttlecock detector for badminton-playing mobile
+robots, built so a single-frame detection can re-initialize tracking after
+the robot's camera loses the (small, very fast) shuttle. Authors: Florentin
+Dipner, William Talbot, Turcan Tuna, Andrei Cramariuc, Marco Hutter — ETH
+Zürich Robotic Systems Lab (RSL), arXiv:2603.06691, submitted 17 March 2026.
+Secondary summaries (alphaxiv, Bytez, awesomepapers.io — `arxiv.org` itself
+is DNS-blocked from this session, same standing gap this log has hit on
+every prior run) describe a dataset of 20,510 semi-automatically annotated
+frames across 11 indoor backgrounds, a YOLOv8 detector fine-tuned with
+non-maximum suppression constrained to at most one detection per frame, and
+a note that small object size and high shuttle velocity are the main
+remaining difficulty. I could not independently verify these specific
+numbers against the paper body (blocked), so they are reported as secondary,
+not confirmed.
+
+**URL:** https://arxiv.org/abs/2603.06691 (paper, unreachable directly this
+session); code: https://github.com/leggedrobotics/shuttle_detection (fetched
+directly and confirmed real — `leggedrobotics` is ETH RSL's own GitHub org,
+matching the paper's affiliation).
+
+**Licence — verbatim:** The repo's `LICENSE` file, fetched directly from
+`raw.githubusercontent.com`, is the GNU Affero General Public License,
+opening "GNU AFFERO GENERAL PUBLIC LICENSE / Version 3, 19 November 2007".
+The README states the reason directly: *"Due to the use of Ultralytics
+YOLOv8, this project is licensed under GNU AFFERO GENERAL PUBLIC LICENSE
+v3.0."* **Commercial use: permitted under AGPL's own terms, but with the
+same network-copyleft obligation this log has already flagged for
+`nishsm/golf-club-tracking` (2026-11-05) — any product that embeds this code
+or a model trained with it must offer its complete corresponding source to
+anyone who interacts with it over a network. That is incompatible with
+shipping inside this project's closed-source iOS app as-is**, same
+conclusion as the prior AGPL entry.
+
+**Verification performed:** Fetched the GitHub repo page and README
+directly (confirmed real: `scripts`, `src/shuttletrack`, `Dockerfile`,
+`docker-compose.yaml`, documented `shuttletrack.autogen_labels` /
+`.train` / `.eval` / `.predict` commands) and the raw `LICENSE` file
+directly. Checked whether the dataset is actually downloadable today, per
+this log's standing rule: **it is not** — the README's own download
+instruction points to `https://example.com`, a placeholder, not a real
+link. The README also claims an "easy/medium/hard" difficulty split and an
+automatic/semi-automatic labeling pipeline (`autogen_labels`, output
+importable into CVAT for correction), but documents neither the labeling
+algorithm (no mention of motion or background subtraction, tracking, or
+seed points) nor the easy/medium/hard assignment criteria — so, unlike the
+BlurBall entry (2026-11-08), there is nothing concrete here to borrow as a
+labeling-QA technique, only a name for one.
+
+**Which failure mode it addresses:** Motion blur, primarily (small, very
+fast object in video is exactly our clubhead's problem shape), with
+secondary relevance to the indoor-footage gap this project has never
+measured — the dataset is explicitly indoor, which none of this log's
+prior sport-dataset leads (ClubheadDB, GolfDB, CaddieSet) were. Not
+camouflage-relevant: nothing in the verified material addresses
+low-contrast/dark-on-dark appearance.
+
+**Why it helps this model specifically:** It doesn't, in practice — this
+closes out a lead rather than opening one. The one potentially useful
+asset (an indoor, fast-small-object dataset with difficulty tiers that
+might correlate with blur severity) is not actually obtainable (dead link),
+and the one potentially useful technique (the auto-labeling pipeline, which
+could in principle have been adapted to bootstrap more blur-labeled
+clubhead frames from our own raw footage, directly targeting the
+elongation-1.60 gap the brief describes) ships undocumented and under a
+licence this project can't use as-is. The repo is also real evidence that
+"indoor + fast + small + blurred" is a problem domain other groups are
+actively working on in 2026, which narrows where to look next (robotics labs
+building their own one-shot/re-detection pipelines for small flying/thrown
+objects, not sports-analytics papers), but that's a pointer, not a result.
+
+**Effort vs. payoff:** Low payoff, low-to-medium effort already spent (one
+repo fetch, one license check, one README read — this is now closed, not
+worth more time). Logged specifically so no future run re-opens this exact
+paper/repo chasing the "11 indoor backgrounds" detail, which turned out to
+be unreachable. If this project ever wants an *auto-labeling bootstrap* for
+blur-streak boxes specifically, the more promising next step flagged by this
+entry is to look at how robotics re-detection papers in this same niche
+(one-shot recovery of a lost fast small target) build their seed labels,
+rather than this specific repo.
