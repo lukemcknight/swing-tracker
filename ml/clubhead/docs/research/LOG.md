@@ -72,3 +72,74 @@ problem than full synthetic soccer scenes. Not a quick win, but it's the
 first concrete, licence-clean technique found so far that directly targets
 manufacturing the motion-blur examples the training set is short on, rather
 than just hoping for more real footage.
+
+---
+
+## 2026-11-09 (run 2)
+
+**Note on sources:** same discrepancy as the entry above — `v1-failure-analysis.md`
+and `data-engine.md` do not exist at the current `HEAD`. The "median elongation
+1.60" figure below is taken from this run's brief, not re-derived from a repo
+file; everything else in this entry was computed directly from data I
+downloaded and inspected in this session.
+
+**What it is:** `clubhead-db` (PyPI, v1.0.1, published 2025-06-30) — a
+hand-annotated golf clubhead tracking dataset shipped as a pip package. It
+bundles metadata for 67 source clips (19 YouTube, 12 YouTube Shorts, 36
+Reddit; down-the-line view; pros and amateurs) and a 10,177-row
+`annotations.parquet` of YOLO-format clubhead boxes. 40 of the 67 clips are
+tagged `fullspeed` (not slow-motion) in the metadata, i.e. footage where real
+motion blur is physically present.
+
+- URL: https://pypi.org/project/clubhead-db/
+- Licence: `CC-BY-NC-4.0`, read directly from the PyPI JSON API's
+  machine-readable `info.license` field (not inferred from a badge).
+  **Commercial use: NOT permitted.**
+- Verification performed, not just page-reading: ran `pip download
+  clubhead-db` (succeeded, produced a real 285 KB wheel), unzipped it, and
+  confirmed `metadata.csv` and `annotations.parquet` contain real data, not
+  placeholders. The package's listed GitHub homepage,
+  `github.com/unknownauthor23/ClubheadDB`, returns a 404; the author account
+  exists but its one public repo (`hilospot`) is unrelated, so the project
+  has no traceable paper/canonical repo — the PyPI wheel is the only
+  verifiable source, and the frame-download step depends on `yt-dlp`
+  pulling the 67 source videos from YouTube/Reddit URLs in `metadata.csv`,
+  which will rot over time independent of the dataset's own licence.
+- Loaded `annotations.parquet` and computed box elongation
+  (`max(w,h)/min(w,h)`) split by the metadata's `playback_speed` field:
+
+  | subset | n | median elong | p90 | p95 |
+  |---|---|---|---|---|
+  | slowmo | 3,279 | 1.67 | 2.96 | 3.22 |
+  | fullspeed | 6,126 | 1.95 | 3.43 | 3.70 |
+  | all | 9,405 | 1.83 | 3.23 | 3.63 |
+
+**Which failure mode it addresses:** motion blur.
+
+**Why it helps this model specifically:** This is an independent dataset,
+labeled by different annotators under a similar "box the visible clubhead"
+instruction, and its `fullspeed` subset alone has a higher median box
+elongation (1.95) than this run's brief states for our *entire* training
+set (1.60) — including our own fast-swing frames. That's evidence for a
+labeling-consistency explanation alongside (not instead of) a
+data-scarcity explanation: independent annotators given a similar
+blur-boxing rule drew visibly more elongated boxes on real-speed footage
+than appears in our own training labels. Before spending effort sourcing
+more blurred footage (real or synthetic, cf. the SoccerSynth-Detection
+entry above), it is cheap to first spot-check a sample of this project's
+own fastest-swing labeled frames against the `labeling-spec.md` rule
+("box the full visible clubhead including its motion-blur streak") to see
+whether annotators are under-boxing blur that is already present in the
+source video, rather than blur being absent from the footage.
+
+**Can we use the data itself?** No — the NC licence rules out training the
+shipping model on it. The payoff here is the elongation comparison above,
+which only needed the parquet's numeric box metadata (not the licensed
+video frames) and is already captured in this entry; there is no reason to
+build the actual video dataset given the licence blocks production use.
+
+**Effort vs. payoff:** Low effort (one `pip download` + unzip + pandas,
+about 20 minutes) for a diagnostic finding rather than a fix. It doesn't
+hand us usable training data, but it reframes the blur gap as possibly
+partly a labeling-QA issue, which is a much cheaper thing to check (audit
+~20-30 existing frames) than sourcing or synthesizing new blurred footage.
