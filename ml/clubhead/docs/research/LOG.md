@@ -1571,3 +1571,114 @@ blur-streak boxes specifically, the more promising next step flagged by this
 entry is to look at how robotics re-detection papers in this same niche
 (one-shot recovery of a lost fast small target) build their seed labels,
 rather than this specific repo.
+
+---
+
+## 2026-11-10 — "Lightweight Multi-Frame Integration for Robust YOLO Object Detection in Videos" (Tübingen, ECMR 2025): verified real, but picked it up too early — no code or dataset exists to use yet
+
+**Rotation context:** The 2026-11-09 chain-continuity note flagged this exact
+paper as the pickup point for the next bullet-3 run (it was found by an
+orphaned same-day branch but never logged, to respect the one-topic-per-run
+rule). This run follows that pointer rather than opening a new search area.
+Bullet 1 (commercial indoor/low-light golf datasets) and bullet 4
+(golf-specific tracking) have both come up empty on recent runs per the
+2026-11-09 entry; bullet 2 was just covered last run (shuttle_detection), so
+this stays off bullet 2 per the no-consecutive-repeat rule.
+
+**What it is:** arXiv:2506.20550, "Lightweight Multi-Frame Integration for
+Robust YOLO Object Detection in Videos," by Yitong Quan, Benjamin Kiefer,
+Martin Messmer, and Andreas Zell (University of Tübingen), submitted to
+ECMR 2025. The method: stack several consecutive video frames channel-wise
+as a single input tensor to an otherwise-unmodified YOLO detector, but
+supervise only the output for one target frame (the center of the stack).
+No new layers, no added parameters beyond the first conv layer's widened
+input, no optical flow, no recurrence — just more channels in, same
+architecture otherwise. The paper also introduces BOAT360, a fisheye
+boat-video benchmark, and reports (per third-party summaries — see
+Verification) gains of roughly +12.8 mAP@0.5 for YOLOv7-tiny and +8.1 for
+YOLOv7 over single-frame baselines on BOAT360, under 0.1% added parameters,
+and ~53–55 FPS for YOLOv7-tiny on an Orin AGX; a separate summary reports 7
+stacked adjacent frames as the best setting on MOT20Det.
+
+**URL:** https://arxiv.org/abs/2506.20550 (arxiv.org itself is DNS-blocked
+from this session, consistent with every prior run's network notes — the
+paper was confirmed real via independent third-party mirrors/indices
+instead: the arXiv PDF/HTML listing, `web3.arxiv.org` (also blocked
+directly, but indexed by the search backend), `papers.cool`, `emergentmind`,
+`themoonlight.io`'s literature-review summary, and a University of Tübingen
+institutional-repository record at `bibliographie.uni-tuebingen.de` citing
+the same title/authors/arXiv ID — five independent sources agreeing on
+title, authors, and ID is strong evidence the paper is real, even though
+none of the pages themselves could be fetched directly this run (all
+DNS-blocked). This is corroboration via convergent secondary sources, not a
+primary-source read, and is reported as such.
+
+**Licence:** **No code or dataset exists to license.** This is the
+substantive finding of this run, and it's why the 2026-11-09 orphaned branch
+left this unverified rather than fully logged. Checked specifically: (1) the
+arXiv listing page has a "Code, Data and Media" section per search-engine
+indexing, but no GitHub or other repository link resolved anywhere in it;
+(2) searched GitHub directly for `BOAT360` (`search/code`, `search/
+repositories`) — the only hit, `CanvasD/BOAT360`, is a confirmed-empty,
+unrelated repo (no README, no files); (3) checked every plausible author
+GitHub handle (`benjaminkiefer` — exists but is a different, unrelated
+person with two unrelated kata repos; `bkiefer`, `ybquan`, `yitongquan` —
+none match or have zero/irrelevant repos); (4) a third-party summary
+surfaced by this run's search states plainly that the authors intend to
+share data "to support further research... upon paper acceptance" — i.e.
+release is explicitly future-conditional, not available now. **Commercial
+use: not applicable — there is nothing downloadable to use, commercially or
+otherwise, as of this check.**
+
+**Which failure mode this addresses:** Camouflage, primarily — same
+temporal/motion-cue premise as every other bullet-3 entry (Vcamba, YOLOMG,
+RFR), but architecturally the simplest version of it by a wide margin: no
+motion-fusion branch, no frame-differencing module, no recurrent head, just
+more channels into an unmodified detector trunk. Not motion-blur-targeted in
+itself, though a model that can see 2-3 adjacent frames at once has *some*
+chance of disambiguating a blurred streak's true extent from context the
+single blurred frame alone doesn't give it — that's speculation, not a
+claim the paper makes or this run tested.
+
+**Why it matters for this model specifically — and why it's a genuinely
+different entry from YOLOMG/RFR, not a repeat:** Every other bullet-3 entry
+in this log so far has been blocked from direct reuse by a licence
+(GPL-3.0, AGPL-3.0) or a gated/dead dataset — the architecture idea was
+sound but copying or adapting the implementation carried real legal or
+practical risk. This technique has no such blocker *because there is
+nothing to copy*: "stack N consecutive frames as extra input channels,
+widen the first conv layer, supervise the center frame" is fully
+describable from the abstract alone and is a few hours of work directly
+against this project's own YOLO11n/Ultralytics training pipeline — change
+`ch` on the model's first layer, change the dataloader to yield a stacked
+tensor instead of one frame, retrain. Zero derivative-work risk, because
+nothing of theirs is being used at all, only the idea. That makes it the
+cheapest-to-prototype bullet-3 lead this log has found, strictly on
+licensing grounds — independent of whether BOAT360's reported gains
+(fisheye boat video, not golf) transfer.
+
+**Honest caveats:** (1) All performance numbers above are third-party
+summarized, not read from the paper body — the exact baseline mAP values,
+the precise frame-stacking order (centered vs. causal/past-only), and how
+the first-layer weights are initialized when widening from 3 to N×3
+channels are unconfirmed. (2) BOAT360 is fisheye boat video, not
+golf-clubhead video; transfer is an analogy. (3) This project's deployment
+target is CoreML on-device — a wider first-layer input is export-compatible
+in principle (CoreML supports arbitrary input channel counts), but no
+on-device latency number for *any* multi-frame YOLO variant has been
+verified anywhere in this log (YOLOMG, RFR, and this entry all lack that
+number); a 3-frame-stacked YOLO11n's actual iPhone inference cost is
+unmeasured. (4) It needs three temporally-adjacent raw frames at inference
+time rather than one, which is a real (if small) capture/buffering change
+to the app's existing single-frame-in pipeline, not purely a training-time
+change.
+
+**Effort vs. payoff:** Low-medium effort to prototype (no new code to
+license-check or port, just a training-pipeline change against the
+project's existing YOLO11n setup), and — uniquely among this log's
+bullet-3 entries — zero licensing risk, which makes it a stronger
+practical candidate for an actual experiment than YOLOMG or RFR despite
+weaker domain evidence (fisheye boats, not golf) and no primary-source
+numbers. Recommend this as the first bullet-3 idea to prototype
+in-house, specifically because it's the one bullet-3 lead this log has
+found that needs no one else's code or data to start.
