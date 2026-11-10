@@ -1682,3 +1682,107 @@ weaker domain evidence (fisheye boats, not golf) and no primary-source
 numbers. Recommend this as the first bullet-3 idea to prototype
 in-house, specifically because it's the one bullet-3 lead this log has
 found that needs no one else's code or data to start.
+
+---
+
+## 2026-11-10 (second run today) — No ready-made commercial-licensed tool applies motion blur to a single pasted object before compositing; `cap-augmentation` confirms the pattern works but is GPL-3.0'd and ships no blur
+
+**Rotation context:** The first run today covered bullet 3 (Lightweight
+Multi-Frame Integration). This run targets bullet 5 (synthesize/augment
+training data), specifically to close a gap the 2026-11-07 RT-Focuser entry
+opened but didn't follow up on: that entry flagged that GoPro-style blur
+(camera-shake, whole-frame or large-object) has a different geometry from
+this project's actual problem (a small, fast object streaking against a
+comparatively static background), and that the design spec's planned
+Albumentations `MotionBlur` is a whole-frame kernel with no per-object
+targeting (first raised in the 2026-11-04 SoccerSynth entry). Neither entry
+checked whether a tool exists to apply blur to *one object's crop* before
+it's placed into a frame — the actually-correct way to synthesize this
+project's specific failure geometry. This run checked that directly.
+
+**What it is:** `RocketFlash/cap-augmentation` — a real, published
+cut-and-paste augmentation library for object detection/segmentation. It
+pastes an object cutout (RGB + alpha mask) onto a destination image and
+updates the resulting box/mask automatically, and exposes a documented
+per-object hook (`object_transforms`, via `ImageMaskTransform`; an older
+`albu_transforms` parameter is deprecated but still works) that runs on
+each object's crop *before* it is composited — exactly the architectural
+slot a per-object directional-blur step would need, as opposed to
+Albumentations' `MotionBlur` which (confirmed in this log's other
+2026-11-10 investigation this run, by reading
+`albumentations/augmentations/blur/transforms.py` directly) convolves the
+entire frame.
+
+**URL:** https://github.com/RocketFlash/cap-augmentation (PyPI: `cap-augmentation`)
+
+**Licence — verbatim:** Fetched `raw.githubusercontent.com/RocketFlash/cap-augmentation/main/LICENSE`
+directly: "GNU GENERAL PUBLIC LICENSE / Version 3, 29 June 2007." **Commercial
+use: permitted under GPL-3.0's own terms, but with copyleft obligations if
+the library's code itself is distributed or embedded** — the same class of
+constraint this log has already flagged for AGPL entries, though weaker:
+GPL (unlike AGPL) has no network-use trigger, and since this would be used
+purely as an offline training-data-generation tool (never shipped inside
+the iOS app or distributed to any user), the copyleft obligation most
+plausibly would not attach to the shipped product or the trained model
+weights — but that is this run's own reasoning, not a legal clearance, and
+the project would need to keep this tool's use strictly offline/internal
+(e.g. a separate dev-only script, not merged into anything redistributed)
+to stay on the safe side of that line.
+
+**Verification performed:** Fetched the GitHub repo page directly (real:
+148 stars, 10 forks, PyPI package, CI workflows, test suite, CHANGELOG,
+Zenodo DOI — a genuine maintained project, not a stub) and confirmed the
+`object_transforms` hook is documented in the README, not just implied.
+Checked specifically whether blur or rotation ship as *built-in* named
+transforms: **they do not.** The README's only named object-level options
+are alpha-blend "ghost" pasting (`blending_coeff`) and histogram matching;
+blur/rotation would have to be supplied by the caller (e.g. as a custom
+function, or an Albumentations transform passed through the deprecated
+hook). Also checked for a built-in or widely-used alternative that *does*
+ship object-level blur out of the box — found none in this run's searches
+(SPIE's "Copy and restricted paste" paper and the oft-cited Kisantal et al.
+2019 "Augmentation for small object detection" both describe copy-paste
+small-object augmentation generically, and one summarized source noted
+that naively Gaussian-blurring a pasted object's *edge* alone was tested by
+a different paper and did not help — but neither ships code, and neither
+targets directional motion blur specifically).
+
+**Which failure mode this addresses:** Motion blur only. No bearing on
+camouflage.
+
+**Why it matters for this model specifically:** This closes out, rather
+than opens, the "is there a reusable tool" question left dangling since
+2026-11-04/2026-11-07. There is no commercially-clean, ready-to-use library
+that does "crop a real clubhead, blur it directionally to a given
+velocity/angle, paste it onto a sharp background frame, emit the
+union-of-motion box" — the exact synthesis this project's measured gap
+(median labelled elongation 1.60, almost no genuinely streaked boxes) calls
+for. `cap-augmentation` is useful only as proof that the general
+mechanism (crop → per-object transform → alpha-composite → auto-updated
+box) is a working, published pattern worth copying the *idea* of; its own
+code is not worth adopting given the GPL-3.0 constraint for what is at most
+a few dozen lines of work with plain OpenCV/PIL (crop the labelled
+clubhead region using an existing box, apply a directional line-kernel blur
+— the same kernel math already verified in Albumentations' `MotionBlur`
+source this run, just applied to the crop instead of the full frame —
+paste back with alpha, keep the box as the blurred crop's new bounding
+extent). This is a build-it-yourself conclusion, not a dead end: it means
+the "fix the blur-geometry mismatch" idea flagged twice already in this log
+has no shortcut via someone else's library, but also no real blocker,
+since the underlying operation is small and license-free to implement from
+scratch.
+
+**Effort vs. payoff:** Low-medium effort (a single-purpose script: load a
+labelled clubhead crop + its box, apply a directional blur kernel sized to
+a target elongation, alpha-composite onto a sharp negative/background
+frame, write out the new box) — strictly less effort than integrating any
+third-party repo already in this log, since it avoids every licensing
+question raised for YOLOMG, the AGPL tracking repos, RT-Focuser's
+GoPro-domain mismatch, and now this one. Payoff is plausible but unproven:
+it directly manufactures the missing example class (streaked clubhead,
+sharp surroundings) the brief identifies as scarce, using the project's
+own already-labelled sharp clubhead crops as source material, but nothing
+in this run measured whether a detector actually trained better on such
+synthetic composites (unlike SoccerSynth, which did measure a transfer-
+accuracy gain, albeit for soccer players, not clubheads). Recommend as a
+cheap follow-on experiment, not as a confirmed win.
