@@ -1931,3 +1931,118 @@ Worth a cheap first step — attempt the documented CoreML export on a
 stock/pretrained RF-DETR-Nano checkpoint and confirm it loads in Xcode and
 produces `VNRecognizedObjectObservation`-compatible output — before
 investing in a full retrain-and-compare cycle.
+
+## 2026-11-10 (fourth run today) — FMODetect: a real, MIT-licensed architecture that detects fast-moving objects *from their blur streak itself*, rather than treating blur as noise to deblur or tolerate — but its background-subtraction design assumes a largely static camera, which a handheld phone swing video is not
+
+**Rotation context:** Today's first three runs covered bullet 3 (Lightweight
+Multi-Frame Integration), bullet 5 (cap-augmentation), and a licensing find
+(RF-DETR) that fell out of attempted bullets 1/4. This run targets bullet 2
+— motion blur specifically, the "blur-robust detection architectures" angle,
+which no run today has yet covered and which this log's existing bullet-2
+entries (SoccerSynth pretraining, RT-Focuser preprocessing, BlurBall
+labeling, shuttle_detection dead-link) have not addressed from the
+architecture side.
+
+**What it is:** `rozumden/FMODetect` — the official code release for
+"FMODetect: Robust Detection of Fast Moving Objects" (Rozumnyi, Matas,
+Sroubek, Pollefeys, Oswald; arXiv:2012.08216, published at ICCV 2021). The
+method treats a fast-moving object (FMO) — one that crosses many pixels
+within a single exposure, appearing as a blur streak rather than a sharp
+shape — as the primary detection target, not an edge case: it estimates a
+running-median background from the last few frames, concatenates the
+current frame with that background as a 6-channel input, and a CNN
+(TensorFlow/Keras, `net_model.py`, `FMODetect.h5`) predicts a heatmap of the
+blur region directly. This is the architectural inverse of deblur-then-
+detect (RT-Focuser, 2026-11-07) or blur-augment-then-train (SoccerSynth,
+2026-11-04): here the blur *is* the feature the network is trained to find.
+
+**URL:** https://github.com/rozumden/FMODetect (code); the paper is on
+`arxiv.org`, DNS-blocked from this session like every prior run — read via
+the repo's own README/bibtex and search-engine summaries instead (noted
+below where unverified).
+
+**Licence — verbatim:** Fetched `LICENSE` directly from
+`raw.githubusercontent.com` (the `github.com` HTML page itself returns 403
+from this session, same standing gap as every prior entry — only the raw/
+API-less content routes work): *"MIT License / Copyright (c) 2022 Denys
+Rozumnyi"*, followed by the standard MIT permission/warranty text in full.
+**Commercial use: permitted**, no copyleft, no field-of-use restriction.
+
+**Verification performed:** Fetched `README.md`, `LICENSE`, `run.py`,
+`dataset/generate_dataset.sh`, `dataset/generate_patterns.py`, and
+`dataset/process_dataset_traj.py` directly from
+`raw.githubusercontent.com` — all return real file content, confirming the
+repo is genuinely populated, not a stub. Read `run.py` in full: it confirms
+the background-subtraction design described above (`B = np.median(Ims, 0)`
+over the last `--median` frames, concatenated with the current frame as
+model input) rather than inferring it from the README's prose alone. The
+README's "clone --recursive" instruction corresponds to a real submodule
+(`dataset/trackdat` — 404 as a plain file, consistent with being a git
+submodule rather than missing) that downloads the VOT2016 tracking
+benchmark as background plates for synthetic training-data generation.
+**Not verified:** the pretrained-model download link
+(`polybox.ethz.ch/index.php/s/X3J41G9DFuwQOeY`) — `polybox.ethz.ch` is
+blocked by this session's egress proxy (403 on CONNECT, same failure shape
+as every academic host this log has hit), so whether that link still
+resolves is unknown. No `requirements.txt` exists in the repo (checked:
+404), so exact TensorFlow/Keras/OpenCV versions needed to run it today are
+undocumented — getting it running would mean reverse-engineering the
+dependency set from 2021-era TF/Keras API usage in `net_model.py`. The repo
+has had no commits since ~2022 per third-party aggregator data (not
+independently re-verified via the blocked `github.com` HTML page, so stated
+as secondary).
+
+**Which failure mode this addresses:** **Motion blur, directly and
+specifically** — this is a detection-architecture answer to the exact gap
+the brief describes (training data short on genuinely blurred examples,
+median elongation 1.60), because it is a published, working precedent that
+a network *can* be trained to find a target from its blur shape alone,
+using synthetically generated blur streaks (composited foreground patterns
+dragged across real backgrounds) rather than requiring thousands of
+hand-labeled real blurred clubheads. Not camouflage-relevant: nothing here
+helps find a static, unmoving dark object against clutter — if anything, a
+camouflaged *and* blurred clubhead would still need the appearance cues
+this method does not model.
+
+**Why it helps this model specifically — and the caveat that limits it:**
+The dataset-generation pipeline (`generate_patterns.py` +
+`process_dataset_traj.py`, composite a moving foreground pattern onto a
+real background with a simulated blur trajectory) is a second, independent
+precedent for synthetic blur-streak generation, alongside the
+copy-paste/compositing pattern already logged for bullet 5
+(`cap-augmentation`, 2026-11-10) — reinforcing that "synthesize the blur we
+lack" is a viable, multiply-attempted approach, not a one-off idea. But the
+*detection* half has a load-bearing assumption this project's footage
+violates: the running-median background estimate requires the camera (and
+background) to be near-static across the few frames it medians over. Phone
+swing footage is explicitly **not** static — the README's own task brief
+notes the app is run handheld, and even a down-the-line tripod shot has
+the golfer's own body and club moving through most of the frame, not just
+isolated in front of a fixed background. A moving-camera clip would corrupt
+the median background estimate and likely degrade or break this specific
+architecture's core mechanism. This is a real, concrete limitation, not a
+hedge: unlike RT-Focuser (works on arbitrary single frames) or SoccerSynth
+(blur augmentation, camera-agnostic), FMODetect's detection network is
+built for a fixed-or-slow-moving-camera regime (it was trained on VOT
+tracking sequences and benchmarked on falling-object/table-top clips), which
+is a materially different shooting condition than this project's handheld
+golf footage.
+
+**Effort vs. payoff:** Low-to-medium effort to even try — the inference
+code runs standalone (`run.py --video ...`), but getting it running at all
+requires resolving undocumented dependencies and a pretrained-model link
+that could not be confirmed alive from this session, before any test against
+real footage is possible. Payoff, if it ran, is uncertain rather than
+clearly high: the core architectural idea (learn blur-streak shape directly)
+is sound and the licence is clean, but the background-subtraction
+precondition is a poor match for handheld phone video, so a direct port is
+unlikely to work without first replacing the background-estimation step
+with something that tolerates camera motion (e.g., optical-flow-compensated
+background, or dropping the background channel and training a single-frame
+blur-heatmap head instead). The more actionable takeaway is the *dataset
+generation* technique, not the detector as shipped — logged as a second,
+independent confirmation that synthetic blur-streak compositing is a
+real, implemented pattern worth building on, with this repo's
+`generate_patterns.py`/`process_dataset_traj.py` as a concrete reference
+implementation to read (not reuse as-is, given its VOT/TensorFlow-specific
+plumbing).
