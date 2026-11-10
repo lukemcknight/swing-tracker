@@ -1786,3 +1786,148 @@ in this run measured whether a detector actually trained better on such
 synthetic composites (unlike SoccerSynth, which did measure a transfer-
 accuracy gain, albeit for soccer players, not clubheads). Recommend as a
 cheap follow-on experiment, not as a confirmed win.
+
+---
+
+## 2026-11-10 (third run today) — RF-DETR: a real, Apache-2.0, actively-maintained alternative to YOLO11n with a higher reported COCO AP at the nano size and an official native CoreML export path — addresses neither failure mode directly, but closes the open AGPL licensing risk this log flagged on 2026-11-05 without needing an Ultralytics Enterprise license
+
+**Rotation context:** Today's first two runs covered bullet 3 (temporal/
+multi-frame architectures) and bullet 5 (copy-paste augmentation tooling).
+This run went looking at bullet 4 (golf-specific implementations) and
+bullet 1 (datasets) first — both came up empty against this log's own
+existing entries (see "Dead ends checked, not logged" below) — before this
+genuinely new finding surfaced from a licensing angle, not a bullet-list
+angle. Logged anyway because it is new, verified, and directly actionable,
+even though it doesn't slot cleanly into camouflage or motion blur.
+
+**What it is:** `roboflow/rf-detr` — RF-DETR, a real-time DETR-family
+(transformer) object detector from Roboflow (ICLR 2026), built on a DINOv2
+ViT backbone with sizes produced via neural architecture search. The
+repo's own README benchmark table reports **RF-DETR-N: 48.4 COCO AP50:95 at
+2.3ms**, vs. **YOLO11-N: 37.4 COCO AP50:95 at 2.5ms** (RF-DETR measured at
+384×384, YOLO11n at 640×640 — not a strictly apples-to-apples resolution
+comparison, see caveats below). PyPI shows the `rfdetr` package at v1.12.0,
+released 2026-11-06 — four days before this run — so this is an actively
+developed, current project, not an abandoned one.
+
+**URL:** https://github.com/roboflow/rf-detr (PyPI: `rfdetr`)
+
+**Licence — verified directly, with an important nuance caught by checking
+rather than trusting the headline claim:** Fetched the GitHub repo page and
+its root `LICENSE` file directly: standard **Apache License 2.0**,
+"Copyright 2025 Roboflow, Inc.," no added restriction — confirmed
+verbatim-equivalent (the fetch tool could not reproduce the Apache 2.0 body
+text character-for-character but confirmed the header, copyright line, and
+every substantive clause: redistribution/attribution conditions, patent
+grant and patent-retaliation termination, no warranty). **Commercial use:
+permitted** for the Apache-2.0-licensed sizes. The nuance: Roboflow's own
+blog post is titled "RF-DETR Is Free to Use Commercially (Apache 2.0)," but
+per the model-license page and the `rfdetr-plus` PyPI listing (both reached
+only via search snippets — `roboflow.com` and its `rfdetr.roboflow.com` docs
+subdomain are both DNS-blocked from this session, consistent with every
+other vendor-site block this log has hit), **not every size is Apache-2.0**:
+the smaller-than-nano Atto/Femto/Pico sizes and the larger XL/2XL sizes
+require the optional `rfdetr[plus]` extra and fall under a separate
+"Platform Model License 1.0," which multiple of Roboflow's own pages
+describe inconsistently (some say PML covers only XL/2XL, others say it
+also covers Atto/Femto/Pico) and which explicitly restricts self-hosted
+commercial deployment without an add-on. Standard detection sizes **Nano
+through Large, and all segmentation sizes, are Apache-2.0** per every source
+checked — and Nano is the size actually benchmarked against YOLO11-N above,
+so the specific comparison this entry is built on is not affected by the
+PML carve-out. This Apache-2.0-vs-PML split was not obvious from the GitHub
+README alone and is exactly the kind of licensing nuance this log has
+learned (the hard way, via the NTT-copyright-mismatch and
+claimed-but-missing-LICENSE entries) not to take at face value.
+
+**Verification performed:** Fetched the GitHub repo page directly (real,
+public, ~10k stars, ~1.3k forks, 1,337+ commits on `develop`, not archived)
+and its root `LICENSE` file directly (Apache 2.0, quoted above). Fetched the
+README directly and confirmed the benchmark table numbers and methodology
+note verbatim ("All latency numbers were measured on an NVIDIA T4 using
+TensorRT, FP16, and batch size 1" — i.e. the latency figures are GPU/
+TensorRT numbers, not representative of on-device CPU/Neural-Engine
+performance, and say nothing about CoreML export cost). Confirmed via direct
+PyPI fetch that the `rfdetr` package (v1.12.0, 2026-11-06) genuinely lists a
+`coreml` extra alongside `onnx`, `tensorrt`, `tflite`, `executorch`,
+`coreai` — the extra exists in the shipped package, not just in marketing
+copy — though the PyPI page itself gives no detail on what it contains.
+Could not independently fetch Roboflow's own CoreML-export cookbook page
+(`rfdetr.roboflow.com`, DNS-blocked) to confirm the exact export call,
+output format (`.mlpackage` vs. raw `.mlmodel`), or whether it produces
+Vision-compatible `VNRecognizedObjectObservation` output the way this
+project's existing CoreML export (`model.export(format='coreml', nms=True)`
+per the v2 design doc) does — search-engine snippets describe an official
+`rfdetr[coreml]>=1.9.0` install path with an `.mlpackage` output and a
+`coreml_precision="float16"` option for Neural-Engine-oriented builds, and a
+separate ExecuTorch/CoreML-backend route, but neither was read directly from
+Roboflow's own page, so **treat the exact CoreML export mechanics and
+Vision-compatibility as unconfirmed**, not just the on-device speed. A
+third-party Hugging Face conversion and an unverified Reddit claim of
+"120 FPS on iPhone" for RF-DETR-Nano both surfaced in search but are exactly
+the kind of unverified secondary claim this log does not log as fact — noted
+here only as a lead, not as evidence.
+
+**Which failure mode this addresses:** **Neither, directly.** This is not a
+camouflage or motion-blur mechanism the way the VCOD/EventVCOD or
+BlurBall/WASB-SBDT entries are — RF-DETR's reported advantage is general
+COCO detection accuracy and a licence-clean path, not anything specific to
+low-contrast targets or motion-blurred small objects. It is logged anyway
+because of what it's relevant *to*, not because it targets either symptom.
+
+**Why it matters for this model specifically:** Two separate, concrete
+reasons, both already open questions in this log rather than new worries.
+(1) **Licensing.** The 2026-11-05 SwingTrace entry flagged, and left
+unresolved, that this project's own approved v2 design doc commits to
+training with the `ultralytics` package, which is itself AGPL-3.0 — the
+same clause that already blocked reusing SwingTrace's weights — and that
+whether shipping only exported CoreML weights (not source) in a closed-
+source app triggers AGPL's copyleft obligations is a genuinely contested,
+unresolved legal question for this project. RF-DETR-Nano is a concrete,
+real, actively-maintained, cleanly Apache-2.0 alternative at a comparable
+size class, with its own first-party CoreML export path (mechanics
+unconfirmed, existence confirmed) — i.e., it is a legitimate candidate to
+benchmark *instead of* resolving the YOLO/AGPL question, not just another
+entry in the pile. (2) **General detection quality**, weakly: a model
+reporting meaningfully higher COCO AP at a comparable or better latency
+class is, in the same spirit as the already-logged SoccerSynth entry's
+"vote of confidence" framing, a plausible (not demonstrated) lever on both
+failure modes at once — tighter, more confident general-purpose detection
+plausibly helps localize low-contrast objects better and produce tighter
+boxes around partially-blurred ones — but this is architecture-general
+reasoning, not a camouflage- or blur-specific claim, and COCO performance on
+large common objects is a weak proxy for a small, elongated, often-blurred
+clubhead against clutter. Treat reason (2) as speculative upside, reason
+(1) as the actual, load-bearing reason this entry is worth having.
+
+**Dead ends checked, not logged (bullets 1 and 4, this run):** A
+Roboflow-hosted golf model (`swingfeed/golf-49wbh-spfor`, RF-DETR-nano,
+person/club/clubhead, 7,842 images, dated Feb 2026) surfaced and is what led
+to checking RF-DETR itself — but `universe.roboflow.com` remains DNS-blocked
+from this session (consistent with every prior entry in this log back to
+2026-11-04), so its license and continued existence could not be verified
+and it is **not** logged as a finding, same as this log's standing practice
+for every other unreachable Roboflow Universe listing. `phillt3/ClubUp`
+(fetched directly on GitHub) turned out to be an unrelated club-recommendation
+iOS app (slope/wind/altitude distance calculator), not a vision project —
+checked and ruled out, not a new lead. No new golf-specific dataset or
+tracking implementation beyond what this log already carries (ClubheadDB,
+CaddieSet, GolfDB, SwingTrace, rucv/golf_ball, GolfPose) was found this run.
+
+**Effort vs. payoff:** Low effort to benchmark — the project's own eval
+harness (`ml/clubhead/src/chdet/evaluate.py` per the README) is already
+designed to score "any model, old CreateML or new YOLO," and RF-DETR-Nano
+is pip-installable and trainable on the same existing dataset/labels without
+new annotation work, so a side-by-side comparison against the already-
+planned YOLO11n is a contained experiment, not a pipeline rewrite. Payoff
+is real but two-sided and currently unquantified for this project: the
+licensing win is unambiguous and immediate (removes a legal open question
+with zero new risk introduced), but the CoreML export path's actual
+mechanics, on-device latency, and Vision-framework compatibility are all
+unconfirmed, and a transformer-family detector historically carries more
+mobile-export risk (dynamic shapes, attention ops, NMS handling) than a
+CNN-based YOLO head even when a first-party export path exists on paper.
+Worth a cheap first step — attempt the documented CoreML export on a
+stock/pretrained RF-DETR-Nano checkpoint and confirm it loads in Xcode and
+produces `VNRecognizedObjectObservation`-compatible output — before
+investing in a full retrain-and-compare cycle.
