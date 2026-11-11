@@ -2046,3 +2046,104 @@ real, implemented pattern worth building on, with this repo's
 `generate_patterns.py`/`process_dataset_traj.py` as a concrete reference
 implementation to read (not reuse as-is, given its VOT/TensorFlow-specific
 plumbing).
+
+---
+
+## 2026-11-11 — MonoClub: a brand-new (Aug 2026) preprint doing pose-and-shaft-conditioned joint clubhead+shaft localisation — the first bullet-4 finding that structurally targets *both* failure modes at once, but it has no code, no confirmed license, and could not be read directly
+
+**Rotation context:** The last four runs (2026-11-10 x3, plus the
+2026-11-10-corrected FMODetect addition) covered bullets 2, 3, and 5, plus
+one licensing/architecture side-investigation (RF-DETR). This run returns
+to bullet 4 (golf-specific pose/club tracking), last touched 2026-11-07
+(GolfPose, GolfDB).
+
+**What it is:** "MonoClub: Pose-Guided Joint Localisation of Golf Clubhead
+and Shaft in Monocular Swing Video" — a preprint by Zheng Zhang, Zhixin
+Zhou, Wen Jung Li, and Rui Luo, dated August 2026 on Research Square
+(DOI-style ID `rs-10817615`, v1). It estimates a 2D club configuration
+(clubhead location, shaft centreline, and an explicit visibility/withhold
+decision) from a single frame by scoring candidate hypotheses against
+multiple evidence channels together: shaft-strip evidence, crop-level
+clubhead segmentation, shaft-endpoint evidence, grip-compatibility with
+detected body pose, and an optional temporal-consistency term across
+frames. Reported metrics (from the abstract, cross-confirmed across two
+independent search results quoting the same numbers): proposal recall
+96.2% at 5 candidates / 98.1% at 10, clubhead segmentation Dice 0.84 / IoU
+0.73, end-to-end mean localisation error 9.1 px, PCK@10 93.5%, shaft-angle
+error 3.6°. Ablations test pose conditioning, joint (clubhead+shaft)
+coupling, and the temporal-consistency term separately.
+
+**URL:** https://www.researchsquare.com/article/rs-10817615/v1 —
+`researchsquare.com` is DNS-blocked from this session's egress proxy (403
+on CONNECT, confirmed directly with `curl`), the same standing allowlist
+gap every prior entry in this log has hit for academic hosts (`arxiv.org`,
+`universe.roboflow.com`, `kaggle.com`, `huggingface.co`,
+`paperswithcode.com`, `github.io`, `wikipedia.org` were also re-checked
+this run and are all still blocked — no change to report). The paper's
+existence, exact title, full author list, and the specific numeric results
+above were **not read directly from the source** — they come from
+cross-referencing two independent web-search result sets that both quoted
+the same title, authors, and metrics verbatim, which is strong but not
+first-party evidence.
+
+**Licence:** **Not confirmed.** Research Square's platform default for
+preprints is CC BY 4.0 unless an author opts out at submission, but that
+is general platform knowledge, not something read off this paper's own
+landing page — the page could not be fetched. Treat the licence as
+**unknown** until someone with unblocked access opens the page directly
+and reads the licence badge.
+
+**Verification performed:** Confirmed the title/authors/DOI-style ID
+resolve consistently across two separate search queries (one direct title
+search, one broader query that surfaced it as a related result). Searched
+separately for an arXiv mirror, a GitHub implementation, and author names
+plus "code"/"github" — **found none of the three.** This is a preprint
+only: no peer review, no code release, no dataset release could be
+confirmed as existing today. The specific numeric results could be
+fabricated noise from the search layer rather than genuine abstract text,
+and that risk could not be fully closed from this session.
+
+**Which failure mode this addresses:** **Both, by design, which is why
+it's a new kind of entry for this log.** Every prior architecture logged
+here (FMODetect, RT-Focuser, YOLOMG, WASB-SBDT, VCOD/EventVCOD, etc.) picks
+one failure mode's mechanism — blur-as-signal, deblur-then-detect,
+motion-vs-appearance fusion, temporal aggregation — and is silent on the
+other. MonoClub's grip-compatibility and shaft-strip evidence channels are
+load-bearing on the golfer's body pose and the shaft line, not on the
+clubhead's own appearance — exactly the information that survives both
+when the head itself is camouflaged against dark clothing/foliage (zero
+appearance signal, per this project's camouflage finding) and when it is
+smeared into a blur streak (zero clean-box signal, per this project's blur
+gap). A detector that can propose "the head is somewhere along this
+tracked shaft line, near this tracked grip position" has a fallback when
+the appearance channel alone returns nothing.
+
+**Why it helps this model specifically — and the caveats that limit that:**
+This project's v1 failure analysis found camouflage frames with *zero*
+candidate detections even at confidence 0.05 — a pure appearance-channel
+failure that a kinematic/pose prior could plausibly rescue, similar in
+spirit to the GolfPose entry logged 2026-11-07, but MonoClub is explicitly
+built around club geometry (shaft + head jointly) rather than general body
+pose, which is a tighter fit. However: (1) it operates on a single frame's
+club *configuration*, not the frame-to-frame clubhead *box* this project's
+YOLO11n pipeline and CoreML export are built around — adopting it would
+mean a different model family and output representation, not a drop-in
+training-data or architecture swap; (2) with no code, no license, and
+metrics unverified first-party, this is a lead to watch, not something
+actionable this quarter; (3) the "visibility withhold" decision is a
+concept worth borrowing on its own even without the rest of the paper —
+this project's labeling spec already has a negative-frame convention, and
+an explicit low-confidence-withhold head (vs. just thresholding
+objectness) is a smaller, standalone idea that doesn't require the paper
+to be reproducible to be useful.
+
+**Effort vs. payoff:** High effort, uncertain payoff, if pursued as a
+model swap — there is nothing to run today. Low effort, plausible payoff,
+if the takeaway is narrowed to just the "condition clubhead-box confidence
+on a tracked shaft-line/body-pose prior, with an explicit withhold state"
+idea, which could be prototyped against this project's own existing pose
+tooling without needing MonoClub's code at all. Recommend: watch for a
+public release (code, arXiv mirror, or venue publication) rather than
+attempting to reproduce from the abstract alone; do not cite the specific
+numeric results above as settled fact in any decision document, since they
+were never read from the primary source.
