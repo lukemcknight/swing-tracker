@@ -2383,3 +2383,112 @@ composites, so it remains a recommended experiment, not a confirmed win.
 Recommend as the next bullet-5 experiment to prototype, ahead of the
 kernel-blur idea, specifically because the ground-truth box comes for
 free and the realism is physically grounded rather than approximated.
+
+---
+
+## 2026-11-11 (fourth run today) — STF: a real, Apache-2.0, inspectable two-frame attention+fusion neck whose own stated target is occluded, blurred, *and* small objects — a concrete architecture blueprint, not another unreadable preprint
+
+**Rotation context:** Today's prior three runs covered bullet 4 (MonoClub),
+bullets 2/3 (SHOP), and bullet 5 (frame-averaging). This run picks bullet 3
+(temporal/multi-frame methods for small, low-contrast objects), specifically
+looking for something that improves on this log's existing bullet-3 entries
+(VCOD/Vcamba, EventVCOD, YOLOV/YOLOV++, RFR/IRSatVideo-LEO, YOLOMG, the
+Tübingen lightweight-multi-frame paper) by actually being readable,
+small, and non-exotic (no Mamba kernels, no diffusion, no AGPL).
+
+**What it is:** "STF: Spatio-Temporal Fusion Module for Improving Video
+Object Detection" (Anwar, Bilodeau, Bouachir — arXiv:2402.10752). It is a
+plug-in *neck* module (in object-detector terms: the stage between
+backbone and head) built from two pieces: a **Multi-Frame Attention (MFA)**
+block that learns adaptive per-channel weights to blend the current
+frame's backbone features with the previous frame's, and a **Dual-Frame
+Fusion** block that aligns and merges the two frames' features using
+deformable convolutions. Per independent search-engine summaries of the
+abstract (arXiv itself is DNS-blocked — see Verification), it is explicitly
+built "to better detect objects that are occluded, blurred, or small," and
+is evaluated on KITTI MOT, Cityscapes, and UAVDT (a small-object aerial
+dataset — the same small/cluttered-background regime this project's
+camouflage failures sit in).
+
+**URL:** Paper: https://arxiv.org/abs/2402.10752 (DNS-blocked from this
+session, same standing gap as every prior entry — not fetched directly).
+Code: **https://github.com/noreenanwar/STF-module — fetched directly and
+inspected.**
+
+**Licence:** Fetched `LICENSE` directly — verbatim opening:
+```
+Copyright 2018-2023 OpenMMLab. All rights reserved.
+
+                                 Apache License
+                           Version 2.0, January 2004
+```
+**Apache-2.0. Commercial use: permitted**, subject to the standard
+attribution/notice-preservation terms. Caveat worth stating plainly: the
+repo is a fork of MMDetection (2,764 commits total, 8 stars, 1 fork, no
+GitHub Releases/pretrained weights), so the Apache-2.0 grant is the
+repository's own blanket licence, not a bespoke licence the paper authors
+wrote for their specific contribution — the new file itself only carries
+mmdetection's generic boilerplate header, not the authors' own copyright
+line. That doesn't weaken the licence (the repo's root `LICENSE` governs
+every file in it, this file included), but it does mean there is no
+separate, authors-signed statement that *this specific module* is
+Apache-2.0 beyond the repo's own terms.
+
+**Verification performed:** This run almost logged a false lead:
+fetching the repo's `projects/` directory first showed only stock
+MMDetection example projects (AlignDETR, CO-DETR, DiffusionDet, ViTDet,
+etc.) with nothing named STF — i.e., the obvious place to look for the
+contribution was a dead end. Used `gh api search/code -f
+q='stf repo:noreenanwar/STF-module'` to search inside the repo directly,
+which surfaced `mmdet/models/necks/custom_neck.py` as the one
+non-stock file touched. Fetched that file's contents directly (via raw
+GitHub) and confirmed it is real, substantive PyTorch code — a
+`MultiFrameAttention` class (adaptive-weighted current+previous-frame
+blending, referencing "Equation (4) in STF" in its own comment — i.e. it
+matches the paper it's named for) and a `DualFrameFusion` class
+(deformable-convolution-based alignment), registered into MMDetection's
+`MODELS` registry as a neck. Also confirmed via `gh api
+repos/.../commits?path=...` that this file is a genuine addition, not
+boilerplate (blocked by this session's repo-scoping before full commit
+history could be pulled, so exact commit dates are unconfirmed). Did not
+and could not verify the paper's own numeric results (mAP deltas on
+KITTI/Cityscapes/UAVDT) — arXiv is blocked and the README reports no
+numbers, only output images and an unlabeled loss curve.
+
+**Which failure mode this addresses:** Both, by the authors' own stated
+design goal (occluded/blurred/small), making it the second bullet-3/4
+entry in this log (after MonoClub) to target both regimes at once — but
+unlike MonoClub, this one has real, readable, inspected code today.
+
+**Why it matters for this model specifically:** Every prior temporal/
+camouflage entry in this log was either architecturally exotic and hard to
+port (Vcamba's Mamba selective-scan CUDA kernels, diffusion-based CamDiff),
+licence-blocked (YOLOMG GPL-3.0, the AGPL badminton-shuttle repo), or a
+paper with no code at all (the Tübingen lightweight-multi-frame work,
+MonoClub). STF's actual mechanism — two small attention blocks plus one
+deformable-conv fusion block, wired as a neck between any backbone and any
+head — is simple enough to reimplement from scratch as a bolt-on layer
+ahead of YOLO11n's existing head, feeding it the previous frame's backbone
+features alongside the current frame's. That is directly aimed at the
+camouflage failure's own evidence (zero detections at confidence 0.05 on
+a single sharp frame, where the one cue the model never gets to see is
+that the clubhead moved and the foliage didn't) and, per the authors'
+claim, the blur regime too — a double-purpose architecture change rather
+than two separate fixes.
+
+**Effort vs. payoff:** High effort, genuinely uncertain payoff. This is
+not a drop-in: integrating it means (1) reimplementing the two modules
+outside MMDetection's framework to fit the Ultralytics/YOLO11n training
+and CoreML-export pipeline, and (2) changing the on-device inference
+contract from one frame in to two consecutive frames in, which touches the
+iOS app's capture/inference loop, not just the model file — a materially
+bigger change than anything else logged so far (bigger than swapping in
+RF-DETR, bigger than adding a deblur preprocessing pass). There are no
+pretrained weights, no sport/golf evaluation, and the repo itself has
+minimal external validation (8 stars). Recommend treating this as the
+clearest *architecture reference* this log has found for a genuine
+two-frame temporal fusion prototype — worth a small standalone experiment
+(bolt MFA + DualFrameFusion onto YOLO11n's neck, train on a handful of
+labelled clip pairs, measure recall specifically on the existing
+zero-candidate camouflage frames) before committing to the much larger
+app-architecture change a two-frame model implies.
