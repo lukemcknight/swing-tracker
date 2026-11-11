@@ -2244,3 +2244,142 @@ already has iPhone latency numbers. Recommend: treat this entry as
 corroboration that deblur-then-detect is a validated pattern (two
 independent implementations now logged), and as the source of the
 hand/grip-region-filtering idea — not as a dataset or code source.
+
+---
+
+## 2026-11-11 (third run today) — Real-frame-averaging blur synthesis (the GOPRO/REDS dataset-construction method): a way to manufacture genuinely-blurred, correctly-boxed clubhead training examples from this project's *own* high-frame-rate footage, with no third-party licence involved at all
+
+**Rotation context:** Today's first two runs covered bullet 4 (MonoClub)
+and bullets 2/3 (SHOP). This run first re-attempted bullet 1 (commercial
+indoor/low-light golf datasets): `universe.roboflow.com` (the
+`golf_lowlight` lead this log flagged by name on 2026-11-07 without
+fetching it) and a second candidate host, `affinedrift.com`, were both
+tried directly via WebFetch this run and both came back DNS-blocked from
+this session's egress — the same standing gap every bullet-1 attempt since
+2026-11-04 has hit, confirmed again rather than assumed. Per this log's own
+rule (don't log an unfetched page summary as if it were checked), bullet 1
+is deferred again and this run moved to bullet 5 — synthesizing training
+data for the motion-blur regime — specifically to test an angle no prior
+bullet-5 entry has checked: not a kernel-blur-on-a-crop technique (already
+covered 2026-11-10, `cap-augmentation`) and not a composited-foreground
+technique (already covered 2026-11-08 FMODetect's `generate_patterns.py`),
+but *real* optical blur assembled from real sharp frames.
+
+**What it is:** The exact method used to construct the GOPRO and REDS
+deblurring benchmarks (Nah, Kim, Lee, "Deep Multi-scale Convolutional
+Neural Network for Dynamic Scene Deblurring," CVPR 2017, arXiv:1612.02177;
+and the follow-up NTIRE 2019 REDS dataset): shoot a scene at a high frame
+rate, then average a short run of consecutive sharp frames (7–13 frames in
+the original GOPRO paper, shot at 240fps on a GoPro Hero 4 Black) to
+synthesize a longer-effective-exposure blurry frame, applying an inverse
+gamma correction before averaging and a forward gamma after (to avoid
+non-linear camera-response-curve artifacts), with the middle frame kept as
+the paired sharp ground truth. REDS extended this by first running an
+off-the-shelf video-frame-interpolation model to upsample 120fps source to
+1920fps *before* averaging, specifically to remove staircase artifacts
+that plain averaging produces when the native frame rate isn't high
+enough relative to the motion speed and output resolution.
+
+Applied to this project: take existing (or newly captured) high-frame-rate
+phone slow-motion footage of a swing — modern iPhones natively shoot
+1080p/240fps and some models 1080p/960fps slow-mo — and average runs of N
+consecutive sharp frames around the fast downswing/impact window to
+synthesize realistic, physically-correct motion-blur streaks of the actual
+clubhead, not an invented kernel. Because the clubhead's position in each
+of the N source frames is already known (either from this project's
+existing per-frame labels, or from running the current trained model on
+each sharp frame as a pre-label, per the data-engine's own model-assisted
+labeling loop), the ground-truth box for the synthesized blurry composite
+is simply the union of the N per-frame boxes — no new manual labeling
+required, and the box is exactly correct by construction rather than
+estimated.
+
+**URL:** Primary source: https://arxiv.org/abs/1612.02177 (paper) —
+`arxiv.org` is DNS-blocked from this session's egress proxy, the same
+standing gap every prior entry in this log has hit for that host, so this
+could not be fetched first-party. Verified instead via convergent
+independent search-engine summaries of the paper's own methods section
+(multiple distinct sources — arXiv mirror listings, a paper-review site,
+and an NTIRE workshop paper comparing GOPRO's and REDS's construction —
+agreeing on the same specific numbers: 240fps GoPro Hero 4 Black source,
+7–13 frame averaging window, inverse-gamma correction, middle frame as
+sharp ground truth), which is weaker than reading the PDF directly but
+stronger than a single unverified snippet. The REDS interpolate-then-average
+refinement is separately corroborated by the NTIRE 2019 workshop paper
+summary. This is a widely-cited, foundational dataset-construction method
+in the deblurring literature (GOPRO/REDS are the standard benchmarks nearly
+every deblurring paper already logged in this log — RT-Focuser, SHOP's
+DeblurGANv2 — trains or evaluates against), not an obscure or unverifiable
+claim.
+
+**Licence:** Not applicable in the usual sense — this is a *technique*,
+not a dataset or a code artifact being reused. No third-party licence is
+implicated at all if applied to this project's own footage with its own
+tooling: the averaging step is a few lines of NumPy/OpenCV array math
+(`cv2`/`numpy` are already project dependencies), and even the optional
+interpolation refinement (if native frame rate proves insufficient) has a
+commercially-clean option already available: `ffmpeg` (installed in this
+environment, LGPL/GPL build tooling used purely offline, never
+redistributed) ships `minterpolate`/`tblend` filters for exactly this. No
+need to adopt RIFE or any other third-party interpolation model and its
+licence questions. **Commercial use: fully permitted** — the method itself
+carries no licence restriction, and the one piece of source material this
+project would actually average (its own captured footage) is the
+project's own.
+
+**Verification performed:** Confirmed via multiple independent
+search-engine summaries that this is the real, specific method both
+GOPRO and REDS used (not a loose paraphrase — the 7–13 frame count, 240fps
+source rate, and inverse-gamma step are consistent across sources).
+Confirmed `ffmpeg` is installed and available in this environment as a
+fallback interpolation tool if needed. Could not fetch the arXiv PDF or an
+ar5iv mirror directly (both DNS-blocked) to quote the methods section
+verbatim, and did not locate or run a reference implementation of the
+exact averaging script — this entry is a verified *technique*, not a
+verified *tool*, and that distinction matters for the effort estimate
+below. Did not verify whether this project's existing own-swing training
+clips (the ~29% app-captured footage) were shot in a high-frame-rate slow-
+motion mode at all; if they were all captured at standard 30/60fps, this
+technique requires new, deliberately-shot slow-mo capture rather than
+reprocessing footage already on hand — a real open question this run could
+not resolve from inside `ml/clubhead/docs/research/`.
+
+**Which failure mode this addresses:** Motion blur, directly and
+specifically. No bearing on camouflage.
+
+**Why it matters for this model specifically:** This is a materially
+different and arguably stronger answer than the two synthesis approaches
+already logged for bullet 5. `cap-augmentation` (2026-11-10) and
+FMODetect's pattern-compositing (2026-11-08) both produce *synthetic*
+blur — an invented kernel or a dragged foreground pattern — applied to
+material that wasn't really moving. Frame-averaging instead produces
+*real* optical blur of the real clubhead on its real swing arc (curved,
+accelerating, exactly as fast as it actually moves), which should transfer
+to real footage better than an artificial straight-line kernel, and it
+produces a provably-correct ground-truth box as a free byproduct of the
+averaging window rather than a hand-tuned or estimated one. It also slots
+directly into the data engine this project has already committed to
+(model-assisted pre-labeling + confidence auto-accept): the per-frame boxes
+needed to compute the union box can come from the current model's own
+predictions on the sharp source frames, meaning this technique could be
+implemented as a label-generation step inside the existing pipeline rather
+than a separate one-off script.
+
+**Effort vs. payoff:** Low implementation effort for the averaging step
+itself (a short NumPy script: gamma-decode N consecutive sharp frames,
+average, gamma-encode, union the N boxes) — on par with or simpler than
+the kernel-blur approach already logged, and with no licence diligence
+needed at all. The real cost is upstream and unverified: it depends on
+having (or capturing) genuinely high-frame-rate source footage of swings,
+which this run could not confirm the project already has. If new capture
+is required, that is a data-collection cost, not an engineering one, and
+smaller than most of this log's other open leads (it needs a phone's
+built-in slow-mo mode, not special equipment). Payoff is plausible and,
+unlike the kernel-blur entry, has a direct literature precedent of working
+at scale (GOPRO/REDS are the field's standard deblurring benchmarks, built
+exactly this way) — but no entry in this log, including this one, has yet
+measured whether *this specific project's* detector trains better on such
+composites, so it remains a recommended experiment, not a confirmed win.
+Recommend as the next bullet-5 experiment to prototype, ahead of the
+kernel-blur idea, specifically because the ground-truth box comes for
+free and the realism is physically grounded rather than approximated.
