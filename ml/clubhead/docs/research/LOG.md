@@ -2147,3 +2147,100 @@ public release (code, arXiv mirror, or venue publication) rather than
 attempting to reproduce from the abstract alone; do not cite the specific
 numeric results above as settled fact in any decision document, since they
 were never read from the primary source.
+
+---
+
+## 2026-11-11 (second run today) — SHOP: a real deblur→detect→pose-filter pipeline for small handheld objects in blurry video, itself unlicensed, but its BSD-licensed deblurring component (DeblurGANv2) and its hand/pose-region filtering idea are independently usable
+
+**Rotation context:** The first run today (MonoClub) covered bullet 4
+(golf-specific pose/club tracking). This run returns to bullet 2 (motion
+blur: deblurring preprocessing) and bullet 3 (pose/region-based filtering
+as a substitute for appearance when appearance alone is unreliable),
+cross-checking against the deblur-as-preprocessing work already logged
+2026-11-07 (RT-Focuser).
+
+**What it is:** "SHOP: A Deep Learning Based Pipeline for near Real-Time
+Detection of Small Handheld Objects Present in Blurry Video" (Ganguly,
+Gandhi, E, Chang, Hudson; IEEE SoutheastCon 2022, arXiv:2203.15228,
+submitted 29 Mar 2022). A three-stage pipeline built for exactly this
+project's blur problem in miniature: (1) deblur the frame with
+DeblurGANv2, (2) run YOLOv5 object detection on the deblurred frame, (3)
+filter detections using pose estimation (OpenPose/tf-pose-estimation) to
+keep only objects near a detected hand region and reject ones too large to
+plausibly be a small handheld object. Reported result (from the paper
+abstract via search snippets, not read first-party since arXiv is blocked
+— see below): a 70% drop in false positives for a 17% drop in true
+positives on their strongest configuration, measured on a handheld subset
+of MS COCO that the authors also released as a byproduct dataset.
+
+**URL:** Paper: https://arxiv.org/abs/2203.15228 (arxiv.org is
+DNS-blocked from this session's egress proxy — same standing gap every
+prior entry has hit — so the abstract numbers above are from search
+snippets, not the PDF, and are one notch below full verification). Code
+and dataset: **https://github.com/spider-sense/SHOP — this was fetched
+directly and confirmed to exist**: public repo, 41 commits, 3 stars, 2
+forks, containing `SHOP.py`, a bundled `DeblurGANv2/` subfolder, a
+`pose_estimation/`/`tf_pose_estimation/` folder, a `validation/` folder,
+and a README that links a tagged dataset release (v0.1.0) plus model
+weights hosted on Google Drive. This is a real, non-dead project, which is
+not true of every lead this log has chased.
+
+**Licence:** **Checked directly — `spider-sense/SHOP` ships no LICENSE
+file and its GitHub "About" panel shows no license.** Under GitHub's and
+US copyright default, that means all rights reserved by the authors: the
+SHOP pipeline code and its released handheld-object dataset are **not
+commercially usable** without contacting the authors for explicit
+permission. However, the bundled DeblurGANv2 component is a vendored copy
+of a separately-licensed project: `VITA-Group/DeblurGANv2`'s own LICENSE
+file (fetched directly) contains three BSD-style licence blocks — the main
+software and the DeblurGANv2-specific code (Kupyn/Martyniuk/Wu/Wang,
+2019), plus a vendored DCGAN component (Facebook, 2015, BSD with a
+non-endorsement clause). All three are permissive, **commercial use
+permitted**, subject to retaining copyright/disclaimer notices. So: the
+deblurring *model* this pipeline relies on is clean; the handheld-object
+*pipeline code and dataset* built on top of it is not.
+
+**Which failure mode:** Motion blur (primary) — deblur-then-detect is the
+same mechanism as RT-Focuser (2026-11-07), but SHOP is a second,
+independently-verified real implementation of that mechanism, which
+corroborates it rather than just repeating it. The pose/hand-region
+filtering stage is also a camouflage-adjacent idea: it is a second,
+non-appearance signal (a tracked anchor region) used to keep or reject a
+candidate detection, in the same spirit as MonoClub's shaft/grip
+conditioning logged just above — but using a 2022, actually-working, MIT
+Python stack (OpenPose-based pose estimation) rather than an unread 2026
+preprint.
+
+**Why it helps this model specifically:** Two separable, reusable ideas,
+neither requiring SHOP's own code or dataset licence: (1) DeblurGANv2
+itself is confirmed commercially clean and could be evaluated as a
+preprocessing step ahead of this project's YOLO11n detector on blurred
+frames, as a second deblur candidate alongside RT-Focuser — RT-Focuser is
+smaller and already CoreML-benchmarked on iPhone, so it remains the
+stronger on-device candidate, but DeblurGANv2 is a useful heavier baseline
+to sanity-check against during offline evaluation, where on-device latency
+doesn't matter. (2) The "filter candidate detections by proximity to a
+tracked hand/grip region" idea is directly applicable to the camouflage
+failure mode this project measured (zero detections at confidence 0.05
+against dark clothing/foliage): if a body-pose model can localise the
+golfer's hands/grip even when the clubhead itself is invisible, that
+region becomes a strong spatial prior for re-scoring or re-running
+detection at a lower threshold specifically near the grip — cheaper to
+prototype than MonoClub's full shaft-conditioned architecture, since
+off-the-shelf pose estimation (e.g. Apple's own Vision body-pose API,
+already on-device and licence-free for this project) could stand in for
+OpenPose.
+
+**Effort vs. payoff:** Low-to-medium effort, plausible payoff, but only
+for the *ideas*, not the artifact — SHOP's own code/dataset cannot be
+used commercially as-is, so nothing here is a drop-in import. Prototyping
+"detect near the tracked grip region" as a post-filter or re-scoring pass
+on top of the existing YOLO11n output is a small, testable experiment
+against this project's own test clips, independent of any of SHOP's code.
+Evaluating DeblurGANv2 as an offline preprocessing baseline is also cheap
+(BSD-licensed, pip-installable) but is lower priority than RT-Focuser
+specifically for the on-device path, since RT-Focuser is lighter and
+already has iPhone latency numbers. Recommend: treat this entry as
+corroboration that deblur-then-detect is a validated pattern (two
+independent implementations now logged), and as the source of the
+hand/grip-region-filtering idea — not as a dataset or code source.
