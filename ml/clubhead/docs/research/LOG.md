@@ -2492,3 +2492,112 @@ two-frame temporal fusion prototype — worth a small standalone experiment
 labelled clip pairs, measure recall specifically on the existing
 zero-candidate camouflage frames) before committing to the much larger
 app-architecture change a two-frame model implies.
+
+## 2026-11-12 — TTNet (table tennis ball tracking): a real, first-hand-verified coarse-to-fine two-stage temporal detector for a small, fast, blurry ball — but both the code and the dataset are blocked for commercial use
+
+**What it is:** TTNet ("Real-time temporal and spatial video analysis of
+table tennis", Voeikov et al., CVPR 2020 Workshops, OSAI/osai.ai) and its
+most-used open implementation,
+`maudzung/TTNet-Real-time-Analysis-System-for-Table-Tennis-Pytorch`. It
+takes a sliding window of **9 consecutive frames** (confirmed first-hand:
+`configs.num_frames_sequence = 9` in `src/config/config.py`) and runs a
+**coarse-to-fine two-stage** detector: a "global stage" CNN produces a
+low-confidence ball-position heatmap over the full 1920x1080 frame, then
+the model crops a small patch around that coarse prediction
+(`__crop_original_batch__` in `src/models/TTNet.py`, confirmed first-hand)
+and re-runs a second "local stage" detector on just that patch at full
+resolution to refine the position. An "events spotting" head (bounce/net
+hit) and a segmentation head are trained jointly, multi-task-style, on top
+of the same features. The authors report <4px RMSE (on the full-HD frame)
+for ball position and ~97% event-spotting accuracy — i.e. this is a
+real, benchmarked architecture for exactly this project's problem shape:
+a single small, fast-moving, often-blurred object that is easy to lose
+track of frame-to-frame.
+
+**URL:** Paper: arXiv:2004.09927 (arXiv is DNS-blocked from this session,
+the same standing gap as every prior entry — not fetched directly; paper
+details below come from the implementation's README/code, which restate
+them, and from search-engine summaries of the abstract). Code (cloned and
+inspected first-hand, not just rendered via WebFetch):
+https://github.com/maudzung/TTNet-Real-time-Analysis-System-for-Table-Tennis-Pytorch
+Dataset: OpenTTGames, downloaded by the repo's own
+`prepare_dataset/download_dataset.py` from
+`https://lab.osai.ai/datasets/openttgames/data/` (confirmed first-hand by
+reading that script; `lab.osai.ai` itself is DNS-blocked from this
+session, so the host was not reached directly).
+
+**Licence — code: none, dataset: non-commercial, neither usable here.**
+Cloned the full repo (`git clone --depth 1`, not just a rendered page) and
+searched the entire tree: **there is no LICENSE file anywhere in it** —
+confirmed by direct directory listing (`docs/`, `prepare_dataset/`,
+`src/`, `.gitignore`, `README.md`, `requirement.txt`, nothing else) and by
+`find -iname '*licen*'` returning zero matches. Also checked `main` and
+`master` branches of `raw.githubusercontent.com/.../LICENSE` directly —
+both 404. Under GitHub's own terms, a public repo with no LICENSE file
+grants no rights beyond viewing the source on GitHub; by default **all
+rights are reserved and the code is not usable, commercially or
+otherwise, in this project.** Separately, the OpenTTGames dataset itself
+is licensed **CC BY-NC-SA 4.0** — confirmed via two independent secondary
+sources (a 2025 "Extended OpenTTGames Dataset" paper/repo that explicitly
+states it reuses "the original ball-position annotations unchanged" under
+"Attribution-NonCommercial-ShareAlike 4.0 International License (CC
+BY-NC-SA 4.0)", and a third-party paper-review summary repeating the same
+license and terms); the primary osai.ai source could not be reached
+directly (DNS-blocked), so this rests on the secondary citations, same
+caveat as every arXiv-blocked entry in this log. **NC = commercial use is
+not permitted**, so even if the code were usable, the one dataset it is
+built to train on is not.
+
+**Verification performed:** This is the deepest first-hand verification
+in this log's "licence rules it out" category to date — rather than
+relying only on a rendered GitHub page (which can omit files from its
+truncated listing, as several prior entries in this log have had to
+caveat), the repo was fully cloned via `add_repo` + `git clone` and its
+file tree inspected directly with `find`/`ls`, and the two frame-count and
+crop-and-refine architecture claims were confirmed by reading the actual
+Python source (`config.py`, `TTNet.py`), not the README's images (the
+README itself only shows the architecture as unreadable `.PNG` diagrams).
+
+**Which failure mode this addresses:** Motion blur / small-fast-object
+tracking, primarily — the coarse-to-fine global→local crop-and-refine
+mechanism is a different technique from every multi-frame fusion entry
+already logged (YOLOV/YOLOV++, RFR, STF all fuse features across frames
+at a fixed resolution; TTNet instead uses one frame-sequence pass to get a
+rough location, then re-examines a tight crop at full resolution — a
+zoom-and-refine step that is largely orthogonal to temporal fusion and
+could in principle be stacked with it). Only secondarily relevant to
+camouflage: TTNet's global stage still needs the ball to be visible in at
+least a diffuse sense in the full frame, so it does not address the
+zero-candidate-at-any-confidence camouflage case directly.
+
+**Why it matters for this model specifically:** The crop-and-refine idea
+is the useful transferable piece, independent of the blocked code/dataset
+— it's a plausible lightweight answer to a problem this project's own
+labeling spec implicitly has (boxes should capture the full blur streak,
+but a single fixed-resolution pass over a full phone frame gives a blurred
+clubhead very few pixels to be recognized by). A two-pass global-coarse
+then local-refine design, run on YOLO11n's own output as the "global"
+stage and a second light pass on the cropped region as "local," is a
+smaller, more tractable architecture change than the STF/YOLOV two-frame
+fusion options already logged, because it needs no second frame and no
+change to the iOS app's capture contract — only a second, cheap inference
+pass per frame. That said, the *code itself* cannot be used (no licence)
+and the *dataset itself* cannot be used (NC), so this is purely an
+idea/techniques takeaway, reimplemented from scratch against YOLO11n, the
+same posture this log already took toward YOLOMG (GPL-3.0) and the ETH
+Zurich badminton-shuttle paper (AGPL-3.0).
+
+**Effort vs. payoff:** Medium effort, speculative payoff, lower risk than
+the STF/two-frame options already logged. Implementing a from-scratch
+global→crop→local second pass on top of the existing YOLO11n pipeline is
+a self-contained addition (no iOS capture-loop change, no second-frame
+dependency) that could be prototyped and measured against the existing
+camouflage/blur failure frames without touching the app at all — genuinely
+cheaper to try than the two-frame fusion entries in this log. The
+counter-weight: TTNet's own reported precision (<4px RMSE) comes from a
+static, tripod-mounted, fixed-court camera with a known table geometry,
+which is a much easier localization problem than a handheld phone
+following a swinging club — so the headline numbers should not be taken
+as evidence this approach will transfer, only that the architecture
+pattern itself is real, inspectable, and legitimately applicable in
+theory.
