@@ -2663,3 +2663,229 @@ theory.
 **Why it matters for this model specifically:** Two separable takeaways. First, the augmentation recipe is directly actionable without needing the paper's code or data at all: synthesizing per-box rotational blur (not whole-frame blur, which Albumentations' generic `MotionBlur` already offers) by applying a motion kernel only inside each labelled clubhead box is a concrete, buildable answer to this project's own documented gap — training data is overwhelmingly near-square (median elongation 1.60) because real blurred examples are rare, and a box-confined synthetic-blur augmentation step applied to the *existing* sharp, well-labelled clubhead crops would manufacture elongated, streak-shaped boxes that match what the labeling spec already asks annotators to draw. This is a cheaper, more targeted version of the general "synthesize blur" idea than the frame-level SoccerSynth-Detection or CamDiff entries already logged, because it operates at box granularity, matching this project's own per-object label unit. Second, DFRCP itself (the pyramid-fusion module) is a YOLOv11-family-specific architecture change, which is a closer fit for YOLO11n than the YOLOX-based (YOLOV/YOLOV++) or generic (STF) fusion necks already logged — but it would have to be reimplemented entirely from the abstract-level description, since no code exists, making it a much larger and riskier undertaking than the augmentation half of this entry.
 
 **Effort vs. payoff:** The augmentation idea (box-confined synthetic rotational blur on existing labelled crops) is low-to-medium effort — it needs no third-party code, no licence, and no new data collection, only a kernel-based blur transform applied inside each box's coordinates during training, directly testable against the existing eval harness. Payoff is plausible but unproven, same honest caveat as every blur-augmentation entry in this log to date (SoccerSynth-Detection, real-frame-averaging): a synthetic kernel is not identical to genuine optical motion blur, and this paper's own domain (static-camera wheat-field photos) is further from a handheld swinging club than SoccerSynth's soccer broadcast domain was. Reimplementing the DFRCP module itself is high effort and speculative payoff — there is no code to start from, the reported 10.4-point gain cannot be re-derived or trusted at face value (metric unstated, domain is static top-down crop photography, not video), and two YOLOv11-family fusion-neck ideas (STF, YOLOV/YOLOV++) with actual inspectable code are already logged and sitting unimplemented. Recommend treating only the per-box blur augmentation half as worth prototyping soon; shelve the architecture half behind the already-logged, code-backed fusion-neck options.
+
+---
+
+## 2026-11-13 — LODE-style local motion-blur compositing: a verified technique for synthesizing correctly-elongated clubhead training boxes, plus confirmation that Albumentations/imgaug/Kornia's `MotionBlur` is whole-frame and won't close the gap
+
+**Base-branch note:** This run's actual base for the plain `research/clubhead-2026-11-13` branch (two commits already pushed before this run started) was `mvp/club-path-replay` (commit `406f8cd`), not the last good cumulative state (`research/clubhead-2026-11-12`, entries back to 2026-11-04). That branch lost the entire prior log and restarted the file with only those two commits' entries. Both are genuinely new findings, not duplicates of anything already logged — unlike the 2026-11-08 precedent, where the broken branch's single entry duplicated an already-logged finding and so was discarded — so this run restores the log from the last good state (`research/clubhead-2026-11-12`), reproduces both broken-branch entries verbatim below (this one and the TrackNetV3 one that follows), and adds one new entry, pushing the result as `research/clubhead-2026-11-13-corrected` rather than building further on the broken `research/clubhead-2026-11-13`. (The second run today, on the broken branch, already flagged that the task brief's assumed repo stats — 82%/77%/85.9% detection, the 54%/29% Roboflow/phone split, `v1-failure-analysis.md`, `docs/data-engine.md` — don't exist in this repo; it did not notice the branch had also lost 90 days of prior log history, which this note corrects.)
+
+**What it is:** A verified, concrete *technique* (not a dataset) for synthesizing
+realistic motion-blur training examples, plus a verified warning against the
+"obvious" fix.
+
+First, the trap: the standard off-the-shelf tool anyone would reach for is
+Albumentations' `MotionBlur` transform
+(https://github.com/albumentations-team/albumentations/blob/main/albumentations/augmentations/blur/transforms.py).
+Read its source directly (`MotionBlur.apply()` calls
+`fpixel.convolve(img, kernel=kernel)` with one directional kernel built by
+`create_motion_kernel`). It is an `ImageOnlyTransform`: it convolves the
+**entire frame** with one kernel, does not distinguish foreground object from
+background, and does not touch bounding boxes. Same story for imgaug's and
+Kornia's motion-blur augmenters (all whole-image, uniform-kernel, no bbox
+interaction) — confirmed via their public docs/source. Turning this on in a
+YOLO training config would blur the whole frame uniformly (grass, body,
+background all blur too), which does not match real clubhead-swing footage
+(fast-moving head, comparatively sharp background/body), and would leave
+labeled boxes at their current near-square size (median elongation 1.60) —
+it does not address the measured elongation gap at all, since the box itself
+never grows to cover a streak that isn't there.
+
+The matching real technique is **local/compositing motion blur**: build a
+sub-frame trajectory for the object only, render N intermediate positions,
+average them, and composite the resulting blurred object crop onto an
+otherwise-sharp background — ground-truth box = the full compositing extent,
+which is exactly what `docs/labeling-spec.md`'s motion-blur rule already
+specifies. This is published and well-described: **LODE: Deep Local
+Deblurring and A New Benchmark** (Zhang et al., Tsinghua/OPPO/Aberystwyth,
+arXiv:2109.09149, https://arxiv.org/abs/2109.09149; mirrors verified at
+https://arxiv.org/pdf/2109.09149 and https://ar5iv.labs.arxiv.org/html/2109.09149).
+It builds its LOcal-DEblur dataset by exactly this compositing method
+(multi-step trajectory average of a moving object crop over a sharp
+background), explicitly to separate "local, object-motion" blur from global
+camera-shake blur — which is the same distinction this project's own data is
+missing (p90 elongation only 3.01; the labeling spec calls for boxing full
+streaks but graders rarely see one).
+
+**Caveat on reuse:** LODE's own dataset/code release status could not be
+confirmed — the 2021 arXiv abstract says the authors "will publish" the data
+and code, and no GitHub/release page turned up in search. **Do not depend on
+their asset being downloadable.** The value here is the *method*, which is
+cheap to reimplement from this project's own labeled data: take existing
+near-square clubhead crops (already have clean masks via the bbox), run a
+short synthetic trajectory (3-7 sub-steps, speed calibrated against this
+project's own measured impact-frame displacement stats, which already exist
+per the task brief's 54.8% impact-speed figure) over an unrelated sharp
+background frame from the existing dataset, average, and derive the new bbox
+from the swept extent. No external license question at all — it only touches
+in-house footage already cleared for training.
+
+**Licence:** N/A (method only; no third-party data or code asset is being
+imported). Commercial use: unaffected, since nothing external is redistributed.
+
+**Which failure mode:** Motion blur, directly. Does not touch camouflage.
+
+**Why it helps this model specifically:** The repo's own measured gap is
+precise — median box elongation 1.60 vs. a labeling spec that calls for full
+streaks — i.e. the training distribution is close to blur-free even though
+the spec asks for blur boxes. This technique manufactures correctly-elongated,
+correctly-labeled synthetic examples without new footage or licensing risk,
+directly targeting that exact gap. It also sidesteps the misleading inter-frame
+"54.8% impact-speed" stat (displacement, not blur) by using it instead as a
+calibration input for trajectory speed.
+
+**Effort vs. payoff:** Medium-high effort, not a config flag. Building a
+correct compositor (trajectory synthesis, alpha-aware edge blending so the
+streak doesn't have hard edges, bbox-extent computation, avoiding an
+obvious sim2real seam) is a multi-day task, and it needs validation that
+models trained on it actually improve on real blurred frames (none of which
+exist in any current test set — the camouflage-only outdoor test set has a
+fast shutter and the indoor set is quarantined, so this can't even be
+evaluated until real blurred eval data exists). High payoff *if* done well,
+because it is the only verified technique found so far that attacks the
+elongation gap directly rather than through whole-image blur that doesn't
+match the failure geometry. Recommend pairing with a small real-footage
+collection pass (indoor/evening) before fully trusting results, since no
+synthetic blur technique can be validated without at least some real blurred
+ground truth to check against.
+
+---
+
+## 2026-11-13 (second run today) — TrackNetV3: a verified MIT-licensed temporal/background-subtraction architecture for both camouflage and motion blur, reference for a future multi-frame phase
+
+**Process note:** this run's environment only allowed network access to
+`github.com` by default — `arxiv.org`, `universe.roboflow.com`,
+`paperswithcode.com`, and GitHub Pages sites (`*.github.io`) all failed to
+resolve, which is a network-policy block, not a dead link. (The prior entry
+above evidently ran with arXiv reachable, so this seems to vary by session —
+worth checking environment settings if future runs keep losing arXiv
+access.) This capped verification to GitHub-hosted pages this run; several
+otherwise-promising leads (a 2025 CVPR-workshop paper on joint ball-detection
++ blur estimation for table tennis; several CC-BY-licensed golf-clubhead
+Roboflow datasets) could not be independently confirmed and are **not**
+logged below as a result, per the "don't log what you haven't confirmed"
+rule. Also worth noting: this branch's actual repo state (CreateML v6
+baseline, 30.4% detection rate, no YOLO model trained yet — see
+`eval/baseline/createml-v6.md` and `docs/superpowers/specs/2026-05-21-clubhead-detector-v2-design.md`)
+doesn't contain the specific measured stats the task brief assumes (82%/77%/
+85.9%, the 54%/29% Roboflow/phone split, `v1-failure-analysis.md`,
+`docs/data-engine.md`) — those files don't exist in this repo. Treat this
+run's framing as the design doc's stated target failure modes, not
+repo-measured facts.
+
+**What it is:** A verified, MIT-licensed reference *architecture* (not a
+dataset) for detecting a tiny, very fast, frequently motion-blurred sports
+object against a cluttered/low-contrast background: **TrackNetV3**, a
+badminton shuttlecock tracker. Confirmed by fetching the repository directly
+(not search snippets): it stacks a sequence of frames (`--seq_len 8`) plus an
+estimated-background auxiliary channel (`--bg_mode concat`) as input to a
+heatmap-style localization network, then rectifies trajectory gaps with a
+second inpainting model. Its predecessor, TrackNetV2 (same architecture
+lineage, read via search snippets only — not independently fetched, so treat
+with slightly less confidence than the TrackNetV3 claims above), states
+explicitly that frame-stacking was chosen specifically to cope with "blur,
+afterimage, and short-term occlusion" for a tiny fast sports object — i.e.
+this lineage was built to solve close analogues of both of this project's
+failure modes.
+
+**URL:** https://github.com/qaz812345/TrackNetV3
+
+**Licence (verbatim, confirmed by fetching the repo page):** "This project,
+including the code and pretrained checkpoints, is released under the MIT
+License ... free to use, modify, and distribute it for both non-commercial
+and commercial purposes." **Commercial use: permitted.** Repo confirmed
+live/downloadable (master branch, 39 commits, no archive notice) as of
+2026-11-13. The licence covers the code only, not their external shuttlecock
+dataset (irrelevant here — the value is the architecture, not their data).
+
+**Which failure mode:** Both. Frame-stacking targets motion blur (more
+temporal context around a blurred streak). The background-subtraction
+channel targets camouflage directly: it's the same "motion separates a
+moving object from static clutter when appearance can't" cue that matters
+when a dark clubhead is near-invisible against dark clothing or foliage in a
+single still frame — frame-differencing would light up the moving clubhead
+even where raw-RGB contrast is near zero.
+
+**Why it helps this model specifically:** both this repo's current
+single-frame CreateML baseline and the design doc's planned YOLO11n v1 are
+single-frame detectors; the design doc explicitly defers "temporal /
+multi-frame model" to an unscoped future phase, on the reasoning that the
+per-frame model should be fixed first. TrackNetV3 is evidence that for this
+exact problem shape (tiny, fast, blur-prone object vs. static/cluttered
+background) a temporal/background-subtraction input is a proven fix, not a
+speculative one — worth weighing when that phase is scoped, rather than
+inventing a temporal architecture from scratch.
+
+**Effort vs. payoff:** Moderate-to-high, not a drop-in. Requires reworking
+the training/export pipeline for multi-frame input (current plan is one
+frame in, one detection out), an on-device frame-buffering/background-
+estimation step in `ClubHeadDetector.swift`, and sequence-aware labels
+(current labels are single-frame). Real architecture change, not a config
+knob — don't take it on before the single-frame YOLO11n v1 exists and its
+actual camouflage/blur failure rate is measured, consistent with the design
+doc's own phasing. Logged now as a concrete, licensed, verified reference to
+return to once that later phase is scoped.
+
+---
+
+## 2026-11-13 (third run today) — DeepGyro (gyroscope-aided motion deblurring) checked and ruled out: no licence, and a phone's gyroscope measures camera rotation, not the clubhead's own motion
+
+**What it is:** A line of academic work (Mustaniemi et al., "Gyroscope-Aided
+Motion Deblurring with Deep Networks," WACV 2019, arXiv:1810.00986) and its
+accompanying code release, **DeepGyro**, a Keras implementation that
+deblurs an image using the phone's own gyroscope: it builds a spatially-
+varying "blur field" from gyro samples, rolling-shutter readout time, and
+IMU-to-camera calibration (intrinsics, temporal offset, rotation matrix),
+then feeds that field plus the blurry image to a deblurring network.
+(`arxiv.org` and `ar5iv.labs.arxiv.org` were both unreachable from this
+session today — same network-policy variation the second run above hit —
+so this entry is verified against the GitHub repo directly, fetched live,
+not against the paper PDF.)
+
+**URL:** https://github.com/jannemus/DeepGyro
+
+**Licence:** None. Fetched the repo directly: no `LICENSE` file and no
+licence badge in the About section. With no licence declared, GitHub's own
+terms mean all rights are reserved by the author by default — the code may
+not be reused, commercially or otherwise, without contacting the authors.
+**Commercial use: not permitted** (not permitted at all, absent explicit
+permission from the authors).
+
+**Which failure mode:** Motion blur — checked and ruled out, not adopted.
+The method's entire mechanism is built from gyroscope data, which measures
+the *camera's* rotation during the exposure, not any object's independent
+motion within the scene. This project's clubhead blur is the opposite case:
+the camera is comparatively still, or panning slowly and deliberately to
+follow the swing, while the clubhead itself moves very fast within the
+frame — especially near impact and in the longer-exposure conditions
+(indoor, overcast, evening, older phones) this project's blur gap is
+actually about. A gyro-derived blur field describes egomotion blur smeared
+fairly uniformly across the frame — the same whole-image failure mode
+already ruled out for Albumentations/imgaug/Kornia's `MotionBlur` in the
+first 2026-11-13 entry above — and has no mechanism to isolate or model a
+small region moving independently faster than the rest of the frame. The
+GitHub README corroborates this directly: it documents gyro samples,
+rolling-shutter timing, and IMU-camera calibration, but never mentions a
+moving object, a foreground/background split, or per-region motion.
+
+**Why it helps this model specifically:** It doesn't, and that's the point
+of logging it — it closes off a plausible-sounding lead (sensor fusion with
+the phone's own gyroscope, readable via CoreMotion from the same capture
+pipeline that already runs `ClubHeadDetector.swift`) before anyone spends
+engineering time on it. The underlying physics is the same reason whole-
+frame blur augmentation already failed this log's test: this project's blur
+problem is specifically *object*-relative motion, and no signal the
+camera's own IMU produces can distinguish "the clubhead moved fast" from
+"the clubhead stayed still" — only the pixels can. That's consistent with
+this log's actual promising blur leads to date (the compositing method
+above, real-frame-averaging, per-box augmentation like DFRCP, or temporal
+architectures like TrackNetV3/STF) all operating on image content, not
+inertial sensors.
+
+**Effort vs. payoff:** Low effort to rule out (this entry, done). Zero
+payoff to pursue further: wrong blur model for this project's failure mode
+(camera egomotion vs. object motion), no usable licence even if it were the
+right model, and it would additionally require exact IMU-camera time
+synchronization and rolling-shutter calibration this project's capture
+pipeline doesn't currently do. Logged so a future run doesn't re-discover
+"use the gyroscope" and spend real time on it.
