@@ -2889,3 +2889,87 @@ right model, and it would additionally require exact IMU-camera time
 synchronization and rolling-shutter calibration this project's capture
 pipeline doesn't currently do. Logged so a future run doesn't re-discover
 "use the gyroscope" and spend real time on it.
+
+---
+
+## 2026-11-13 (fourth run today) — RacketVision: an AAAI 2026 multi-sport benchmark that replaces the single blurred bounding box with a 5-keypoint pose for the racket, a representation fix for this project's own labeling-spec elongation gap
+
+**What it is:** RacketVision ("Racket Vision: A Multiple Racket Sports
+Benchmark for Unified Ball and Racket Analysis," Dong, Yang, Wu, Wang, Hou,
+Zhong, Sun — AAAI 2026 Oral, arXiv:2511.17045, accepted Nov 2025) is a
+badminton/table-tennis/tennis benchmark covering ball tracking, racket
+*pose* estimation, and ball trajectory forecasting. The part that matters
+here is RacketPose: instead of one bounding box around the racket, it
+detects the racket (RTMDet-M) and then estimates **5 keypoints per racket**
+— `top`, `bottom`, `handle`, `left`, `right` — via RTMPose-M. That is, the
+racket's orientation and extent are read off explicit keypoints, not
+inferred from how tightly or loosely an annotator drew a box.
+
+**URL:** https://github.com/OrcustD/RacketVision (paper:
+https://arxiv.org/abs/2511.17045; dataset on Hugging Face,
+`linfeng302/RacketVision`)
+
+**Verification performed:** Fetched the GitHub repo and raw README/LICENSE
+directly (both load; this session's network blocks `arxiv.org` and
+`huggingface.co`, so the paper PDF and the HF dataset card itself could not
+be read — consistent with every prior entry in this log that hit the same
+three blocked hosts). Confirmed from the repo: public, non-archived,
+`source/` code present, `LICENSE` file present and readable.
+
+**Licence (verbatim, confirmed by fetching the raw LICENSE file):** MIT
+License, Copyright (c) 2025 Linfeng Dong. "Permission is hereby granted,
+free of charge, to any person obtaining a copy of this software ... to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software ... The above copyright notice and this permission
+notice shall be included in all copies or substantial portions of the
+Software." **Commercial use: permitted — for the code.** Important caveat
+this entry is flagging explicitly: the MIT grant is stated for "this
+project" (the repo/code) in the README's own License section; the README
+does **not** separately state the dataset's licence or the footage's
+provenance (broadcast vs. self-recorded), and points to the Hugging Face
+dataset card for details, which this session's network cannot reach to
+verify. Treat the **code/method as MIT-clear**; treat the **dataset itself
+as unverified for commercial use** until the HF card or paper license
+section is read directly — the same split this log already flagged for
+SoccerSynth-Detection and TTNet.
+
+**Which failure mode this addresses:** Motion blur — but as a labeling/
+representation fix, not a new architecture or dataset. This log's own
+evidence (median labelled clubhead box elongation 1.60, p90 3.01) shows
+annotators are not consistently drawing the full motion-blur streak the
+labeling spec asks for, because a single axis-aligned box conflates three
+different things — the clubhead's position, its orientation, and how far
+it smeared during the exposure — into one rectangle, with no structural
+cue telling the annotator *how* elongated is correct for this frame.
+RacketPose's 5-keypoint scheme decouples those: a `handle`-to-`top` axis
+directly encodes orientation, and `left`/`right` encode the head's own
+width independent of blur length. Applied to clubhead labeling, an
+analogous scheme — e.g. `heel`, `toe`, and a `leading-edge`/`trailing-edge`
+pair tracing the blur streak's long axis — would give annotators an
+explicit, checkable target instead of "box the streak" (today's rule, which
+produces the elongation gap this project's own failure analysis already
+measured). This is the first entry in this log to propose fixing the
+*labeling representation itself* rather than adding data, augmentation, or
+a detection-side architecture; it does not address camouflage at all.
+
+**Why it helps this model specifically:** It's a verified precedent — real
+code, real benchmark, accepted at a top venue — that keypoint-based
+equipment pose is a solved, shipped pattern for "small handheld implement
+at the end of a fast-swinging limb," which is structurally this project's
+exact object (a clubhead is a racket head analog: small, elongated along
+one axis during motion, attached via a thin shaft/handle to a moving
+athlete). It gives a concrete target shape (5 points, two detector+pose
+models) to borrow from rather than inventing a labeling fix from scratch.
+
+**Effort vs. payoff:** High effort, speculative payoff, logged as a
+reference rather than a near-term fix. It requires: re-labeling existing
+and new clubhead frames with keypoints instead of (or in addition to)
+boxes — a labeling-spec rewrite and a full re-annotation pass, not a config
+change; and a two-stage detect-then-pose pipeline (RTMDet-M + RTMPose-M are
+both "M"/medium-size models, materially heavier than the single-stage
+YOLO11n-nano this project runs on-device via CoreML today — no evidence
+here that this scales down to nano or that a two-stage pipeline meets this
+app's on-device latency budget). Worth returning to only if/when the
+project decides the box-elongation gap itself (not just data volume) is the
+bottleneck worth a labeling-format change, and only after confirming the
+dataset's own licence directly.
