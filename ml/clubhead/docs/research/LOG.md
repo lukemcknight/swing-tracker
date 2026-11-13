@@ -85,3 +85,80 @@ match the failure geometry. Recommend pairing with a small real-footage
 collection pass (indoor/evening) before fully trusting results, since no
 synthetic blur technique can be validated without at least some real blurred
 ground truth to check against.
+
+---
+
+## 2026-11-13 (second run, same day)
+
+**Process note:** this run's environment only allowed network access to
+`github.com` by default — `arxiv.org`, `universe.roboflow.com`,
+`paperswithcode.com`, and GitHub Pages sites (`*.github.io`) all failed to
+resolve, which is a network-policy block, not a dead link. (The prior entry
+above evidently ran with arXiv reachable, so this seems to vary by session —
+worth checking environment settings if future runs keep losing arXiv
+access.) This capped verification to GitHub-hosted pages this run; several
+otherwise-promising leads (a 2025 CVPR-workshop paper on joint ball-detection
++ blur estimation for table tennis; several CC-BY-licensed golf-clubhead
+Roboflow datasets) could not be independently confirmed and are **not**
+logged below as a result, per the "don't log what you haven't confirmed"
+rule. Also worth noting: this branch's actual repo state (CreateML v6
+baseline, 30.4% detection rate, no YOLO model trained yet — see
+`eval/baseline/createml-v6.md` and `docs/superpowers/specs/2026-05-21-clubhead-detector-v2-design.md`)
+doesn't contain the specific measured stats the task brief assumes (82%/77%/
+85.9%, the 54%/29% Roboflow/phone split, `v1-failure-analysis.md`,
+`docs/data-engine.md`) — those files don't exist in this repo. Treat this
+run's framing as the design doc's stated target failure modes, not
+repo-measured facts.
+
+**What it is:** A verified, MIT-licensed reference *architecture* (not a
+dataset) for detecting a tiny, very fast, frequently motion-blurred sports
+object against a cluttered/low-contrast background: **TrackNetV3**, a
+badminton shuttlecock tracker. Confirmed by fetching the repository directly
+(not search snippets): it stacks a sequence of frames (`--seq_len 8`) plus an
+estimated-background auxiliary channel (`--bg_mode concat`) as input to a
+heatmap-style localization network, then rectifies trajectory gaps with a
+second inpainting model. Its predecessor, TrackNetV2 (same architecture
+lineage, read via search snippets only — not independently fetched, so treat
+with slightly less confidence than the TrackNetV3 claims above), states
+explicitly that frame-stacking was chosen specifically to cope with "blur,
+afterimage, and short-term occlusion" for a tiny fast sports object — i.e.
+this lineage was built to solve close analogues of both of this project's
+failure modes.
+
+**URL:** https://github.com/qaz812345/TrackNetV3
+
+**Licence (verbatim, confirmed by fetching the repo page):** "This project,
+including the code and pretrained checkpoints, is released under the MIT
+License ... free to use, modify, and distribute it for both non-commercial
+and commercial purposes." **Commercial use: permitted.** Repo confirmed
+live/downloadable (master branch, 39 commits, no archive notice) as of
+2026-11-13. The licence covers the code only, not their external shuttlecock
+dataset (irrelevant here — the value is the architecture, not their data).
+
+**Which failure mode:** Both. Frame-stacking targets motion blur (more
+temporal context around a blurred streak). The background-subtraction
+channel targets camouflage directly: it's the same "motion separates a
+moving object from static clutter when appearance can't" cue that matters
+when a dark clubhead is near-invisible against dark clothing or foliage in a
+single still frame — frame-differencing would light up the moving clubhead
+even where raw-RGB contrast is near zero.
+
+**Why it helps this model specifically:** both this repo's current
+single-frame CreateML baseline and the design doc's planned YOLO11n v1 are
+single-frame detectors; the design doc explicitly defers "temporal /
+multi-frame model" to an unscoped future phase, on the reasoning that the
+per-frame model should be fixed first. TrackNetV3 is evidence that for this
+exact problem shape (tiny, fast, blur-prone object vs. static/cluttered
+background) a temporal/background-subtraction input is a proven fix, not a
+speculative one — worth weighing when that phase is scoped, rather than
+inventing a temporal architecture from scratch.
+
+**Effort vs. payoff:** Moderate-to-high, not a drop-in. Requires reworking
+the training/export pipeline for multi-frame input (current plan is one
+frame in, one detection out), an on-device frame-buffering/background-
+estimation step in `ClubHeadDetector.swift`, and sequence-aware labels
+(current labels are single-frame). Real architecture change, not a config
+knob — don't take it on before the single-frame YOLO11n v1 exists and its
+actual camouflage/blur failure rate is measured, consistent with the design
+doc's own phasing. Logged now as a concrete, licensed, verified reference to
+return to once that later phase is scoped.
