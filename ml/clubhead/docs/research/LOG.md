@@ -3071,3 +3071,97 @@ existing `VNTrackObjectRequest` entry (2026-11-12) as the better-fitting
 first-party Vision lever for camouflage: appearance-correlation tracking
 has no motion-shape assumption and no stated camera-steadiness requirement,
 so it survives both objections that kill this one.
+
+---
+
+## 2026-11-14 (second run today) — EMV-YOLO: evidence that naive low-light enhancement can hurt small-object detection, plus a confirmed, very recent tightening of ExDark's licence terms
+
+**Rotation context:** Bullet 3 (small/low-contrast/camouflaged object
+detection, temporal methods preferred). This run tried bullet 1 first —
+`universe.roboflow.com` and `kaggle.com` are still DNS-blocked from this
+session, same standing gap documented since 2026-11-04, and the
+`golf_lowlight` Roboflow lead the 2026-11-05 entry flagged for a future
+run is still unreachable — so it moved to bullet 3 instead of restating
+that block again.
+
+**What it is:** `github.com/Zeng555/EMV-YOLO`, the official code for
+"Toward Highly Efficient Semantic-Guided Machine Vision for Low-Light
+Object Detection" (BMVC 2024, Feng/Zeng/Wang/He). It is built on
+MMDetection and trains a YOLOv3 variant with EMV, a ~27K-parameter module
+that enhances images **in the detector's latent feature space**, trained
+jointly with the detector, rather than enhancing pixels for human viewing
+first and detecting second. The paper's framing (confirmed via the repo's
+own README, which summarizes it) is specifically that detectors trained on
+well-lit data degrade in low light, and that popular pixel-space enhancers
+(MBLLEN, Zero-DCE, KinD, PairLIE — all four of which the repo ships
+pre-enhanced ExDark variants for, as a baseline comparison) are optimized
+for human perception, not for what a detector's features need, and can
+destroy or distort exactly the semantic structure a detector depends on.
+A second, independent 2025 source (PeerJ CS) corroborates the general
+shape of this trade-off empirically: it reports ZeroDCE++/Gladnet/TBEFN as
+enhancement front-ends for YOLOv7 shift mAP in both directions depending
+on the enhancer, not uniformly upward — i.e. "add a low-light enhancer" is
+not a safe default, matching EMV-YOLO's own stated motivation for doing
+enhancement jointly with the detector instead.
+
+**URL:** https://github.com/Zeng555/EMV-YOLO (paper: BMVC 2024)
+
+**Licence (confirmed via direct repo fetch):** Apache-2.0, with a `LICENSE`
+file present in the repo (not just a claimed badge with no backing file —
+checked that distinction explicitly after the 2026-11-06 EventVCOD entry
+in this log found exactly that gap elsewhere). **Commercial use of the
+code: permitted.**
+
+**The ExDark finding — new and worth flagging on its own:** EMV-YOLO
+trains/evaluates on ExDark and DarkFace. Checked ExDark's own terms
+directly (`github.com/cs-chan/Exclusively-Dark-Image-Dataset`) since a
+"BSD-3-Clause" badge is visible on the repo and could be misread as
+clearing the dataset for commercial use. It does not. The repo's own
+license section splits code from data explicitly: BSD-3 covers the
+software/scripts only; the images' annotations, boxes, labels, splits and
+metadata are governed by a separate `DATASET_TERMS.md`, which states
+verbatim that research use is permitted only for "non-commercial academic
+research, education, benchmarking and scholarly publication," that a
+for-profit-sponsored project needs the licensor's prior written
+confirmation even to rely on the academic exemption, and that "commercial
+use of ExDark Dataset Materials controlled by the Licensor requires prior
+written permission" (contact given: Dr. Chee Seng Chan). These clarified
+terms are dated as applying prospectively **from 01 October 2026** — i.e.
+six weeks old at the time of this run, not a long-standing fact already
+stale in this log. **Commercial use of the ExDark dataset itself: not
+permitted** without separate written permission.
+
+**Which failure mode this addresses:** Camouflage/low-contrast detection,
+with an explicit caveat: ExDark and this paper's framing is about low
+*ambient light* (noise, low SNR), whereas this project's camouflage
+failures are described as occurring in "visually sharp" frames — low
+*contrast* against a similarly-coloured background, not darkness. The
+mechanism EMV-YOLO argues for (don't enhance for human eyes; let the
+detector learn what to preserve, end-to-end) plausibly generalizes to the
+low-contrast case too, since the same failure mode — a perceptual
+enhancer destroying the faint signal a detector needs — isn't specific to
+low photon counts. But that's a plausible extension, not something this
+run verified; treat it as a hypothesis, not a result.
+
+**Why it matters for this model specifically:** It's a concrete warning
+against the most tempting cheap fix for the camouflage failure mode —
+bolting a generic low-light/contrast "enhance" pass (Zero-DCE, CLAHE,
+gamma correction, etc.) in front of the existing YOLO11n detector as
+preprocessing. The evidence gathered this run says that's as likely to
+hurt as help, because such enhancers are tuned for subjective image
+quality, not for what this specific detector's features respond to. If
+this path is pursued, the EMV-YOLO architecture (enhance in latent space,
+jointly with the detector, not as an isolated image-to-image pre-pass) is
+the right template to copy — but it would need porting to the YOLO11n/
+Ultralytics/CoreML pipeline from scratch; the MMDetection/YOLOv3 code
+itself is not a drop-in component, and no clubhead-specific training data
+exists to train the "enhancement head" on even if it were ported, which
+circles back to the same indoor/low-light data gap every bullet-1 run in
+this log keeps hitting.
+
+**Effort vs. payoff:** Low effort to extract as a warning (this entry).
+Medium-high effort and uncertain, golf-specific payoff to actually port
+and retrain the architecture — it requires both a non-trivial engineering
+port and clubhead-specific low-contrast training data this project does
+not yet have. Payoff today is mostly defensive: it heads off a plausible
+but likely counterproductive quick fix before time is spent building it.
