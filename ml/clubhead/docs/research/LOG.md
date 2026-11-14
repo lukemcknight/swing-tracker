@@ -3071,3 +3071,100 @@ existing `VNTrackObjectRequest` entry (2026-11-12) as the better-fitting
 first-party Vision lever for camouflage: appearance-correlation tracking
 has no motion-shape assumption and no stated camera-steadiness requirement,
 so it survives both objections that kill this one.
+
+---
+
+**Note (2026-11-14, second run today):** The scheduled-task cadence bug
+(more than one run firing on the same calendar day) recurred again. Checked
+this log's own precedent first: `origin/research/clubhead-2026-11-14` (the
+branch the first run today pushed) differs from `mvp/club-path-replay` only
+in this file (`git diff --stat mvp/club-path-replay
+origin/research/clubhead-2026-11-14 -- . ':!ml/clubhead/docs/research/LOG.md'`
+returned nothing), and this file's own history back to 2026-11-04 is intact
+on it — so, following the 2026-11-05 third-run precedent for a clean
+same-day branch, this run builds directly on
+`origin/research/clubhead-2026-11-14` rather than restarting from
+`mvp/club-path-replay`, and pushes as `research/clubhead-2026-11-14-corrected`
+rather than overwriting the already-pushed plain-dated branch. This run
+rotates to bullet 1 (commercial-license training datasets), which this log
+has not touched since 2026-11-07 (fourth run) — the longest-untouched
+category at the time of writing. The same network egress restriction noted
+on 2026-11-05 is still in effect: `arxiv.org`, `doi.org`,
+`dataverse.harvard.edu`, and `universe.roboflow.com` all still fail DNS
+resolution (`getaddrinfo ENOTFOUND`) from this session; `github.com` and
+`raw.githubusercontent.com` are still reachable and were used for the
+verification below.
+
+## 2026-11-14 (second run today) — MultiSenseGolf: a large new multimodal golf-swing dataset (FPV + external RGB-D video, 1,557 swings, 24 participants) with MIT-licensed code, but the dataset itself has no stated licence and could not be reached to check one
+
+**What it is:** A 2026 GitHub repository (`Oh-Minwoo/MultiSenseGolf`)
+publishing a multimodal sensor dataset for golf swing motion and shot
+performance analysis: 1,557 swing samples from 24 participants split into
+Beginner/Intermediate/Professional groups. Per swing it bundles full-body
+joint kinematic estimates, bilateral foot-pressure recordings, first-person-
+view (FPV) video, gaze/head-motion data, **external RGB-D video**, and shot
+outcome measurements (ball speed, spin axis, launch direction), stored as
+one HDF5 stream file plus an `FPV_RGB.mp4` per swing. The repo ships
+tutorial scripts (3D joint-skeleton visualization, insole pressure heatmaps,
+gaze-on-FPV overlay) and a benchmark predicting shot outcomes from each
+single modality. The actual data is not in the repo — the README points to
+a Harvard Dataverse record for download.
+
+**URL:** https://github.com/Oh-Minwoo/MultiSenseGolf (code + README);
+dataset: https://doi.org/10.7910/DVN/LCCLLW (Harvard Dataverse — could not
+be reached this run, see below).
+
+**Licence:** Fetched the repo's `LICENSE` file directly via
+`raw.githubusercontent.com` and confirmed it verbatim as the MIT License
+(`Copyright (c) 2026 MW-OH-828`, standard MIT permission/warranty text) —
+but that covers the *code* (tutorial/benchmark scripts) only. The README,
+fetched the same way, contains no license or terms-of-use statement for the
+dataset itself — only the sentence "Dataset access is available at Harvard
+Dataverse" with the DOI link above. Harvard Dataverse records carry their
+own per-dataset terms (commonly CC0 or a custom data-use agreement) that
+are independent of a linked repo's code license, and this run could not
+load either `doi.org` or `dataverse.harvard.edu` to read them — both fail
+DNS resolution from this session the same way `arxiv.org` and
+`universe.roboflow.com` do. **Commercial use of the dataset: UNVERIFIED —
+do not assume the MIT code license extends to it.** This is a concrete,
+actionable gap for whoever has unrestricted network access: one page load
+away from a yes/no answer.
+
+**Verification performed:** Read the GitHub repo's `README.md` and
+`LICENSE` files directly (raw content, not a search snippet) and confirmed
+both the swing/participant/modality numbers and the MIT code license are
+real and as described above. Explicitly checked for and did **not** find:
+any statement of indoor/outdoor setting, lighting conditions, or
+camera/phone hardware for either the FPV or external RGB-D video — the
+README is silent on all three, so this cannot be logged as evidence of
+indoor/simulator/low-light footage, only as an unconfirmed possibility.
+
+**Which failure mode this addresses:** Potentially both, but unconfirmed.
+Primarily bullet 1 (commercial training data) if the licence clears —
+genuine third-party swing video at a scale (1,557 swings) worth adding to
+the training mix alongside this project's own ~29% phone footage. The
+**external RGB-D video** stream is the interesting lead for motion blur
+specifically (bullet 2): a second, non-FPV camera angle on a full swing is
+exactly the kind of footage that would contain real blur during the
+downswing if its shutter/frame-rate resembles consumer phone capture rather
+than a high-speed studio rig — but the README gives no camera spec, so this
+is a hypothesis to test after download, not a verified blur source.
+
+**Why it matters for this model specifically:** This model's stated gap is
+twofold — too little real phone footage (only ~29% of training data) and
+too few genuinely blurred clubhead examples. A dataset of this scale with
+an external video stream captured contemporaneously with instrumented
+swing data (so frames could in principle be cross-checked against known
+impact timing) would be a meaningfully large addition if the licence
+permits commercial use and the footage turns out to carry real blur — but
+both of those are open conditions, not confirmed facts, after this run.
+
+**Effort vs. payoff:** Low effort to find and partially verify (under an
+hour, two raw GitHub file reads). Payoff is currently **zero and
+unrealized** — blocked on two unresolved questions this run could not
+answer: (1) the Dataverse dataset's actual license/terms, and (2) whether
+the RGB-D video has usable resolution/frame-rate and genuine motion blur at
+all. Worth a follow-up the moment either this session's network allowlist
+covers `dataverse.harvard.edu`/`doi.org`, or someone with normal internet
+access spends five minutes on the Dataverse page — cheap to resolve, not
+worth logging as a recommendation until it is.
