@@ -3168,3 +3168,84 @@ all. Worth a follow-up the moment either this session's network allowlist
 covers `dataverse.harvard.edu`/`doi.org`, or someone with normal internet
 access spends five minutes on the Dataverse page — cheap to resolve, not
 worth logging as a recommendation until it is.
+
+---
+
+## 2026-11-14 (third run today) — Haalck et al. (WACV 2024), "Tracking Tiny Insects in Cluttered Natural Environments Using Refinable Recurrent Neural Networks": the closest conceptual match this log has found to the camouflage failure mode, but confirmed to have no released code or dataset
+
+**Rotation context:** The first two runs today covered bullet 3 (`VNDetectTrajectoriesRequest`,
+ruled out) and bullet 1 (MultiSenseGolf dataset, unverified licence). This run
+rotates back to bullet 3 (small/low-contrast/camouflaged object detection,
+temporal methods preferred) rather than repeating bullet 1, since the two most
+recently *under*-touched categories (bullet 1 and bullet 4) were already hit
+this week and bullet 3 search terms this run tried turned up a genuinely new
+item not yet in this log. The same network restriction documented since
+2026-11-04 is still in effect this run: `arxiv.org`, `openaccess.thecvf.com`,
+`mlanthology.org`, `www.alphaxiv.org`, and `web3.arxiv.org` all fail DNS
+resolution (`getaddrinfo ENOTFOUND`); `github.com` is reachable and was used
+for the code-existence check below.
+
+**What it is:** A WACV 2024 paper (Haalck, Thiele, Risse — University of
+Münster) building a tracker for individual ants — tiny (≈30px), visually
+camouflaged against leaf litter and soil, filmed with a camera that moves
+with the colony — in long, high-resolution wildlife video. The method is a
+**refinable recurrent Hourglass network** that fuses colour appearance with
+temporal/motion cues across frames to produce a positional heatmap per ant,
+and optionally accepts a small amount of manual correction (0.6% of frames)
+to refine long tracks. Reported accuracy: 19px mean deviation from ground
+truth with zero manual input, improving to 9px with that 0.6% correction,
+on a 1024×1024 wildlife dataset.
+
+**URL:** https://openaccess.thecvf.com/content/WACV2024/html/Haalck_Tracking_Tiny_Insects_in_Cluttered_Natural_Environments_Using_Refinable_Recurrent_WACV_2024_paper.html
+(PDF and abstract could not be fetched directly this run — DNS-blocked, see
+above — so this summary relies on search-engine-indexed abstract text and
+citation-page copies, not a direct read of the paper itself; flag this as a
+weaker form of verification than the direct repo/file reads this log usually
+requires, and treat the description above accordingly as secondhand.)
+
+**Licence / code availability (the actual finding):** Searched directly for
+a code or dataset release under the authors' names and the paper's own
+terms (`site:github.com`-style queries, author GitHub profiles, dblp,
+aminer, and a GitHub repository-search for the method's own terms) and
+found **no repository, no released weights, and no released dataset** for
+this specific paper. One superficially similar GitHub hit
+(`gtclifton/AntTrackingCode`) was checked and is unrelated — it concerns
+ant *walking-speed* measurement, not visual tracking. **Nothing here is
+downloadable or runnable today.** This is a negative-but-useful finding,
+not an oversight: it means the paper is architecture-reference-only, the
+same status this log already gave MonoClub (2026-11-11) and DFRCP
+(2026-11-12).
+
+**Which failure mode this addresses:** Camouflage, and more precisely than
+anything else logged so far. Every prior camouflage-adjacent entry in this
+log (VCOD, EventVCOD, WASB-SBDT, STF, TTNet, SAHI) deals with either salient
+foreground objects against a plain background, or small/fast objects against
+a relatively uncluttered scene. This paper's setup — a tiny, colour-matched
+target against genuinely cluttered natural material (foliage, soil texture),
+filmed with a non-static camera — is the closest structural analogue found
+yet to "dark clubhead against dark clothing or cluttered foliage." Its core
+claim (appearance alone is insufficient at this scale/contrast; motion across
+frames is what actually separates figure from clutter) is a direct,
+independent data point in favor of the temporal/multi-frame direction this
+log has been building evidence for since the 2026-11-04 VCOD entry.
+
+**Why it matters for this model specifically:** It's further, independent
+confirmation — now from a domain with nothing to do with sports, which
+makes it harder to dismiss as golf-specific coincidence — that this
+project's camouflage failures (zero candidate detections even at confidence
+0.05, on sharp frames) are unlikely to be fixable by appearance-only
+tuning of the existing single-frame YOLO11n detector, and that a
+multi-frame/temporal signal is the mechanism the field reaches for at this
+exact combination of small target + low contrast + cluttered natural
+background. It adds no new code to try, but it raises the confidence behind
+recommending temporal fusion (STF, TrackNetV3, or a custom two-frame head)
+over continued single-frame appearance tuning as the next experiment for the
+camouflage failure mode.
+
+**Effort vs. payoff:** Low effort (one search pass, one code-existence
+check; under 30 minutes). Payoff is **evidentiary only, not actionable** —
+it strengthens the case for a direction this log has already recommended
+rather than supplying a new tool, dataset, or line of code. Do not budget
+engineering time against this entry specifically; weigh it as one more data
+point the next time temporal-fusion work for the camouflage failure mode is
+prioritized.
