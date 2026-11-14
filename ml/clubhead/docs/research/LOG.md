@@ -2973,3 +2973,101 @@ app's on-device latency budget). Worth returning to only if/when the
 project decides the box-elongation gap itself (not just data volume) is the
 bottleneck worth a labeling-format change, and only after confirming the
 dataset's own licence directly.
+
+---
+
+## 2026-11-14 — `VNDetectTrajectoriesRequest` (and its iOS 18 successor `DetectTrajectoriesRequest`) checked and ruled out: Apple's own first-party multi-frame motion detector is hard-restricted to parabolic flight, not an arbitrary swing arc, and its own docs require a tripod-steady camera
+
+**What it is:** A built-in Vision-framework request (iOS 14+/macOS 11+) that
+analyzes consecutive video frames and fits a moving shape's path to a
+parabola, returning `VNTrajectoryObservation`s (points + the fitted
+quadratic equation). Apple's own sample app ("Detecting Moving Objects in a
+Video") built it specifically for tracking a thrown/bounced object — a
+tossed bean bag in the sample — across frames where a single-frame detector
+alone would need to re-find the object every time. iOS 18 adds a
+Swift-native successor, `DetectTrajectoriesRequest` (`TrajectoryObservation`
+results), with the same constraint. This is a different Vision API from
+`VNTrackObjectRequest`, which this log already covered on 2026-11-12 —
+that one needs a seed box and does appearance-correlation tracking with no
+motion-shape assumption at all; this one detects motion itself, with no
+seed required, but only for one specific shape of motion.
+
+**URL:**
+https://developer.apple.com/documentation/vision/vndetecttrajectoriesrequest
+(older, iOS 14+) and
+https://developer.apple.com/documentation/vision/detecttrajectoriesrequest
+(newer, iOS 18+); sample article:
+https://developer.apple.com/documentation/vision/detecting-moving-objects-in-a-video
+
+**Licence:** Apple first-party Vision framework API, part of iOS/Xcode —
+no separate licence file, no cost, already available in this project's
+iOS 17.0 deployment target (confirmed in
+`ios-native/SwingSenseiNative.xcodeproj/project.pbxproj` and
+`ios-native/scripts/generate_xcodeproj.rb`, both set to
+`IPHONEOS_DEPLOYMENT_TARGET = 17.0`, above the iOS 14 floor the older API
+needs). **Commercial use: permitted** — this is a disqualification on
+fit, not on licence.
+
+**Verification performed:** Fetched the live Apple Developer Documentation
+JSON data endpoints directly (the rendered HTML pages return no body text
+to a text fetch, so the `.../tutorials/data/documentation/...json`
+endpoints were used instead, the same approach this log's 2026-11-12
+`VNTrackObjectRequest` entry used) for all three URLs above and confirmed
+verbatim:
+- `VNDetectTrajectoriesRequest`'s own abstract: *"A request that detects
+  the trajectories of shapes moving along a **parabolic path**."* Its
+  overview: *"After the request detects a trajectory, it produces an
+  observation that contains the shape's detected points and **an equation
+  describing the parabola**."*
+- The iOS 18 successor `DetectTrajectoriesRequest`'s abstract is
+  character-for-character the same: *"A request that detects the
+  trajectories of shapes moving along a parabolic path."*
+- The sample article, verbatim: *"the sample app requires a stable scene
+  with a fixed camera position and stationary background, so **mount your
+  iOS device to a tripod** and keep it fixed on the field of view."* It
+  also filters trajectories to ones where *"the trajectory contains a
+  parabolic equation constant `a`, less than or equal to `0`"* — i.e. it is
+  explicitly checking the fitted curve is gravity-shaped (downward-opening),
+  not just curved.
+- Confirmed by reading this project's own
+  `ios-native/SwingSenseiNative/ClubHeadDetector.swift` directly that
+  neither `VNDetectTrajectoriesRequest`, `DetectTrajectoriesRequest`, nor
+  any trajectory-fitting code appears anywhere in that file — this is an
+  unused capability, not one already tried.
+Could not verify numeric tolerance for how far a path can deviate from a
+true parabola before the request drops it (not stated in either JSON page),
+so "ruled out" rests on the documented *design intent* (parabolic flight
+under gravity) rather than a measured rejection threshold against real
+swing-arc footage, which was not tested this run.
+
+**Which failure mode this addresses:** Neither, in practice — this looked
+like a strong candidate for the task brief's "multi-frame and temporal
+methods... because motion is what separates a moving clubhead from static
+foliage" (bullet 3, camouflage) and secondarily motion blur (a correctly
+fitted trajectory could interpolate through a blurred/missed frame). It
+fails on fit before either failure mode is reached.
+
+**Why it matters for this model specifically:** A golf swing's clubhead
+path during the swing itself is a body/arm-driven circular-to-elliptical
+arc, not a ballistic parabola — the parabola only appears afterward, in the
+*ball's* flight once struck, not the club's. The API's own filter for
+"downward-opening, constant-sign curvature" would at best catch a narrow
+slice of the swing (near the bottom of the arc, which can locally resemble
+a shallow parabola) and would actively reject the rest, unlike
+`VNTrackObjectRequest`'s no-motion-model appearance tracking, which this
+log already flagged as the stronger first-party lever. Independently, this
+project's own capture is handheld phone video (the entire premise of the
+product), which directly contradicts the sample's own stated requirement
+of a tripod-fixed camera and stationary background — the API's
+frame-differencing approach to spotting motion assumes the only thing
+moving in frame is the tracked object, which breaks the moment the camera
+itself pans/shakes with the golfer's body. Both constraints are
+independent disqualifiers, not one weak reason.
+
+**Effort vs. payoff:** Low effort to check (an hour, no code written),
+zero payoff found — this is a clean rule-out, logged so no future run
+re-discovers the same API and burns a cycle on it. It does sharpen the
+existing `VNTrackObjectRequest` entry (2026-11-12) as the better-fitting
+first-party Vision lever for camouflage: appearance-correlation tracking
+has no motion-shape assumption and no stated camera-steadiness requirement,
+so it survives both objections that kill this one.
