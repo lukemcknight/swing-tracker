@@ -3351,3 +3351,78 @@ with no training or porting required, so a same-day spike to test it
 against a handful of this project's own blurred clips — rather than more
 literature search — is the cheapest way to resolve the open camera-motion
 question above and learn whether it is worth anything further.
+
+---
+
+## 2026-11-15 (second run today) — AICaddy, a BSD-3-Clause golf-club-tracer repo, checked directly and ruled out: the 6,000+-image driver-clubhead dataset and trained model it claims are not actually included or linked anywhere in the repo
+
+**Rotation context:** The first run today (DeFMO) covered bullet 2 (motion
+blur). Checking this log's own rotation history: bullet 4 (golf-specific
+pose/club tracking) and bullet 5 (synthesize/augment training data) were
+both last touched 2026-11-13 (RacketVision and LODE-style compositing,
+respectively), making them the least-recently-touched bullets, ahead of
+bullet 1 (2026-11-14, MultiSenseGolf) and bullet 3 (touched three times
+since 2026-11-12). This run picks bullet 4. `arxiv.org`, `universe.roboflow.com`,
+and `hackaday.io` were all DNS-blocked this run (`getaddrinfo ENOTFOUND`),
+the same standing gap every run has hit since 2026-11-04 — confirmed again
+directly rather than assumed. `github.com` and `raw.githubusercontent.com`
+were reachable and used for the verification below.
+
+**What it is:** `oswinkil-git/AICaddy-A-Golf-Club-Tracer` — a small Python
+repo (3 commits; `README.md`, `LICENSE`, `main.py` only) billed as a
+"golf club tracer." Its `main.py` imports `ultralytics.YOLO` and loads
+`model.pt` (a `yolov8n.pt` load earlier in the file is immediately
+overwritten and unused), then runs it against a hardcoded local video file
+(`dustinjohnson.mp4`). The README states the model "is already trained on
+6000+ images of golf club heads (just drivers)" and gives a runtime
+benchmark (a 31-second video takes ~2.6 minutes on a 30-vCPU/A10-GPU VPS),
+plus a list of third-party hosting providers to run it on.
+
+**URL:** https://github.com/oswinkil-git/AICaddy-A-Golf-Club-Tracer
+
+**Licence (verified directly):** Fetched
+`https://raw.githubusercontent.com/oswinkil-git/AICaddy-A-Golf-Club-Tracer/main/LICENSE`
+directly. It is the BSD 3-Clause License, copyright 2023 oswinkil — a
+standard permissive licence with an added non-endorsement clause.
+**Commercial use of the repo's own code is permitted.** This does **not**
+extend to the YOLOv8 model it loads: `ultralytics.YOLO` is AGPL-3.0 (the
+same licensing issue this log already flagged for its own planned
+pipeline on 2026-11-05 and used to justify logging RF-DETR on 2026-11-10),
+so even if the trained weights existed, deploying them would still require
+either AGPL compliance or an Ultralytics Enterprise licence.
+
+**Verification performed:** Fetched the GitHub repo page, then fetched
+`README.md`, `LICENSE`, and `main.py` directly via raw.githubusercontent.com
+(not secondhand summaries). Confirmed: the repo contains exactly the three
+files listed above — **no `model.pt`, no `yolov8n.pt`, no dataset
+directory, and no download link for either** anywhere in the README or
+code. The "6000+ images" and "already trained" claims in the README are
+therefore unverifiable and currently non-downloadable; nothing in this repo
+can be run as shipped without first supplying a `model.pt` the repo does
+not provide. This is a direct, first-hand confirmation, not an assumption
+from a search snippet.
+
+**Which failure mode this addresses:** Neither directly. This was checked
+as a potential bullet-1/bullet-4 lead (a driver-clubhead-only dataset and
+tracker, which would bear on general detection capability) rather than
+specifically on camouflage or motion blur — the README gives no indication
+the claimed 6,000+ images include blurred or dark/camouflaged examples
+either way, and the question is moot since nothing is downloadable.
+
+**Why it matters for this model specifically:** It doesn't, in the sense of
+being usable — but it is a useful negative data point for this log's
+standing bullet-1 problem (commercially usable golf footage/imagery is
+hard to find): a repo that *advertises* exactly the kind of narrow,
+clubhead-only training set this project would want turns out, on direct
+inspection, to be another unlinked claim rather than an asset, the same
+pattern already seen in this log for ClubheadDB's dead source repo
+(2026-11-04) and MultiSenseGolf's unreachable dataset terms (2026-11-14).
+It reinforces that this log's remaining bullet-1 gap is not for lack of
+people claiming to have golf-clubhead imagery — it's the near-total absence
+of anyone who actually publishes it alongside a usable licence.
+
+**Effort vs. payoff:** Low effort (one search pass, three direct raw-file
+fetches; under 20 minutes). Payoff is **zero as an asset** — there is
+nothing here to integrate — and low-but-real as a negative/evidentiary
+data point: it is now confirmed, rather than assumed, that this specific
+lead is a dead end, so no future run needs to re-check it.
