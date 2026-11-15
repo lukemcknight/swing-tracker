@@ -3249,3 +3249,105 @@ rather than supplying a new tool, dataset, or line of code. Do not budget
 engineering time against this entry specifically; weigh it as one more data
 point the next time temporal-fusion work for the camouflage failure mode is
 prioritized.
+
+---
+
+## 2026-11-15 — DeFMO: a real, MIT-licensed shape-recovery-from-blur network, now also shipped inside the actively-maintained Kornia library — but the camera-motion caveat already flagged for its sibling tool FMODetect could not be confirmed one way or the other
+
+**Rotation context:** The most recent run (2026-11-14, third run) covered
+bullet 3 (camouflage/temporal, Haalck et al.) for the second time that day.
+This run rotates to bullet 2 (motion blur: blur-robust architectures /
+video deblurring usable as preprocessing), which was last touched
+2026-11-13 (DeepGyro, ruled out) — the least recently touched bullet along
+with 4 and 5, and the one where this run's searches actually surfaced
+something new and verifiable. `arxiv.org`, `research.google`, and
+`kornia.readthedocs.io` all failed DNS resolution in this session
+(`getaddrinfo ENOTFOUND`), continuing the network restriction noted in
+entries since 2026-11-04; GitHub raw file access, GitHub web pages, and
+PyPI were reachable and used for the verification below.
+
+**What it is:** `rozumden/DeFMO` — the official code for "DeFMO: Deblurring
+and Shape Recovery of Fast Moving Objects" (Rozumnyi, Oswald, Ferrari,
+Matas, Pollefeys; CVPR 2021). Given a blurred frame and a companion
+background frame, it reconstructs the fast-moving object's sharp
+appearance and shape mask at a configurable number of sub-frame time steps
+along its motion path, i.e. it treats the blur streak as a temporal
+super-resolution problem rather than noise to remove or tolerate. It is
+from the same research group as `rozumden/FMODetect`, already logged here
+on 2026-11-10, but solves a different problem: FMODetect *finds* a fast
+object via background subtraction; DeFMO *reconstructs* one's shape and
+sub-frame trajectory from an already-cropped blur streak. The project has
+since been packaged as `kornia.feature.DeFMO`, a documented `nn.Module`
+taking a 6-channel (blurred image + companion frame) input of shape
+`(B, 6, H, W)` and returning `(B, S, 4, H, W)` — S recovered RGBA sub-frames
+— confirmed directly from Kornia's own API reference page (via search-cache
+text, since the docs host itself was DNS-blocked this run).
+
+**URL:** https://github.com/rozumden/DeFMO (original code); the Kornia
+integration is documented at `kornia.feature.DeFMO` (kornia.readthedocs.io,
+unreachable directly this run, confirmed instead via indexed copies of the
+API reference and of `kornia/feature/defmo.py`).
+
+**Licence (verified directly, not secondhand):** Fetched
+`https://raw.githubusercontent.com/rozumden/DeFMO/master/LICENSE` directly.
+It is the MIT License, copyright 2022 Denys Rozumnyi — standard MIT grant
+("Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software...") with no additional restriction. **Commercial use
+is permitted.** Separately checked PyPI for `kornia` itself: latest release
+0.9.1, dated 2026-11-13 (two days before this run — genuinely active, not
+an abandoned wrapper), license classifier `OSI Approved :: Apache Software
+License`. **Both the underlying tool and its distribution channel are
+commercial-use-clean.**
+
+**Which failure mode this addresses:** Motion blur — specifically "video
+deblurring usable as preprocessing" from this log's rotation list. This is
+a materially different angle from the blur entries already logged
+(SoccerSynth-Detection's synthetic pretraining, RT-Focuser's on-device
+deblur network, FMODetect's detect-from-streak, DFRCP's blur-robust FPN,
+LODE-style and frame-averaging synthesis): DeFMO doesn't detect, and it
+isn't designed to run on-device — it reconstructs, offline, what a blurred
+clubhead crop actually looked like across the time the shutter was open.
+
+**Why it matters for this model specifically:** The labeling spec
+(`docs/labeling-spec.md`) requires annotators to box the *entire* motion-blur
+streak, and the research prompt's cited elongation statistics (median 1.60,
+p90 3.01 — figures this run could not re-verify against the repo directly,
+since `v1-failure-analysis.md` and `data-engine.md` still do not exist on
+this branch, consistent with the gap already flagged in the 2026-11-04
+entry) describe a training set thin on genuinely blurred, correctly-boxed
+examples. DeFMO's whole premise — recovering an object's true extent and
+sub-frame path from a blur streak — is a plausible **labeling-QA tool**: run
+it on a handful of already-boxed blurred frames and check whether the
+recovered shape's spatial extent actually matches the drawn box, as an
+independent check on labeling consistency that doesn't exist today. It
+could also, in principle, serve as an offline deblur-then-relabel step on
+existing clips to manufacture more correctly-elongated positive examples
+without new capture — a different route to the same gap the frame-averaging
+and LODE-style synthesis entries (2026-11-11, 2026-11-13) already target.
+
+**Open question this run could not close:** FMODetect's already-logged
+entry states its background-subtraction step "assumes a largely static
+camera," which doesn't hold for a handheld phone swing video. DeFMO's
+`--bgr` CLI argument (a background frame, per the original README) smells
+like the same family of assumption, and if DeFMO in fact requires a clean
+static-scene plate, it inherits FMODetect's blocker and becomes
+architecture-reference-only, the same status already given to MonoClub,
+DFRCP, and the Haalck paper. But the README does not state this explicitly,
+and the primary paper (arXiv) was unreachable this run to confirm whether
+the "companion frame" can instead be an adjacent video frame from a
+near-static handheld clip (which would make it usable on short bursts
+around impact). **This is a confirmed gap in this run's verification, not
+a confirmed capability** — treat the camera-motion question as open, not
+resolved, until someone reads the paper directly or runs the Kornia module
+against a real swing clip.
+
+**Effort vs. payoff:** Moderate effort (multiple searches, a direct
+LICENSE fetch, a PyPI license/recency check; ~45 minutes). Payoff is
+**conditionally moderate** — lower than RT-Focuser (already benchmarked
+on-device) because DeFMO has no CoreML or mobile benchmark and is pitched
+as an offline tool, but higher than the architecture-only entries (MonoClub,
+DFRCP, Haalck) because it is pip-installable today via `pip install kornia`
+with no training or porting required, so a same-day spike to test it
+against a handful of this project's own blurred clips — rather than more
+literature search — is the cheapest way to resolve the open camera-motion
+question above and learn whether it is worth anything further.
