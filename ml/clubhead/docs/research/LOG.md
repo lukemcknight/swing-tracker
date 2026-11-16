@@ -84,3 +84,55 @@ Phase 1 YOLO11n box detector, and the dataset's shooting conditions probably
 don't fill the blur/low-light gap this project actually needs filled. Worth
 revisiting only if/when the project seriously considers the keypoint-model
 Phase 2 idea already named in the design doc — not an action item now.
+
+---
+
+## 2026-11-16 (second entry) — Sayed & Brostow (CVPR 2021): synthetic blur + box-expansion technique
+
+**What it is:** *"Improved Handling of Motion Blur in Online Object
+Detection"* (Sayed & Brostow, CVPR 2021). Trains detectors with synthetic
+motion-blur augmentation generated from PSF (point-spread-function) kernels,
+and exposes an `--expand_target_boxes` option for growing ground-truth boxes
+to match the blurred extent.
+
+- **Paper:** https://arxiv.org/abs/2011.14448 (and CVF PDF:
+  https://openaccess.thecvf.com/content/CVPR2021/papers/Sayed_Improved_Handling_of_Motion_Blur_in_Online_Object_Detection_CVPR_2021_paper.pdf).
+  I could not fetch arxiv.org directly in this session (host not on the
+  allowed list) — summary below is from search-result snippets of the paper,
+  not a direct read of the full text.
+- **Code:** https://github.com/mohammed-amr/detectinblur — fetched directly
+  and confirmed live today: public, loads normally, 19 commits, 24
+  stars/7 forks, not archived. Contains `train.py`, `evaluate.py`,
+  `generate_PSFs.py`/`see_PSFs.py` (blur kernel tools), a `motion_blur`
+  folder, and `--blur_train`/`--expand_target_boxes` flags, built on
+  torchvision's detection reference code.
+
+**Licence:** The GitHub repo has **no LICENSE file** anywhere in the file
+listing or sidebar — confirmed by fetching the repo page directly. No licence
+means default copyright (all rights reserved): the code may not be reused,
+modified, or redistributed commercially without contacting the authors. The
+arXiv preprint is free to read, but that grants no licence to the code.
+**Do not vendor this repo's code into a commercial pipeline as-is.** The
+underlying *algorithm* (synthesize a blur kernel, convolve a crop, dilate its
+box) is not copyrightable — only their specific implementation is — so an
+in-house reimplementation from the paper's description is legally fine.
+
+**Which failure mode this addresses:** motion blur, directly — and it is the
+other half of the gap this project's own `docs/labeling-spec.md` already
+names as policy ("box the full visible clubhead including its motion-blur
+streak") but, per the brief, isn't achieved in the actual labels (reported
+median box elongation 1.60, p90 3.01 — near-square, not streaked). This repo
+is a concrete, peer-reviewed precedent for manufacturing exactly that missing
+category — a blurred object with a correspondingly elongated box — by
+synthesizing it from already-sharp training frames, rather than by shooting
+new blurred footage or re-labeling by hand.
+
+**Effort vs. payoff:** Medium effort, uncertain payoff. The technique (PSF
+blur kernel + box dilation) is simple enough to reimplement from scratch in a
+day or two — no need to touch the unlicensed code at all. But the paper's
+reported gains are on COCO/GOPRO-style multi-object scenes, not a single
+small near-camera object like a clubhead, so transfer is unverified for this
+use case. Treat as a prototype worth a small controlled experiment (train
+with vs. without synthetic blur, measure the delta on genuinely blurred
+held-out frames once any exist) — not worth rebuilding the augmentation
+pipeline around on faith alone.
