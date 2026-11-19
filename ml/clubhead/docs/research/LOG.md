@@ -3712,3 +3712,80 @@ That matters because of a physical constraint neither this code nor the task des
 **Why it matters for this model specifically:** It's the best-licensed deblur candidate this log has found (full chain MIT/Apache/probable-CC-BY, versus GPL-3.0'd YOLOMG, AGPL'd SwingTrace, or DeepGyro's no-licence-at-all), but the one existing CoreML artifact is explicitly not built for the on-device budget this project actually has (fixed large-tile inputs, CPU-only for usable precision, no latency numbers, author's own "not suitable for mobile" caveat) — so it is not a drop-in win. Converting the lighter GoPro-width32 checkpoint (not yet CoreML-converted by anyone, as far as this search found) instead of the heavier REDS-width64 one is the obvious next question, but that would mean doing the PyTorch→CoreML conversion from scratch rather than reusing existing work, which is a materially bigger lift than every other "found a ready CoreML file" entry this log has logged.
 
 **Effort vs. payoff:** Low effort to reach this verdict (three direct repo/file fetches, no code run), payoff is mostly negative-but-useful: it rules out the single most-searched-for deblur architecture name as a near-term on-device preprocessing option in its only currently-available CoreML form, while confirming the underlying licence chain is clean enough that a from-scratch conversion of the lighter width32/GoPro checkpoint would be worth a dedicated effort estimate in a future run — distinct from RT-Focuser (2026-11-07), which remains the strongest verified on-device deblur candidate this log has found because it was *actually benchmarked on an iPhone*, not just licence-cleared.
+
+---
+
+## 2026-11-19 (fourth run today) — Low-light/low-contrast enhancement as a camouflage preprocessing stage: checked two real implementations, both blocked, plus literature evidence the whole approach is a mixed bag
+
+**What it is:** A different mechanism from everything else this log has logged
+for camouflage (VCOD architectures, diffusion compositing, open-vocab
+detection, Apple's tracking/optical-flow APIs): instead of changing the
+detector, enhance the frame's contrast/exposure *before* detection, on the
+theory that a dark clubhead against dark clothing is fundamentally a
+low-contrast problem, not purely an appearance/texture one. Checked the two
+most concrete candidates.
+
+1. **Zero-DCE / Zero-DCE++** (Li-Chongyi, CVPR 2020 / TPAMI 2022,
+   "Zero-Reference Deep Curve Estimation for Low-Light Image Enhancement").
+   Zero-DCE++ is genuinely tiny (10K parameters, reported 1000 FPS on a
+   desktop GPU at 1200×900) — exactly the size budget this CoreML pipeline
+   would need for an on-device preprocessing stage. Fetched the official
+   repos directly: `github.com/Li-Chongyi/Zero-DCE` and
+   `github.com/Li-Chongyi/Zero-DCE_extension` (the ++ code). Both state the
+   same licence verbatim in their README: *"The code is made available for
+   academic research purpose only. Under Attribution-NonCommercial 4.0
+   International License."* **Commercial use: not permitted.** This rules
+   out the official weights and code outright.
+   - **Licence trap to flag for future runs:** a third-party conversion
+     (`mlboydaisuke/zero-dce-litert` on Hugging Face) claims an Apache-2.0
+     licence for a LiteRT port of these same weights. That claim cannot
+     actually relicense NC-derived weights to something more permissive —
+     a converter doesn't have the right to grant terms the upstream authors
+     didn't grant. Do not treat that Apache-2.0 label as real clearance;
+     it wasn't independently verified here either way, but even if genuine
+     it would not override the original NC restriction on the weights it's
+     derived from.
+
+2. **YOLO-LLTS** (arXiv 2503.13883, IEEE TIM 2025) — a low-light-specific
+   detector pairing a "Prior-Guided Feature Enhancement Module" (PGFE) with
+   a "Multi-branch Feature Interaction Attention" module (MFIA), built for
+   small objects (traffic signs) in genuinely dark scenes. Fetched the repo
+   directly: `github.com/linzy88/YOLO-LLTS`. It is real and populated (40
+   commits, train/test/detect scripts, an `ultralytics` subfolder) but
+   **declares no licence at all** — no LICENSE file, nothing in the README
+   or repo metadata. Unlicensed code defaults to all-rights-reserved, so
+   it's not usable here. It's also built on the `ultralytics` codebase,
+   which this log already flagged (2026-11-05, RF-DETR entry) as
+   AGPL-3.0-encumbered unless under an Ultralytics Enterprise licence — a
+   second, independent reason this specific implementation is closed to
+   this project even if a licence were later added. Its CNTSSS night-time
+   dataset (Google Drive / Baidu links, both live) also ships with no
+   stated usage terms.
+
+**Which failure mode:** Camouflage (low-contrast appearance), not motion
+blur.
+
+**Why it matters for this model, and why it's still only a "checked, mostly
+ruled out":** The architecture class — cheap, mobile-sized contrast/exposure
+normalization run ahead of the YOLO11n detector — is exactly the right shape
+for this project's CoreML budget, which is why it was worth checking
+directly instead of assuming. But both concrete, inspectable implementations
+are closed for commercial use, and a 2025 AAAI paper on low-light detection
+(DLDA, found via search but not independently fetched — arxiv/aaai hosts are
+network-blocked from this session) argues the category itself is not a free
+win: enhancement models optimize for human visual quality, not detector
+features, and can introduce artifacts that *reduce* detection accuracy
+relative to feeding the detector the raw frame. That's a reason to treat any
+future "add a contrast-enhancement front end" proposal with real skepticism,
+not just a licensing obstacle to route around.
+
+**Effort vs. payoff:** Low effort to rule out (two repo fetches), and that's
+exactly what happened. Pursuing this mechanism further would mean either (a)
+training a Zero-DCE-shaped network from scratch on this project's own
+footage, with no licence dependency but full training cost, or (b)
+implementing PGFE/MFIA-style fusion directly inside the existing YOLO11n
+head rather than as a separate preprocessing network. Either is real
+engineering effort for a technique the literature itself doesn't
+unambiguously endorse. Lower priority than this log's already-verified,
+unencumbered leads (e.g. 2026-11-12's SAHI, 2026-11-12's VNTrackObjectRequest,
+2026-11-11's real-frame-averaging blur synthesis).
