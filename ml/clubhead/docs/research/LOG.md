@@ -3882,3 +3882,115 @@ wasn't a real file), low payoff. Not recommended for use on this project,
 commercially or as a research-only stopgap, given it has no domain overlap
 with golf, clubs, or blur. Logged primarily to retire the lead and to flag
 the licence-badge trap for future bullet-1 runs.
+
+---
+
+## 2026-11-20 (second run today) — Adding a P2/4 (stride-4) detection head to YOLO11n: officially shipped for YOLOv8, never merged for YOLO11 — a structural small-object-sensitivity fix, not a config flag
+
+**Rotation context:** First entry today covered bullet 1 (datasets). This
+run checked bullet 3 (techniques for detecting small/low-contrast objects),
+specifically an architecture-level angle this log had not yet checked:
+whether a cheap, well-precedented YOLO modification — adding a higher-
+resolution detection head — is actually available for this project's own
+model family (YOLO11n), rather than only for sibling architectures already
+logged as too heavy (ZoomNeXt, YOLOMG, TTNet) or as pure inference wrappers
+(SAHI, 2026-11-12).
+
+**What it is:** Ultralytics' own YOLO family ships an optional "P2" head
+variant that adds a fourth, stride-4 detection branch (on top of the
+standard P3/P4/P5 = strides 8/16/32) so the model detects directly from a
+higher-resolution feature map — the standard fix in the YOLO literature for
+objects that are small relative to the frame, which is structurally what
+both this project's camouflage frames (small, low-contrast, zero candidates
+at any confidence) and blurred frames (a thin, elongated, few-pixel-wide
+streak) have in common. **Confirmed this exists today, officially, for
+YOLOv8**: `ultralytics/cfg/models/v8/yolov8-p2.yaml` is a real, current file
+in the `ultralytics/ultralytics` repo (fetched directly). Its content
+(quoted in full below) shows the mechanism concretely: the backbone is
+unchanged; the head adds an extra upsample+concat step down to backbone
+layer 2 (the P2/4 feature map, labelled "P2/4-xsmall" in the file's own
+comment), and the final `Detect` layer takes four inputs
+(`[18, 21, 24, 27]`) instead of the stock three.
+
+```yaml
+# YOLOv8.0-p2 head (excerpt — full file fetched and read directly)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 2], 1, Concat, [1]]  # cat backbone P2
+  - [-1, 3, C2f, [128]]  # 18 (P2/4-xsmall)
+  ...
+  - [[18, 21, 24, 27], 1, Detect, [nc]]  # Detect(P2, P3, P4, P5)
+```
+
+**Critical gap confirmed directly:** `ultralytics/cfg/models/11/` (fetched
+and listed directly today) contains **no** `yolo11-p2.yaml` or equivalent —
+only `yolo11.yaml`, `-cls`, `-obb`, `-pose`, `-seg`, and the `yoloe-11`
+variants. A pull request to add exactly this — **"Add YOLOv11-P2/P6 and
+YOLOv10n-P2/P6 Configuration Files"**, Ultralytics PR #16558 — was opened,
+touched not just new YAML files but also `ultralytics/nn/modules/head.py`
+and `ultralytics/nn/tasks.py` (per its own Codecov file list), and was
+**closed unmerged** by its own author on 2024-12-03. So for YOLO11n
+specifically, a P2 head is not a one-line `model=yolo11n-p2.yaml` swap the
+way it is for YOLOv8n — it requires manually porting the v8-p2 head pattern
+onto YOLO11's backbone/task code, using the closed, unmaintained PR as a
+reference at best, and testing it yourself.
+
+**URLs:**
+- https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/models/v8/yolov8-p2.yaml (fetched directly, full content confirmed)
+- https://github.com/ultralytics/ultralytics/tree/main/ultralytics/cfg/models/11 (fetched directly, confirmed no p2/p6 file present)
+- https://github.com/ultralytics/ultralytics/pull/16558 (fetched directly, confirmed closed/unmerged)
+- https://github.com/ultralytics/ultralytics/blob/main/LICENSE (fetched directly)
+
+**Licence (verbatim) and commercial use:** The `ultralytics/ultralytics`
+repo's `LICENSE` file is the **GNU Affero General Public License, Version
+3** in full (confirmed by direct fetch: "GNU AFFERO GENERAL PUBLIC LICENSE
+... Version 3, 19 November 2007"), and the `yolov8-p2.yaml` file itself
+carries the header `# Ultralytics 🚀 AGPL-3.0 License -
+https://ultralytics.com/license`. **This is not new information** — this
+log already flagged the Ultralytics AGPL-3.0 chain on 2026-11-05
+(`nishsm/golf-club-tracking`) and 2026-11-10 (RF-DETR, chosen partly to
+dodge it) — but it bears repeating plainly here because this project's
+*own* model (YOLO11n) is already inside that same AGPL/Enterprise-licence
+chain, so a P2-head modification changes nothing about the licence
+question one way or the other: whatever this project has already decided
+about AGPL compliance vs. an Ultralytics Enterprise licence for training
+YOLO11n in the first place already covers training a P2-head variant of
+it, since it's the same codebase under the same terms. **Not a new
+licence risk, but also not a way to avoid the existing one.**
+
+**Which failure mode this addresses:** Primarily camouflage/small-object
+sensitivity — a P2/4 head gives the detector a feature map at 4x the
+spatial resolution of the deepest layers it currently detects from,
+directly targeting "small, low-contrast object, zero candidates at any
+confidence" by construction, before any post-hoc inference trick (unlike
+SAHI's tiling, this changes what the network itself can resolve). Motion
+blur relevance is secondary and unconfirmed: a blur streak is often *wider*
+in bounding-box terms than a sharp clubhead (median elongation 1.60, p90
+3.01), so it's not obviously the same "too few pixels" problem a P2 head is
+built for — logging this honestly as a camouflage-first, blur-maybe fix
+rather than overclaiming it addresses both equally.
+
+**Why it matters for this model specifically:** It's a structural,
+training-time fix for the exact failure signature this project has
+already measured (zero candidate detections even at confidence 0.05 on
+sharp, well-lit frames) rather than another third-party model/dataset to
+license-check — no new data or external licence needed, since it only
+changes the architecture trained on data the project already owns. That
+also makes it the most "in-house" fix this log has found for bullet 3 to
+date.
+
+**Effort vs. payoff:** Medium-to-high effort, clearly higher than the
+already-logged SAHI experiment (2026-11-12), which needs no retrain at
+all. This needs: (1) porting the P2 branch into YOLO11's architecture
+definition (the closed PR shows this touches engine code, not just YAML,
+so it is not guaranteed to be a mechanical copy-paste), (2) a full retrain,
+and (3) separately verifying CoreML export still works cleanly with a
+four-output `Detect` head and that the added compute (a known but
+*unquantified* cost here — this session could not reach
+`docs.ultralytics.com`, the Ultralytics community forum, or the one arXiv
+paper found discussing P2-head FLOPs/latency numbers, all blocked by this
+session's network policy, so "P2 is slower" is confirmed qualitatively
+from this project's own read of the architecture, not with a verified
+number) still fits the on-device real-time budget for a nano model. Worth
+trying, but only as a follow-up to the cheaper, already-logged SAHI
+inference-time test, not as a first move — and the latency cost needs to
+be measured on-device before committing to it, not assumed.
