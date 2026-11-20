@@ -3994,3 +3994,88 @@ number) still fits the on-device real-time budget for a nano model. Worth
 trying, but only as a follow-up to the cheaper, already-logged SAHI
 inference-time test, not as a first move — and the latency cost needs to
 be measured on-device before committing to it, not assumed.
+
+---
+
+## 2026-11-20 (third run today) — CADDIE thread advanced: the paper is a Fujitsu Research of America / Colorado State University collaboration with its own named "GolfClub" dataset (72K frames) — but the PDF, and any dataset release, are still unreached
+
+**Rotation context:** First two runs today covered bullets 1 (ExDark) and 3
+(YOLO11 P2-head), so this run moved to bullet 4 (golf-specific pose/club
+tracking) rather than repeating either. Within bullet 4, this picked up the
+CADDIE open thread this log has now touched twice without resolving
+(2026-11-11 third run: found but unreadable; 2026-11-19 second run: got a
+fuller title/venue/abstract via search snippets but `openaccess.thecvf.com`,
+`web.archive.org`, `mlanthology.org`, and `www.semanticscholar.org` all
+stayed DNS-blocked). This run tried the direct PDF URL again (still blocked,
+same error) and then searched for the paper through channels other than the
+paper itself — an author/publisher angle rather than retrying blocked
+hosts.
+
+**What's new this run (not in either prior CADDIE entry):**
+1. **Affiliation, confirmed for the first time:** CADDIE is a joint Fujitsu
+   Research of America / Colorado State University project — a Fujitsu
+   Research of America researcher (Toru Katagiri, per his own LinkedIn
+   profile) surfaced in search results independently of the paper authors
+   (Jung, Yang, Blanchard, Wong), and a LinkedIn post attributed to Fujitsu
+   Research describes CADDIE as "our first markerless golf club-only pose
+   estimation study at CVsports, a CVPR 2026 workshop." Neither prior entry
+   named a corporate co-sponsor.
+2. **A named, sized training dataset:** per search-snippet summaries of the
+   paper (not the primary PDF, which remains unreachable), the authors built
+   their own dataset — **"GolfClub," 72,000 annotated frames across 7
+   subjects, 6 locations, and 3 club types (driver, wood, iron), using a
+   universal 5-keypoint schema.** Neither prior entry had a dataset name,
+   size, or capture-condition breakdown; the 2026-11-19 entry only had the
+   model's parameter counts and latency.
+3. **A concrete speed/accuracy tradeoff number:** 88.52% PCK@5px at 69 FPS
+   baseline, with an "adaptive temporal smoothing" step (described as
+   combining stationarity detection, quadratic refinement, and Hermite
+   fallback for bounding-box interpolation) scaling this to 238 FPS at
+   under 1% accuracy loss.
+
+**URL:** Same as before — primary source is
+https://openaccess.thecvf.com/content/CVPR2026W/CVsports/papers/Jung_CADDIE_Compact_Adaptive_Detection-Driven_Inference_for_Real-Time_Golf_Club_Pose_CVPRW_2026_paper.pdf
+(re-attempted directly this run: `getaddrinfo ENOTFOUND`, same as every
+prior attempt). The three new details above are corroborated by two
+independent search-result summaries each (a Fujitsu-affiliated LinkedIn
+post plus the paper's own indexed abstract text), not read from the PDF or
+any GitHub/dataset page — no such page was found this run either, same gap
+as before.
+
+**Licence / dataset access:** Still **unknown and unresolved** — no
+GitHub repo, no Hugging Face page, no dataset-request page, and no mention
+of a public release was found for "GolfClub" (the dataset) specifically,
+despite three distinct searches this run using the dataset name plus
+author names, plus author names plus "Colorado State." This remains the
+single open blocker, same category as the prior two CADDIE entries, now
+with a specific dataset name to search for again once this session's
+network allowlist changes or the PDF becomes reachable.
+
+**Which failure mode this addresses:** Both, per the paper's own abstract
+language already logged on 2026-11-19 ("thin, elongated geometry, motion
+blur, and self-occlusion") — this run adds that the dataset itself spans
+6 *locations*, which is the first concrete signal (not yet confirmed to
+include indoor/simulator conditions) that it might not be single-venue,
+single-lighting footage the way GolfDB and ClubheadDB are. That is a
+plausible, not confirmed, point in its favor for the indoor/low-light gap
+this project's own brief flags as unmeasured.
+
+**Why it matters for this model specifically:** A 5-keypoint club pose
+schema trained on 72K frames across multiple locations, if ever reachable,
+would be the most directly on-point golf-specific asset this log has found
+for the camouflage failure mode — closer in spirit to the already-logged
+GolfPose (2026-11-07) but newer, purpose-built for the club alone (not
+club+body), and explicitly motion-blur-aware by the authors' own framing.
+But "if ever reachable" is doing a lot of work in that sentence: this is
+the third run to confirm the paper exists and matters, and the third to
+fail to reach anything beyond search-snippet-level detail.
+
+**Effort vs. payoff:** Low effort this run (search only, no new fetch
+succeeded), and the payoff is informational progress on an open thread,
+not a usable asset yet. Recommending against a fourth dedicated run
+chasing CADDIE specifically unless this session's network access changes —
+the marginal detail gained per attempt is shrinking (title/venue, then
+params/latency, now dataset name/size) while the actual blocker (no
+reachable PDF, no dataset page) hasn't moved across three tries. Flagging
+this explicitly so a future run spends bullet-4 time on a fresh lead
+instead of a fourth CADDIE search.
