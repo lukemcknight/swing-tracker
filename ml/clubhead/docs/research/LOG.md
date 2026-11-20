@@ -3789,3 +3789,96 @@ engineering effort for a technique the literature itself doesn't
 unambiguously endorse. Lower priority than this log's already-verified,
 unencumbered leads (e.g. 2026-11-12's SAHI, 2026-11-12's VNTrackObjectRequest,
 2026-11-11's real-frame-averaging blur synthesis).
+
+---
+
+## 2026-11-20 — ExDark (Exclusively Dark Image Dataset): a real, widely-cited low-light object dataset, but its GitHub "BSD-3-Clause" badge only covers the code — the dataset materials themselves are research-only
+
+**Rotation context:** Bullet 1 (datasets, especially low-light/indoor/
+simulator/older-phone footage) is the bullet this log has had the least
+success with, blocked almost every time by `universe.roboflow.com`,
+`kaggle.com`, `zenodo.org`, and `huggingface.co` all being DNS-blocked from
+this session (confirmed still true today — all four failed with
+`getaddrinfo ENOTFOUND` on direct fetch, same as every prior run since
+2026-11-04). This run searched for low-light/dark-scene datasets reachable
+through hosts other than those four, rather than retrying blocked hosts.
+
+**What it is:** `cs-chan/Exclusively-Dark-Image-Dataset` on GitHub — the
+dataset behind Loh & Chan, "Getting to Know Low-light Images with the
+Exclusively Dark Dataset" (Computer Vision and Image Understanding, vol.
+178, 2019). 7,363 images captured in genuinely low ambient light (ten
+conditions from very-low-light to twilight), with both image-level class
+labels and local bounding-box annotations across 12 object classes
+("similar to PASCAL VOC" per the README — general object categories: no
+club, ball, or sport-specific class).
+
+**URL:** https://github.com/cs-chan/Exclusively-Dark-Image-Dataset
+
+**Licence — verbatim where quotable (GitHub's own 125-character snippet
+limit applies to the direct fetch, so these are short exact fragments, not
+paraphrase):** GitHub's sidebar labels the repo "BSD-3-Clause," and the
+actual `LICENSE` file at the repo root is a standard BSD-3-Clause grant —
+but fetching the file directly and cross-reading it against the README
+shows that licence is scoped to the *software* only. The README (updated
+30 Sept 2026, "clarified terms apply prospectively from 01 October 2026")
+states the dataset materials are under separate terms: *"The ExDark
+Dataset Materials... may be used for non-commercial academic research"*
+... *"subject to those terms"*; *"Commercial use of ExDark Dataset
+Materials controlled by the Licensor requires prior written permission"*;
+*"written confirmation from the Licensor is required"* for any use by or
+sponsored by a for-profit entity even for academic purposes; permission
+requests go to Dr. Chee Seng Chan (`cs.chan at um.edu.my`). **Commercial
+use: NOT permitted without separately obtained written permission** — this
+is a research-only dataset, and the BSD-3-Clause badge on the repo (which
+GitHub auto-detects from the `LICENSE` file and which license-scanning
+tools would likely surface first) is a trap: it does not cover the images
+or annotations, only the authors' own code.
+
+**Verification performed:** Fetched the GitHub repo root page directly
+(confirmed root contents: `Dataset/`, `Groundtruth/`, `SPIC/`,
+`Exdark.gif`, `LICENSE`, `README.md` — default branch `master`) and the
+raw `README.md` and raw `LICENSE` file, both fetched directly rather than
+from a search snippet. The README's own text references
+`DATASET_TERMS.md`, `RIGHTS_NOTICE.md`, and `THIRD_PARTY_NOTICES.md` by
+name as if they were separate files, but a GitHub file-finder search on
+the repo and direct `raw.githubusercontent.com` fetches for those exact
+filenames both returned "not found" / 404 — those are section headings
+inside the single `README.md`, not actual files, which this run confirmed
+rather than assumed after the first 404. The substantive licence clauses
+quoted above all came from the one `README.md` file that does exist,
+fetched directly.
+
+**Which failure mode this addresses:** Neither directly, and that's the
+honest finding, not a sales pitch. ExDark is low *ambient light* (dim
+scenes, no motion), not motion blur — it has no fast-moving or elongated
+objects, so it does not touch bullet 2. It is also not a camouflage dataset
+in this project's sense (a specific-colored object against a
+similar-colored background in a sharp frame); it's generic low-light
+scene recognition across unrelated object classes. Its only plausible
+relevance is tangential to the report's own caveat that real motion blur
+is expected "wherever exposure lengthens — indoor simulator bays, overcast,
+evening light" — ExDark is evidence of what those lengthened-exposure, dim
+frames actually look like in general, and could in principle contribute a
+small amount of low-light domain-adaptation pretraining for the backbone.
+But it has no clubhead, no club-shaped object, and no blur, so that
+contribution would be indirect and unproven, not a drop-in fix for either
+failure mode.
+
+**Why it matters for this model specifically:** Mostly as a negative
+result and a licensing-trap warning. It closes off one more "maybe there's
+a usable public low-light dataset" branch of bullet 1 — the dataset is
+real, well-documented, and has bounding boxes, which made it worth checking
+directly rather than dismissing by name — but it's NC-gated at the source
+and not domain-relevant even if it weren't. The more durable value is the
+specific trap it demonstrates: a repo's auto-detected GitHub licence badge
+can describe only the code in a repo that also ships data, while the data
+itself carries separate, more restrictive terms stated only in prose in
+the README. That is a checking habit worth carrying into any future
+dataset lead this log evaluates, not just this one.
+
+**Effort vs. payoff:** Low-to-medium effort (several direct fetches to
+chase down the phantom `DATASET_TERMS.md` reference before concluding it
+wasn't a real file), low payoff. Not recommended for use on this project,
+commercially or as a research-only stopgap, given it has no domain overlap
+with golf, clubs, or blur. Logged primarily to retire the lead and to flag
+the licence-badge trap for future bullet-1 runs.
