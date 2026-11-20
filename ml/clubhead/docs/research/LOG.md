@@ -4079,3 +4079,124 @@ params/latency, now dataset name/size) while the actual blocker (no
 reachable PDF, no dataset page) hasn't moved across three tries. Flagging
 this explicitly so a future run spends bullet-4 time on a fresh lead
 instead of a fourth CADDIE search.
+
+---
+
+## 2026-11-20 (fourth run today) — AnyDoor: a real, MIT-licensed, reference-based object-insertion model that is the from-scratch implementation the 2026-11-07 CamDiff entry said this project would otherwise have to build itself
+
+**Rotation context:** Today's first three runs covered bullet 1 (ExDark),
+an architecture gap (P2 head), and bullet 4 (CADDIE, advanced further but
+still unreachable). This run picked up bullet 5 (synthesize/augment
+training data), specifically the camouflage side, last touched directly
+on 2026-11-15 (Magic Scissors) and 2026-11-07 (CamDiff). Also re-confirmed
+the standing network gap is unchanged this run: `universe.roboflow.com`,
+`roboflow.com`, `kaggle.com`, `zenodo.org`, `huggingface.co`, and
+`arxiv.org` all still fail to resolve via direct `curl` and via `WebFetch`
+(`getaddrinfo ENOTFOUND`) — the same hosts blocked on every prior run
+since 2026-11-04. Not logged as a separate finding since it changes
+nothing; noted here only because it shaped what could be verified below.
+Notably, plain `github.com` pages (not `.github.io`) fetched fine via
+`WebFetch` even though raw `curl` to `github.com` returned an unrelated
+400 — `WebFetch` was the only working channel to GitHub content this run.
+
+**What it is:** `ali-vilab/AnyDoor` ("AnyDoor: Zero-shot Object-level
+Image Customization," Chen, Huang, Chen, et al., CVPR 2024; arXiv:2307.09481).
+Given (1) a background image, (2) a mask for where the object should go,
+and (3) one or more reference images of the specific object, it generates
+a photorealistic composite with that *exact* object (identity-preserved,
+not a generic text-prompted stand-in) placed into the new background and
+pose context, using a frozen DINOv2 identity encoder plus a high-pass
+detail extractor feeding a ControlNet-style diffusion inpainting backbone.
+This is the mechanism the 2026-11-07 CamDiff entry described wanting but
+didn't find built: CamDiff inpaints a *generic salient distractor*
+(wrong direction for this project — it makes the background harder, not
+the target more varied) and that entry explicitly said flipping it to
+"inpaint a clubhead crop onto backgrounds chosen to match this project's
+documented failure conditions" "would need its own from-scratch
+implementation." AnyDoor is exactly that: feed it a real clubhead crop as
+the reference and a dark-clothing or cluttered-foliage photo as the
+background, and it composites a specific, identity-matched clubhead into
+that scene with a known ground-truth mask/box — camouflage training data
+synthesis in the correct direction, not CamDiff's reversed one.
+
+**Licence:** Fetched `github.com/ali-vilab/AnyDoor` directly via
+`WebFetch` (this worked where it had failed for CamDiff on 2026-11-07).
+Confirmed: the repo ships a `LICENSE.txt` and states the code is MIT.
+Commercial use of the code itself: **permitted.** However, running it
+needs two external weights, checked separately this run:
+- **DINOv2** (identity encoder, frozen, no generation) — searched and
+  cross-checked against Meta's own AI blog, which states DINOv2 moved to
+  **Apache 2.0** for broader commercial use, corroborated by a
+  Hugging Face model-card commit titled "Update license" (Sept 2023) and
+  by Roboflow's model-catalog page. One outdated fork README still claims
+  CC-BY-NC 4.0; the current official licence is Apache 2.0. **Commercial
+  use: permitted.**
+- **The AnyDoor checkpoint itself** (what you'd actually run for
+  inference) is a Stable Diffusion 2.1 finetune. SD 2.1's own licence —
+  searched and cross-checked across the Hugging Face model card, Azure AI
+  catalog, and a third-party compliance summary — is the **CreativeML
+  Open RAIL++-M License**: commercial use is permitted, but subject to a
+  use-based restrictions list baked into the licence (no generating
+  illegal content, no impersonation, etc.) rather than a blanket NC
+  clause. This matches and firms up the "commonly OpenRAIL-M" guess the
+  2026-11-07 CamDiff entry logged as unverified. Nothing in that
+  restrictions list plausibly covers "insert a golf clubhead into a
+  photo." **Net licence picture: code MIT, identity encoder Apache 2.0,
+  generative backbone OpenRAIL++-M (commercial-permitted-with-conditions)
+  — no NC or research-only blocker anywhere in the chain, a first for a
+  diffusion-based compositing tool in this log** (CamDiff and SDDF were
+  both blocked on licence; this one isn't).
+
+**Verification performed:** Fetched the GitHub repo directly and
+confirmed the MIT licence file and the DINOv2/SD2.1 dependency list from
+the README itself, not a secondary summary. Cross-checked DINOv2's
+Apache 2.0 status against three independent sources (Meta's blog, a HF
+commit, Roboflow). Cross-checked SD 2.1's OpenRAIL++-M licence against
+the HF model card and an Azure catalog listing. Could not fetch the
+AnyDoor paper itself (`arxiv.org` blocked, as it has been for every prior
+run) or the project page (`ali-vilab.github.io` also blocked, newly
+confirmed this run — `.github.io` subdomains fail the same way
+`universe.roboflow.com` does, a narrower block than plain `github.com`).
+The one substantive caveat — small-object fine-detail fidelity — is
+sourced from a secondary (CSDN blog) summary of the paper plus the
+paper's own stated architecture choice, not a verified primary-source
+quote: identity tokens are encoded at a coarse 16×16 resolution, which the
+authors themselves say is why small text/logos/fine detail are hard to
+preserve without the separate high-pass detail extractor they added as a
+mitigation. This is a real, architecturally-grounded risk, not rumor, but
+it is reported here at the confidence level the sourcing actually
+supports (secondary-summary + self-reported design rationale, not a
+directly-read limitations section).
+
+**Why it matters for this model specifically:** This is the first
+camouflage-synthesis tool this log has found with a clean commercial
+licence chain end to end, fixing CamDiff's exact blocker from 2026-11-07
+(unlicensed repo, wrong-direction mechanism) with a purpose-built
+right-direction alternative. It would let this project generate labelled
+training examples of a dark clubhead specifically against dark-clothing
+and foliage backgrounds — the exact camouflage signature the failure
+analysis found by visual inspection — with an exact, synthesis-time-known
+ground-truth box, rather than waiting to collect more of these rare cases
+organically. The caveat is real and specific to this use case: a clubhead
+is a small object in frame (the whole reason this project's boxes are
+tiny to begin with), and AnyDoor's own weak point by the authors' design
+choice is fine detail at small scale — the risk is composites that look
+plausible at a glance but render the clubhead's actual shape (blade vs.
+mallet, hosel geometry) wrong in ways that could teach the detector an
+incorrect appearance prior rather than a correct camouflage-robust one.
+That risk needs a held-out visual QA pass before any synthesized batch
+is trusted, not just a licence check.
+
+**Effort vs. payoff:** Medium effort — this is a real, runnable, MIT
+pipeline (not a paywalled paper or a dead repo), but still requires
+standing up a Stable Diffusion inference environment, sourcing real
+clubhead reference crops, and a human QA pass on a sample batch before
+trusting it at scale; this is a multi-day prototype, not a weekend script.
+Payoff is plausible and higher-confidence than CamDiff's because the
+mechanism now matches the actual need (insert the hard-to-see target, not
+a distractor) and the licence chain is clean, but it is still unproven for
+this specific object class and scale — the small-object detail risk above
+is the first thing a prototype should measure before investing further.
+Net: the strongest concrete lead this log has for bullet 5's camouflage
+side, and the right next action is a small pilot batch (a few dozen
+composites) with manual QA, not a full data-engine integration.
