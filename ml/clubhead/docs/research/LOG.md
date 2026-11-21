@@ -4283,3 +4283,61 @@ the next run should check licence first (per this log's established
 pattern, "will be released" promises on preprint aggregators have twice
 before turned out to be stale or inaccurate) before spending any effort
 integrating it.
+
+---
+
+## 2026-11-21 (second run today) — TOTNet: a real, MIT-licensed, 3D-conv temporal ball tracker whose training-time "occlusion augmentation" trick is a directly portable answer to the zero-candidate camouflage signature, even apart from adopting its architecture
+
+**Rotation context:** The first run today (GenCAMO-DB) covered bullet 5
+(camouflage data synthesis). This run picked bullet 3 (small/camouflaged
+object detection, multi-frame/temporal methods). `arxiv.org`,
+`huggingface.co`, and `www.nature.com` are all still DNS-blocked from this
+session (same standing gap this log has documented since 2026-11-04 —
+`github.com` and `raw.githubusercontent.com` remain the only confirmed
+direct-fetch hosts), which ruled out reading the TOTNet paper's own PDF
+directly, and separately ruled out reaching the Nature *Scientific
+Reports* "lightweight detection and edge deployment co-design" sports-MOT
+paper and the SAGE-published "YOLO-Ball" tennis paper that WebSearch also
+surfaced this run — both logged here as dead ends for today: no code link
+found for either, and no reachable host to check one. TOTNet was the one
+candidate this run could actually verify end-to-end via GitHub.
+
+**What it is:** `AugustRushG/TOTNet` ("Temporal Occlusion Tracking
+Network," arXiv:2508.09650; published version in *Computer Vision and
+Image Understanding*, Elsevier, 2026) — a PyTorch multi-frame ball
+tracker for sports video (tennis, badminton, table tennis) built around
+three things, confirmed directly from the repo's README: (1) a 3D-conv
+network that takes a stack of frames (`--num_frames 5`; the authors'
+ablation tested 3/5/7/9 and found 5 sufficient) rather than one frame at
+a time; (2) **occlusion augmentation during training** — the ball region
+is deliberately masked out in some target frames (`--occluded_prob 0.1`)
+so the network is forced to learn to localize the ball from surrounding
+frames' temporal/spatial context alone, not from anything visible in the
+current frame; (3) a visibility-weighted loss (`--loss_function WBCE`,
+weights `[1, 2, 2, 3]`) that up-weights the harder, lower-visibility
+cases instead of letting easy fully-visible frames dominate training.
+The authors' own middle-frame-vs-last-frame ablation (same accuracy
+either way) is explicitly read in the README as evidence the model is
+"working from past frames alone" — i.e., it is being tested on its
+ability to produce a correct position with zero current-frame evidence,
+which is structurally the same situation as this project's documented
+camouflage failure (sharp frame, zero candidates at confidence 0.05).
+One number from the paper's abstract, found via two independent search
+summarizers (not read from the PDF directly, since `arxiv.org` is
+blocked): RMSE on the authors' own TTA dataset drops from 37.30 to 7.19,
+and accuracy on fully-occluded frames rises from 0.63 to 0.80, when
+occlusion augmentation is used — flagged as a claim from secondary
+sources, not independently confirmed by this run.
+
+**URL:** https://github.com/AugustRushG/TOTNet (paper:
+https://arxiv.org/abs/2508.09650)
+
+**Licence — verbatim (fetched `raw.githubusercontent.com/AugustRushG/TOTNet/main/LICENSE` directly):** "MIT License / Copyright (c) 2024 August / Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software... " **Code: commercial use permitted**, standard MIT, no copyleft.
+
+**Data licence is a separate, harder story — verified directly, not assumed:** The repo ships **no data**. It points to four external sources: (1)/(2) Tennis and Badminton — "follow the official instructions provided by the WASB-SBDT repository" (already logged here 2026-11-06; licence of that *data*, as opposed to WASB-SBDT's code, was never pinned down then and is still not pinned down now); (3) Table Tennis (TT) — via the TTNet repo's `prepare_dataset` instructions, no licence stated; (4) **TTA (Table Tennis Australia)**, the authors' own dataset — the README states verbatim, "The TTA dataset is available for research purposes only" and "Commercial use and redistribution are strictly prohibited," gated behind a signed access-agreement PDF emailed to the author, with the actual files hosted on Hugging Face (`AugustRushG123/TTA_Tracking`) under, per a converging WebSearch result, CC BY-NC 4.0. **None of this project's data is golf footage, and none of it is commercially usable.**
+
+**Which failure mode this addresses:** Camouflage, primarily — but via a different angle than every prior temporal-tracker entry in this log (WASB-SBDT 2026-11-06, TrackNetV3 2026-11-13, BoT-SORT 2026-11-15, `VNTrackObjectRequest` 2026-11-12). Those are all *inference-time* bridging mechanisms (Kalman extrapolation, heatmap tracking, appearance correlation) that paper over a bad or missing detection after the fact. TOTNet's occlusion augmentation is a **training-time** technique: it manufactures the exact failure condition (zero visual evidence of the target in the current frame) on purpose, during training, so the network itself learns to use neighboring frames rather than relying on an inference-time patch bolted on afterward. That distinction matters because it is portable independent of TOTNet's own architecture or weights — it is an augmentation recipe, not a model to import.
+
+**Why it matters for this model specifically:** This project's camouflage failure is documented as zero candidate detections at confidence 0.05 on visually sharp frames — i.e., the single-frame YOLO11n genuinely has no signal to work with in that frame, which is exactly the condition TOTNet trains for on purpose rather than treating as an inference-time edge case. The honest translation to this project is not "adopt TOTNet" (a 3D-conv 5-frame-stack network is a different model family from the on-device single-frame YOLO11n→CoreML pipeline, and converting a 3D-conv temporal net to CoreML plus buffering 5 frames of camera input on-device is a real, separate engineering project, not a drop-in). The translation that *is* directly actionable: this project's own labeling spec already has per-frame visibility/occlusion annotations it could extend cheaply (the labeling-spec's partial-occlusion and negative-frame rules already distinguish "visible" from "not meaningfully visible"), and TOTNet's recipe — synthetically mask out the clubhead in some training frames and force a temporal signal to supply the answer — is a concrete, implementable augmentation strategy for whatever future multi-frame module this project builds, without needing TOTNet's code, weights, or any of its non-commercial sports data.
+
+**Effort vs. payoff:** High effort, deferred payoff. This is not something to build this week — it presupposes a multi-frame architecture this project does not have yet (today's model is single-frame YOLO11n), and none of TOTNet's own data is usable here regardless of architecture. The payoff is real but conditional: *if and when* this project invests in a multi-frame module to bridge camouflage gaps (the kind of investment the BoT-SORT 2026-11-15 entry already flagged as the likely next step after cheaper measurement work), occlusion augmentation is a concretely-specified, already-validated-elsewhere recipe to reach for instead of inventing one from scratch — worth recording now, low-cost to defer, not worth prioritizing ahead of the cheaper camouflage/blur work already queued in this log.
