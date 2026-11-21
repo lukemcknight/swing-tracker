@@ -87,3 +87,81 @@ can use directly (licence blocks that), but it gives two validated, reusable
   and quality numbers are desktop/GoPro-benchmark, not mobile; no CoreML or
   mobile export exists for it; and its own licence is still unverified. Not
   recommended to pursue further right now.
+
+---
+
+## 2026-11-21 — ZS-VCOS: zero-shot video camouflaged object segmentation via optical flow + VLM + SAM2
+
+**Area searched:** detecting small/low-contrast/camouflaged objects in video,
+with emphasis on multi-frame/temporal methods (motion as the cue when
+appearance fails).
+
+**What it is:** "ZS-VCOS: Zero-Shot Outperforms Supervised Video Camouflaged
+Object Segmentation" — a pipeline that chains three off-the-shelf components:
+optical flow (to localize *moving* regions against a static or near-static
+background), a vision-language model prompted with a text description of the
+target (to re-rank/confirm candidate regions), and SAM2 (to produce the final
+segmentation mask). No task-specific training — it's zero-shot composition of
+pretrained models. Evaluated on the MoCA-Mask video-camouflage benchmark,
+reporting F-measure 0.296 → 0.628 over their zero-shot baseline (self-reported;
+the README itself says their IoU numbers aren't directly comparable across
+papers, which I'm taking at face value rather than treating as a clean win).
+
+- Paper: arXiv 2505.01431 ("ZS-VCOS: Zero-Shot Outperforms Supervised Video
+  Camouflaged Object Segmentation")
+- Code: https://github.com/weathon/vcos
+
+**Verification done:** Fetched the GitHub repo directly (not just the paper
+abstract). It's real, active research code — 49 commits, working setup
+instructions (dataset download with a SHA-512 checksum, a documented SAM2
+install workaround, checkpoint download script), a CLI with the pipeline
+(`run.py`, `run_gpt.py`, `qwen_det.py`, `camera_motion.py`), an `eval/`
+directory, and result visualizations — not a stub. Also fetched SAM2's own
+license directly (`facebookresearch/sam2/LICENSE`): Apache 2.0, no
+commercial restriction.
+
+**Licence — read directly, not assumed:** `weathon/vcos` has **no LICENSE
+file** in its listing. Default GitHub terms apply: all rights reserved, so
+**this specific code and its exact pipeline wiring cannot be pulled into this
+project** without asking the author. SAM2 itself (one of the three components
+it chains) is Apache-2.0 and commercially usable on its own. I did not verify
+the license of whichever VLM their `qwen_det.py`/`run_gpt.py` variants call
+(looks like it supports both a local Qwen model and GPT-API calls) — treat
+that as unverified.
+
+**Which failure mode:** Camouflage — directly. This is exactly the
+"appearance fails, motion doesn't" case the task brief calls out: optical
+flow is used specifically because a camouflaged object can be
+indistinguishable by appearance but still displaces frame-to-frame against
+a static/near-static background.
+
+**Why it matters for this model specifically:** Not as an on-device
+component — a flow + VLM + SAM2 pipeline is far too heavy for a real-time
+CoreML phone pipeline, and the swing itself has large, fast camera-relative
+motion (handheld filming, panning), which is a harder setting than ZS-VCOS's
+benchmark (MoCA-Mask footage is comparatively static-camera wildlife video;
+their own README flags that background subtraction/flow-based localization
+degrades under complex camera motion). The project's camouflage finding
+*also* comes from a test set shot on a fast shutter, so there isn't yet
+blurred+camouflaged footage to even test this against.
+
+Where it's plausibly useful instead: as an **offline labeling-assistance
+tool**, not a runtime component. The repo's own failure mode — zero
+appearance-based candidates on a visually sharp frame — is presumably rare
+and hard to find in raw footage by hand. Running an optical-flow + SAM2
+pass (skip the VLM step, or swap in a cheap text prompt like "golf club
+head") over raw swing video offline, server-side, as a *candidate region
+proposer*, could surface camouflage-failure frames for human review/labeling
+far faster than scrubbing footage manually — directly feeding the
+data-engine's stated need for more real camouflage examples, especially
+once indoor/low-light footage exists to run it against.
+
+**Effort vs. payoff:** Medium effort, speculative payoff, and don't reuse
+their code verbatim (no license). Rebuilding the "optical flow region
+proposal → SAM2 mask → human review" idea in-house is a self-contained
+offline tool, days not weeks, using only Apache-2.0 SAM2 plus whatever
+flow method is chosen. Payoff is indirect — it doesn't improve the model,
+it potentially speeds up *finding and labeling* rare camouflage frames in
+raw footage, which only matters once there's a larger pool of raw indoor/
+low-light footage to mine. Not worth building before that footage exists;
+worth remembering once it does. Does not help motion blur.
