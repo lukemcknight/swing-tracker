@@ -4200,3 +4200,86 @@ is the first thing a prototype should measure before investing further.
 Net: the strongest concrete lead this log has for bullet 5's camouflage
 side, and the right next action is a small pilot batch (a few dozen
 composites) with manual QA, not a full data-engine integration.
+
+---
+
+**Housekeeping note:** An earlier run today pushed a branch named
+`research/clubhead-2026-11-21` that was based directly on
+`mvp/club-path-replay` instead of continuing from the prior day's
+accumulated log (`research/clubhead-2026-11-20`). That branch's `LOG.md`
+contains only one entry — a rediscovery of SHOP, which this log already
+logged in full on 2026-11-11 (second run) — and is missing this entire
+history. This run is based correctly on `research/clubhead-2026-11-20`.
+`research/clubhead-2026-11-21` should not be merged; flagging for human
+cleanup/deletion rather than deleting it myself.
+
+## 2026-11-21 — GenCAMO-DB: a brand-new (Jan 2026) scene-graph/depth-conditioned camouflage-annotation generation pipeline — real paper, but code and dataset are not released yet, so nothing is downloadable today
+
+**Area searched:** synthetic-data technique for bullet 3/5 (camouflage
+detection / camouflage data synthesis), continuing the thread this log's
+2026-11-07 CamDiff and 2026-11-20 AnyDoor entries opened.
+
+**What it is:** "GenCAMO: Scene-Graph Contextual Decoupling for
+Environment-aware and Mask-free Camouflage Image-Dense Annotation
+Generation" (Chenglizhao Chen et al., arXiv:2601.01181, submitted 3 Jan
+2026). It introduces **GenCAMO-DB**, a ~34,200-image dataset where depth
+maps, scene graphs, attribute descriptions, and text prompts are
+auto-generated for each camouflage image and then human-verified/refined.
+The method is "mask-free" — it does not require a hand-drawn segmentation
+mask to generate dense, environment-aware annotations, which is the
+opposite direction from this project's own labeling-spec problem (ours
+needs more boxes, not fewer).
+
+- Paper: https://arxiv.org/abs/2601.01181
+
+**Verification done — and its limits:** `arxiv.org`, `huggingface.co`,
+`www.emergentmind.com`, `papers.cool`, `link.springer.com`, and
+`scholar.hit.edu.cn` are all DNS-blocked from this session (same standing
+egress-gap already noted for `huggingface.co`/`roboflow.com` on prior
+days — the allowed list for direct fetch in this session appears to be
+essentially GitHub only: `github.com` and `raw.githubusercontent.com`
+confirmed reachable). I could not read the paper's own PDF/HTML directly.
+What I *could* do: run three independent web searches that converged on
+the same facts (paper title, author, submission date, ~34,200-image count,
+the depth/scene-graph/caption/human-verification construction method) from
+multiple independent indexers (the arXiv listing itself, emergentmind,
+chatpaper, catalyzex) without contradiction — the same convergent-snippet
+standard this log has already applied to other arXiv-blocked entries (e.g.
+2026-11-18 SDDF, 2026-11-16 ZoomNeXt). One of those sources states plainly
+that "code and datasets will be released after paper acceptance" — i.e.
+**as of this run, nothing is actually downloadable.** A GitHub search for
+"GenCAMO" turned up no matching organization or repository (only an
+unrelated personal repo with no description). I did **not** find a
+Hugging Face dataset page, despite one secondary aggregator describing a
+file layout (images/depth/scene-graphs/captions) as if a release existed
+— that claim is explicitly unconfirmed and should not be trusted.
+
+**Licence and commercial use:** **Unknown / not applicable yet** — there
+is no released artifact to attach a licence to. Nothing here is usable,
+commercially or otherwise, today.
+
+**Which failure mode:** Camouflage (primary) — synthetic/semi-synthetic
+data generation aimed at the camouflage side of bullet 5, not blur.
+
+**Why it would help this model, if it ships:** The project's
+camouflage failures are specifically "dark clubhead against dark
+clothing/foliage, zero candidates even at confidence 0.05" — a background
+*context* problem, not a motion problem. GenCAMO-DB's selling point is
+exactly background/context-conditioned annotation generation (depth +
+scene graph keep the inserted/described object consistent with the scene
+it's embedded in), which is the specific thing CamDiff (2026-11-07) and
+AnyDoor (2026-11-20) were each independently reaching for from different
+angles (diffusion inpainting; reference-based object insertion). If
+GenCAMO-DB's pipeline or dataset becomes reachable, it would be the third,
+most recent data point on whether context-aware camouflage compositing is
+converging into a reliable technique, or just three similar unproven
+attempts.
+
+**Effort vs. payoff:** Zero effort possible right now because there is
+nothing to act on — this is a "watch, don't adopt" entry, logged so a
+future run doesn't re-discover the same preprint from scratch. If code or
+a dataset does appear at the GitHub/HF links this entry couldn't reach,
+the next run should check licence first (per this log's established
+pattern, "will be released" promises on preprint aggregators have twice
+before turned out to be stale or inaccurate) before spending any effort
+integrating it.
