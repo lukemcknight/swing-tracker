@@ -4445,3 +4445,117 @@ numbers at all, a materially bigger adoption risk than RT-Focuser's
 already-proven-on-iPhone alternative.
 
 **Effort vs. payoff:** Low effort to log (direct repo fetch, no speculation), but low payoff as it stands — this is a "come back to this once someone can check Google Drive/Hugging Face from a normal network" entry, not an actionable recommendation. If the dataset's licence turns out permissive, the actionable next step would be comparing OMDNet against RT-Focuser on this project's own camouflage/blur failure frames rather than adopting either sight-unseen — RT-Focuser remains the stronger lead on deployability grounds alone until OMDNet proves otherwise.
+
+---
+
+## 2026-11-22 (third run today) — YOLO26 ships an official `yolo26-p2.yaml` small-object head and a "STAL" small-target label-assignment recipe, closing the YOLO11 P2-head gap this log flagged on 2026-11-20 — but it's a different model family, not a patch to YOLO11n
+
+**Rotation context:** Bullet 3 (small/low-contrast object detection). The
+2026-11-20 entry found that a P2 (stride-4) detection head — the standard
+small-object fix — is shipped for YOLOv8 but was a closed, unmerged PR for
+YOLO11, requiring engine-code surgery to port. This run checked whether
+anything has changed in the Ultralytics codebase since, rather than
+re-covering the same VCOD/motion-cue ground this log has already worked
+through multiple times (Vcamba, EventVCOD, ZoomNeXt, SDDF, EMIP-style
+two-stream motion architectures all follow the same unlicensed/too-heavy
+pattern already logged on 2026-11-04, 11-06, 11-16, 11-18).
+
+**What it is:** Ultralytics released a new model family, **YOLO26**
+(paper: arXiv:2606.03748), sitting alongside — not replacing — YOLO11 in
+the same `ultralytics` package this project's own v2 design doc already
+commits to (`docs/superpowers/specs/2026-05-21-clubhead-detector-v2-design.md`:
+"Ultralytics YOLO11n, trained in Python, exported to Core ML"). Two parts
+of it are directly relevant:
+- `ultralytics/cfg/models/26/yolo26-p2.yaml` — an official, shipped-today
+  architecture file that adds a P2/stride-4 output on top of the standard
+  P3–P5 heads, i.e. exactly the fix the 2026-11-20 entry wanted for YOLO11
+  but couldn't get without hand-porting a dead PR.
+- **STAL** ("Small-Target-Aware Label Assignment") plus "Progressive Loss",
+  part of YOLO26's revised training recipe, described in the official docs
+  as maintaining "positive label coverage for small objects" during
+  training — a training-time complement to the P2 head's architectural
+  change.
+
+**Verification performed:** Shallow-cloned `ultralytics/ultralytics`
+directly (not a search snippet) and read the files myself:
+- Confirmed `ultralytics/cfg/models/26/yolo26-p2.yaml` and `yolo26-p6.yaml`
+  exist in the repo today, alongside `yolo26.yaml`, `-seg`, `-pose`, `-obb`,
+  `-cls`, `-sem`, `-depth`.
+- Read `docs/en/models/yolo26.md` directly: confirms STAL/Progressive
+  Loss/MuSGD as the named training-recipe changes, and lists `Export: ✅`
+  for the detection task (i.e. the standard CoreML export path applies).
+  Its own note is explicit that `yolo26-p2.yaml`/`yolo26-p6.yaml` are
+  "shipped as YAML architectures only. No scale-specific `yolo26*-p2.pt` or
+  `yolo26*-p6.pt` weights are released."
+- Read `docs/en/guides/model-yaml-config.md`'s worked P2 example directly:
+  `YOLO("yolo26n-p2.yaml").load("yolo26n.pt")` transfers 360/902 tensors
+  from the pretrained `yolo26n.pt` checkpoint (backbone + neck down to P3
+  load cleanly; the inserted P2 branch and the now-four-output `Detect`
+  head start from random init and must be trained). Confirmed stride
+  tensor `[4., 8., 16., 32.]` and model size: **329 layers, 2,662,400
+  params, 9.6 GFLOPs** for YOLO26n-p2 — within shouting distance of this
+  project's own YOLO11n (~2.6M params per the v2 design doc), i.e. plausibly
+  still nano-class and Neural-Engine-sized, though this is a parameter-count
+  comparison only, not a measured on-device latency number.
+
+**URLs:**
+- https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/models/26/yolo26-p2.yaml
+- https://github.com/ultralytics/ultralytics/blob/main/docs/en/models/yolo26.md
+- https://github.com/ultralytics/ultralytics/blob/main/docs/en/guides/model-yaml-config.md
+- Paper: https://arxiv.org/abs/2606.03748 (not read directly — arXiv is unreachable from this session's network; relying on the Ultralytics docs' own description of it, not the paper's claims)
+
+**Licence (verbatim) and commercial use:** `ultralytics/ultralytics`'s
+`LICENSE` file, read directly, is the **GNU Affero General Public License,
+Version 3** in full. **This is not new information and not a new risk**:
+this log already established on 2026-11-05 and 2026-11-20 that this
+project's own chosen model (YOLO11n) is already inside the same
+AGPL-3.0/Ultralytics-Enterprise-licence chain, since it's the same
+`ultralytics` package and the same licence file governs YOLO26 as YOLO11.
+Whatever this project has already decided about that chain for YOLO11n
+already covers YOLO26. Commercial use is permitted only under an
+Ultralytics Enterprise licence (or AGPL-3.0 compliance), identical to the
+status quo.
+
+**Which failure mode this addresses:** Camouflage/small-object sensitivity,
+primarily — same rationale as the 2026-11-20 P2-head entry: a stride-4
+feature map gives the detector direct access to higher-resolution features
+for a small, low-contrast object instead of relying on post-hoc inference
+tricks. STAL's "positive label coverage for small objects" is a training-
+time mechanism aimed at the same problem (making sure small instances
+aren't starved of positive anchors/labels during loss computation), not
+something YOLO11n's stock recipe does. Motion-blur relevance is unconfirmed
+and likely secondary, same caveat as 2026-11-20: a blur streak is an
+elongated box, not necessarily a small one, so this not guaranteed to help
+there.
+
+**Why it matters for this model specifically:** It lowers the integration
+cost of the exact fix 2026-11-20 wanted but couldn't get cheaply. That
+entry's blocker was that YOLO11's P2 head requires porting engine code from
+a dead, unmerged PR (`ultralytics/nn/modules/head.py`, `tasks.py`), with
+unknown effort and no guarantee of correctness. YOLO26's P2 variant is a
+first-party, documented, pure-YAML path with a working partial-weight-
+transfer recipe already written by Ultralytics — no engine-code surgery
+needed. The cost this trades in: it's a different model family than the
+one this project has already chosen and designed around (YOLO11n), newer
+and less battle-tested (released within the last year), with reported
+gains (COCO mAP, CPU ONNX latency) that are general-benchmark numbers, not
+anything specific to small/camouflaged/blurred objects, let alone golf
+footage — and Ultralytics' own CoreML/Neural-Engine latency numbers for
+YOLO26n-p2 specifically were not found (the comparisons available are
+COCO/TensorRT/ONNX-CPU, not CoreML).
+
+**Effort vs. payoff:** Medium effort, real but unquantified payoff. Trying
+this is now a config change plus a retrain, not an architecture-porting
+project: `model = YOLO("yolo26n-p2.yaml").load("yolo26n.pt")` in the v2
+design doc's own planned `train.py`, pointed at this project's existing
+YOLO-format dataset. That is meaningfully cheaper than the 2026-11-20
+estimate for porting P2 onto YOLO11n. The honest caveat: this is still a
+bigger swap than "add one head to the model you already picked" — it's
+adopting a different, newer base architecture with its own training
+recipe, and every efficiency/accuracy claim found for it is a general-
+object-detection number, not evidence it fixes this project's own
+camouflage frames. Recommend as the next concrete experiment for bullet 3
+(cheaper than hand-porting P2 onto YOLO11n, no new licence question), but
+run it after — not instead of — the already-logged, zero-retrain SAHI
+tiling test (2026-11-12), and benchmark CoreML/ANE latency directly before
+committing, since no one has measured that for this architecture yet.
