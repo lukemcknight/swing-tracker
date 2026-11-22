@@ -4559,3 +4559,107 @@ camouflage frames. Recommend as the next concrete experiment for bullet 3
 run it after — not instead of — the already-logged, zero-retrain SAHI
 tiling test (2026-11-12), and benchmark CoreML/ANE latency directly before
 committing, since no one has measured that for this architecture yet.
+
+---
+
+## 2026-11-22 (fourth run today) — WWDC26's new ARKit reference-object tracking (`trackingObjects`, `highFrameRateTrackingEnabled`) checked and ruled out: it tracks a pre-scanned 3D model through an AR world-tracking session, not a 2D box in arbitrary video, and needs iOS 27
+
+**Rotation context:** Today's first three runs covered bullets 5
+(Albumentations archival), 2 (OMoBlur/OMDNet), and 3 (YOLO26 P2). This run
+tried bullet 1 first (datasets: searched for indoor/simulator-bay/low-light
+golf footage with a commercial licence) and bullet 4 second (golf-specific
+pose/tracking: tried to advance the still-open CADDIE and MonoClub threads
+with a direct CVF/ResearchSquare PDF fetch). Both hit the same standing
+network wall this log has hit on every prior attempt: `universe.roboflow.com`,
+`openaccess.thecvf.com`, and `www.researchsquare.com` are all DNS-blocked
+from this session (same gap documented since 2026-11-04 for Roboflow/Kaggle/
+Zenodo/HuggingFace/arXiv/Dryad; CVF and ResearchSquare are two new hosts
+added to that block list today). CADDIE and MonoClub remain exactly where
+the 2026-11-20 and 2026-11-11 entries left them — nothing new survived
+verification there, so nothing is re-logged. Pivoted to a different kind of
+candidate: not a paper or dataset, but a brand-new first-party Apple API
+announced at this year's WWDC, continuing the Apple-API thread this log has
+run against `VNTrackObjectRequest`, `sceneDepth`, `VNDetectTrajectoriesRequest`,
+`VNGenerateOpticalFlowRequest`, and `VNDetectHumanHandPoseRequest`.
+
+**What it is:** Apple's WWDC 2026 session 283 ("Explore object tracking in
+ARKit") and its accompanying guide, "Using a reference object with ARKit in
+iOS," introduce object tracking as a first-class ARKit feature on iOS for
+the first time. The workflow: scan or model a physical object, train a
+`.referenceobject` file with Create ML's Object Tracking template
+(`xrun createml objecttracker --source model.usdz --output obj.referenceobject
+--training-mode extended --all-angles`), then assign it to one of two new
+`ARWorldTrackingConfiguration` properties — `detectionObjects` (mostly
+stationary objects) or `trackingObjects` (moving/handheld objects, with
+`ReferenceObject.Configuration.highFrameRateTrackingEnabled` for "a better
+understanding of the position of objects as they move in space"). The
+pitch is exactly this project's problem on its face: track a specific
+object through fast motion, by appearance plus known shape, instead of
+re-detecting it from scratch in every frame.
+
+**Verification performed:** Two independent fetches corroborate each
+other. First, `developer.apple.com/videos/play/wwdc2026/283/` (the session
+itself) was fetched directly and confirmed the API names
+(`ReferenceObject.Configuration`, `highFrameRateTrackingEnabled`,
+`ARWorldTrackingConfiguration.detectionObjects`/`.trackingObjects`), the
+Create ML CLI flag `--training-mode extended`, and that object tracking is
+stated as arriving "on iOS" this cycle, versioned iOS 27. Second, a
+separate WebSearch surfaced and quoted Apple's own guide, "Using a
+reference object with ARKit in iOS," independently confirming: object
+tracking "requires an iPad or iPhone running iOS 27 or later"; the exact
+wording "Use for objects that are mostly stationary in the scene" vs. "Use
+for moving or handheld objects that require precise pose updates" for the
+two properties; a session-wide cap of 10 `.referenceobject` files combined
+across both properties; an explicit power-consumption warning for
+high-frame-rate `trackingObjects`; and — the key architectural fact — that
+the *older* `.arobject` reference-object format (what `ARReferenceObject`
+has supported since iOS 12) works only with `detectionObjects`, not
+`trackingObjects`; the new high-frame-rate moving-object path requires the
+new Create-ML-trained `.referenceobject` format specifically. Also checked
+this repo's own `ios-native/SwingSenseiNative.xcodeproj/project.pbxproj` —
+unchanged since the 2026-11-05 `sceneDepth` entry quoted it:
+`IPHONEOS_DEPLOYMENT_TARGET = 17.0`, no existing ARKit/ARSession dependency.
+
+**Licence:** Not applicable — first-party OS API, ships free with iOS,
+same as every other Vision/ARKit entry in this log.
+
+**Which failure mode this addresses:** Both, in principle, exactly like the
+2026-11-12 `VNTrackObjectRequest` entry's pitch — propagate a known
+object's pose through fast motion (motion blur) and through appearance-poor
+frames via geometric/temporal continuity rather than per-frame RGB
+classification alone (camouflage). In practice neither is reachable here.
+
+**Why it matters for this model specifically — a negative result:** Three
+independent disqualifiers, any one of which is sufficient on its own: (1)
+**Requires a pre-built 3D reference object.** This is model-based tracking,
+not class-based detection — the app would need an accurate `.referenceobject`
+scan or USDZ model *per physical clubhead shape* (driver, each iron, wedge,
+putter, by brand), is capped at 10 per session, and still needs an initial
+detection/registration step before tracking can start — it doesn't solve
+"find the clubhead," it only solves "keep following a clubhead ARKit
+already matched once," which is a materially smaller problem than this
+project's actual one. (2) **Minimum iOS 27.** The same gap this log flagged
+for `MLState`/iOS 18 on 2026-11-19, but worse — this project targets iOS
+17.0 today, and iOS 27 (per Apple's "26 → 27" post-2025 renumbering) is a
+full OS cycle further out than that. (3) **Wrong capture architecture.**
+Both `detectionObjects` and `trackingObjects` are properties of
+`ARWorldTrackingConfiguration` — they only exist inside a running
+`ARSession`/world-tracking AR experience, not as a standalone frame
+processor callable against an arbitrary video frame (live or recorded) the
+way `VNTrackObjectRequest` or this project's own CoreML pipeline are. Using
+this would mean rebuilding the capture pipeline around ARKit world tracking
+entirely, not adding an inference step to the existing one.
+
+**Effort vs. payoff:** Low effort to reach this conclusion (two
+corroborating documentation fetches, no code), and it should stay a
+documentation-only check — none of the three disqualifiers above are
+close calls or device-coverage edge cases like `sceneDepth`'s was; they are
+structural (needs a 3D model of the exact object, needs an OS version that
+doesn't exist on any shipped device yet, needs a different session
+architecture). Logged so nobody mistakes "Apple just shipped object
+tracking" marketing language for a fit to this project's class-detection,
+current-iOS, frame-based problem. Revisit only if the project ever adopts
+ARKit world tracking for an unrelated reason *and* iOS 27 becomes the
+realistic floor — at which point `detectionObjects` (not the high-frame-rate
+path) might still be worth a second look purely as a registration aid, not
+a camouflage or blur fix.
