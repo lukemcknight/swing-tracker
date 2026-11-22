@@ -4363,3 +4363,85 @@ https://arxiv.org/abs/2508.09650)
 **Why it matters for this model specifically:** This is a supply-chain risk this log had never checked, hiding behind an assumption ("Albumentations, MIT, fine") that was true when the design doc was written (2026-05-21) and is *still* true today only by inertia — the installable package hasn't changed, but the project behind it has stopped. Two concrete consequences for this project's data-engine work: (1) pinning `albumentations==2.0.8` today is safe and MIT-licensed, but it is a dead end — no future bug fixes if a NumPy/Python upgrade breaks it, and no future features (e.g. if the project ever wants a newer directional/object-level blur transform, it will not arrive in this library); (2) the natural, path-of-least-resistance move when that pin eventually breaks — `pip install --upgrade albumentations` or following the README's own suggested migration — lands on AGPL-3.0 code inside the training pipeline. Following the same reasoning this log already applied to BlenderProc (2026-11-17: a GPL *tool* run offline to generate training images is not the same legal exposure as GPL *code* shipped in the app, since rendered/augmented output is not treated as a derivative work), AGPL used purely as an offline augmentation step during training likely does not taint the exported CoreML model or the app the way shipping AGPL code in the app would — but AGPL's network-use clause is a materially different, less-settled legal question than plain GPL's distribution clause, and this log is not the place to resolve that; it should be flagged to a human before anyone upgrades.
 
 **Effort vs. payoff:** Low effort (four direct fetches: one GitHub repo page, one raw README, two PyPI pages — all against already-reachable hosts, no blocked-domain dead ends this run), moderate payoff. This changes nothing about today's training run — the pinned MIT package still works — but it closes a silent assumption this log and the design doc have both been carrying since May, and gives a concrete, verified reason to pin `albumentations==2.0.8` explicitly in `requirements.txt` (rather than an unbounded version range that could someday resolve to `albumentationsx`) and to treat any future augmentation-library upgrade as a licensing decision, not just a `pip install --upgrade`, flagged for human sign-off alongside the already-open Ultralytics AGPL question.
+
+---
+
+## 2026-11-22 (second run today) — OMoBlur / OMDNet (CVPR 2026): a local-object-motion-deblur dataset and network, the first deblur candidate in this log explicitly framed around a sharp scene with one blurred moving object, but unlicensed code and an unreachable dataset host
+
+**Rotation context:** First run today (Albumentations entry, immediately above) covered bullet 2 via a supply-chain angle rather than a new architecture. This run picked up bullet 2 again but from a fresh angle — deblur-as-preprocessing — and specifically looked for something distinct from the three deblur candidates already logged (RT-Focuser 2026-11-07, NAFNet 2026-11-19, DeFMO/FMObluetect 2026-11-15/2026-11-10, SHOP/DeblurGANv2 2026-11-11). A `TinyCOD` (camouflaged-object-detection) repo was checked first and ruled out before this entry: real repo (`github.com/Haozhe-Xing/TinyCOD`, fetched directly), but the README is four lines with no license file, no code files at the repo root (`train.py`, `model.py`, `net.py`, `requirements.txt` all 404 from raw.githubusercontent.com), and the only payload is a Google Drive link to "results maps" — i.e. a paper-leftover repo, not working code. Not logged as its own entry per the "don't pad the log" instruction; noted here since it was this run's first candidate.
+
+**What it is:** **OMoBlur** is a CVPR 2026 dataset and benchmark, and **OMDNet** its paired network, both from "OMoBlur: An Object Motion Blur Dataset and Benchmark for Real-World Local Motion Deblurring" (Yu, Li, Zhou, Zhuge, Chen, Li). Unlike every deblur entry already in this log, OMoBlur is explicitly scoped to **local** object motion blur — one moving object blurred against an otherwise sharp background — rather than whole-frame camera-shake blur. Its own data format makes this precise: each training sample is a blurry image, a blur *mask*, and a sharp ground-truth mid-frame, drawn from a scene where the rest of the frame is static. That is a much closer structural match to this project's own scenario (sharp background, blurred clubhead) than a global-camera-blur dataset like GOPRO/REDS would be.
+
+**URL:** Code — https://github.com/yudingchuan/OMDNet (fetched directly:
+`README.md`, `demo.py`, `train.py`, `configs/OMD.yaml`, `requirements.txt`
+all returned 200 from `raw.githubusercontent.com`, confirming this is a
+real, functional repo, not a stub). Paper — CVPR 2026 (accepted; PDF link in
+the README points to `openaccess.thecvf.com`, which this session's network
+cannot reach, so the paper itself was not read directly — everything below
+comes from the README and config files, which were read directly). Project
+page and dataset host — `yudingchuan.github.io/OMoBlur_homepage` (a
+`*.github.io` site; this session's network has never been able to resolve
+GitHub Pages sites, same standing gap noted on 2026-11-04 and repeatedly
+since) linking to Google Drive, Hugging Face, and Baidu Netdisk mirrors —
+**none of these three dataset hosts were reachable from this session
+either**, so the dataset's own license terms could not be checked directly
+and are not claimed here.
+
+**Licence — checked, not assumed:**
+- **Code (OMDNet):** No `LICENSE`, `LICENSE.md`, or `LICENSE.txt` file exists
+  at the repo root (`raw.githubusercontent.com/yudingchuan/OMDNet/main/LICENSE*`
+  all 404). No license statement appears in the README either. Default
+  copyright applies: **all rights reserved, commercial use not permitted**
+  without contacting the authors directly.
+- **Dataset (OMoBlur):** Not verified. The README's only claim is that it is
+  "released" on Google Drive/Hugging Face/Baidu Netdisk; none of those pages
+  were reachable to check for a license file, a EULA, or a "research only"
+  clause. A WebSearch summarizer, describing a dataset it characterized the
+  same way (object motion blur, 2026, Zhejiang-affiliated), reported
+  "downloading it means agreeing to an enclosed license agreement, which is
+  not an open license" — but that claim could not be independently
+  confirmed against the actual dataset page from this session, so it is
+  flagged here as unconfirmed secondary-source information only, not stated
+  as fact. **Treat the dataset as licence-unknown and do not use it without
+  a human checking the Google Drive/Hugging Face page directly.**
+
+**Which failure mode this addresses:** Motion blur, specifically — and more
+precisely than any prior deblur entry in this log, because OMoBlur's own
+problem framing (one blurred object, sharp surroundings) is structurally
+closer to "a swung clubhead blurred against a mostly-sharp swing video
+frame" than a global-camera-shake dataset is. It does not address
+camouflage.
+
+**Verification performed:** Fetched the GitHub README directly and quoted
+the maintenance/release notes and citation block verbatim (not from search
+snippets). Independently fetched `demo.py` and confirmed inference requires
+only the blurry RGB image as input — the model internally predicts its own
+blur region (the code saves a `gates` output alongside the deblurred image,
+decoupled from the training-time ground-truth mask) rather than requiring a
+hand-labeled mask at test time, which matters because a mask-dependent
+deblur step would have been a non-starter for this project's on-device
+pipeline. Fetched `configs/OMD.yaml` and confirmed real training
+hyperparameters (256px patches, multi-term loss including an FFT term,
+`num_res=20` residual blocks in `demo.py`'s model build call) — this is a
+substantive, working research codebase, not a placeholder. Did not attempt
+to run the code or convert it to CoreML; did not find any FPS, latency, or
+on-device benchmark anywhere in the README (contrast with RT-Focuser,
+2026-11-07, which this log already confirmed was benchmarked on an actual
+iPhone — OMDNet has no equivalent evidence of mobile viability one way or
+the other).
+
+**Why it matters for this model specifically:** The problem-framing match
+(local object blur vs. sharp scene) is the single interesting thing here —
+it's conceptually the first deblur dataset/network this log has found that
+isn't a mismatch-by-design the way whole-frame-camera-shake datasets are.
+But two things keep this from being actionable today: (1) the code's
+licence is a hard no for commercial use as-is, and (2) the dataset's licence
+is simply unknown, not confirmed permissive or confirmed research-only —
+this project cannot responsibly use either without a human reaching the
+actual Google Drive/Hugging Face page (blocked from this sandboxed session)
+and reading the terms. Even if both turned out to be permissive, OMDNet is
+a 20-residual-block PyTorch deblur network benchmarked with no mobile
+numbers at all, a materially bigger adoption risk than RT-Focuser's
+already-proven-on-iPhone alternative.
+
+**Effort vs. payoff:** Low effort to log (direct repo fetch, no speculation), but low payoff as it stands — this is a "come back to this once someone can check Google Drive/Hugging Face from a normal network" entry, not an actionable recommendation. If the dataset's licence turns out permissive, the actionable next step would be comparing OMDNet against RT-Focuser on this project's own camouflage/blur failure frames rather than adopting either sight-unseen — RT-Focuser remains the stronger lead on deployability grounds alone until OMDNet proves otherwise.
