@@ -4701,3 +4701,130 @@ a camouflage or blur fix.
 **Verification performed:** Direct GitHub repo fetch (license, repo health, YOLOX/filterpy/ByteTrack licence attribution, "pure motion-model-based" framing, Deep-OC-SORT pointer for the appearance-based variant). ORU/OCM mechanism cross-checked across four independent secondary sources that agreed on the same description (straight-line virtual-trajectory interpolation for ORU, direction-consistency cost term for OCM) — not read from the primary paper, which remains unreachable from this session (arXiv DNS-blocked, same as every prior entry). Confirmed via grep across this project's own `ml/clubhead` tree that **no tracker of any kind exists in the pipeline today** — the detector is purely per-frame; adopting OC-SORT would be new infrastructure, not a drop-in swap.
 
 **Effort vs. payoff:** Low-moderate effort to verify (direct repo fetch plus corroborated secondary sources; no code run). Payoff is real but modest and conditional: it closes a loose thread this log had open for 17 days, under a usable licence, and ties to two metrics (jitter, phantom rate) this project already measures — but it would be new tracking infrastructure built on top of the existing per-frame detector, not a fix to the detector itself, and its core correction mechanism (straight-line gap interpolation) is a structurally weak match for exactly the swing-arc segment where this project's own failures concentrate. If multi-frame tracking is ever added on top of YOLO11n's output, OC-SORT's MIT licence and verified mechanism make it a legitimate starting point to prototype against — but BoT-SORT (already logged, 2026-11-15) and OC-SORT should be evaluated against each other on this project's own swing paths before either is adopted, rather than assuming CVPR pedestrian-tracking gains transfer to a single curved clubhead trajectory.
+
+---
+
+## 2026-11-23 (third run today) — EfficientTAM: an Apache-2.0, iPhone-benchmarked video-memory tracker that recovers a prompted object through frames with zero fresh detections via pixel memory, not geometric extrapolation — a structurally different fit for camouflage gaps than every tracker this log has logged so far
+
+**Rotation context:** The first two runs today covered bullets 1/2
+(iPhoneBlur) and 3 (OC-SORT). This run stayed on bullet 3 deliberately
+rather than rotating purely mechanically, because OC-SORT's own closing
+caveat — its gap-fill is a **straight-line** interpolation between
+observations, a poor geometric match for the curved, high-angular-velocity
+part of the swing where this project's failures concentrate — left an
+obvious follow-up question open: is there a tracker in this space whose
+gap-recovery mechanism is *not* geometric extrapolation at all? Searched
+specifically for that, rather than re-running a generic "small/camouflaged
+object detection" search and re-surfacing VCOD/SDDF/ZoomNeXt-family results
+this log has already exhausted (2026-11-04, 06, 16, 18, 22).
+
+**What it is:** `yformer/EfficientTAM` ("Efficient Track Anything," Meta +
+Nanyang Technological University, ICCV 2025, arXiv:2411.18933) — a
+lightweight video object segmentation/tracking model adapted from the SAM 2
+codebase. Per its own README: it replaces SAM 2's heavier image encoder with
+"a vanilla lightweight ViT image encoder" and adds an "efficient memory
+cross-attention" module, aiming for "comparable performance with SAM 2 with
+improved efficiency." Mechanically (inherited from the SAM 2 design it's
+adapted from, not independently re-verified against EfficientTAM's own
+notebook code this run — see Verification below): you prompt it once, with
+a point or box on the object in one frame, and it propagates a *mask* for
+that object forward through subsequent frames by attending to a running
+memory of the object's prior appearance — not by fitting a motion model to
+a sequence of boxes the way every tracker already in this log (OC-SORT,
+BoT-SORT, `VNTrackObjectRequest`) does. That is the structural difference
+this entry is logging: those trackers all operate on boxes the per-frame
+detector already produced and do nothing when the detector returns zero
+candidates (OC-SORT's own entry states this explicitly). EfficientTAM's
+mask comes from the pixels and memory, independent of whether YOLO11n fires
+on intervening frames at all — closer in spirit to what bullet 3's own
+framing asks for ("motion is what separates a moving clubhead from static
+foliage when appearance cannot") than a box-interpolation tracker is,
+because it keeps looking at real pixels every frame rather than assuming a
+trajectory shape.
+
+**URL:** https://github.com/yformer/EfficientTAM (paper: arXiv:2411.18933,
+ICCV 2025). Related sibling model also surfaced and worth a one-line
+mention, not separately verified this run: `facebookresearch/EdgeTAM`
+(arXiv:2501.07256, CVPR 2025) — a similarly-scoped on-device track-anything
+model, also reported Apache-2.0 per its PyPI page, not independently
+confirmed from its own repo this run.
+
+**Licence — verified directly against the repo file, not a search
+summary:** Fetched `raw.githubusercontent.com/yformer/EfficientTAM/main/LICENSE`
+directly. It is the full **Apache License, Version 2.0**: explicit
+copyright and patent grants, redistribution conditions (preserve notices,
+mark changed files), no trademark grant, "AS IS" warranty disclaimer.
+**Commercial use is permitted**, with no AGPL-style copyleft or dual-licence
+trap. This matters specifically because it is a clean break from this
+log's standing YOLO11n/Ultralytics AGPL-3.0 entanglement (flagged
+2026-11-05, repeated for YOLO26 on 2026-11-22; the same chain also covers
+YOLOE, Ultralytics' newer open-vocabulary model, which this run also
+checked and is not separately logging since it adds no new licence
+information over the already-flagged AGPL-3.0/Ultralytics-Enterprise
+chain) — EfficientTAM is its own independent codebase, not built on
+`ultralytics`, so adopting it carries none of that licence chain.
+
+**Which failure mode this addresses:** Camouflage, primarily, as
+inference-time gap-bridging infrastructure — same category as OC-SORT/
+BoT-SORT/`VNTrackObjectRequest`, but with a materially different and (on
+paper) better-suited recovery mechanism, per the reasoning above. Motion
+blur only incidentally: if the clubhead is blurred into a different-looking
+streak, pixel-memory matching may degrade too, and nothing in the README
+claims blur robustness specifically — this was not found to be a blur fix
+and is not logged as one.
+
+**Why it matters for this model specifically:** It directly answers the
+question OC-SORT's entry left open (is there a non-geometric gap-recovery
+option), under a cleanly permissive licence, with a real — if coarse — iPhone
+benchmark number, which most prior "too heavy / unverified on mobile"
+entries in this log (OMDNet, ZoomNeXt, SDDF) explicitly lacked. **Three
+honest gaps keep this from being a ready recommendation:**
+1. **The on-device number is real but weaker than this log's own bar.** The
+   README states, verbatim: "Our EfficientTAM can run >10 frames per second
+   with reasonable video segmentation performance on iPhone 15." That's a
+   genuine, quoted, primary-source mobile benchmark — but it gives no
+   ms/frame figure, no model-variant breakdown (only one checkpoint name,
+   `efficienttam_s.pt`, is mentioned in the README, with no parameter count),
+   and "reasonable... performance" is the authors' own qualitative framing,
+   not a measured accuracy number. Contrast with RT-Focuser (2026-11-07),
+   the one deblur entry in this log with a concrete latency figure on a
+   named iPhone generation — EfficientTAM's claim is real but softer.
+2. **No CoreML story at all.** The README documents a Mac/MPS backend and
+   the iPhone 15 benchmark, but never mentions CoreML or iOS export — the
+   iPhone number is presumably a PyTorch-stack benchmark (ExecuTorch/MPS),
+   not evidence it converts cleanly to this project's actual CoreML
+   deployment target. The ViT encoder plus a custom memory-cross-attention
+   module is a materially harder CoreML conversion target than a stock YOLO
+   backbone; nobody has attempted or reported it.
+3. **The prompting workflow itself was not independently re-verified this
+   run.** The one-prompt-then-propagate description above is carried over
+   from SAM 2's well-documented API pattern, which EfficientTAM's README
+   says it's "adapted from" — a direct fetch of EfficientTAM's own example
+   notebook 404'd this run (wrong guessed path, not re-attempted under time
+   budget), so the exact call signature for this repo specifically is
+   inferred, not quoted. Flagged honestly rather than stated as confirmed.
+
+**Verification performed:** Two direct raw-GitHub fetches (README, LICENSE)
+of the primary repo, not search snippets. Cross-checked the Apache-2.0 claim
+against an independent secondary source (a third-party Hugging Face mirror)
+before fetching the primary LICENSE file myself, and the primary fetch
+confirmed it. Grepped this log for "Track Anything," "TAM," "memory
+cross-attention," and "yformer" first to confirm this is not a repeat of
+the existing SAM2/EventVCOD-prompt-generator entry (2026-11-0x, the
+`Zhang, Lyu et al.` "Eventstream-Inspired Data" entry) — that entry's SAM2
+usage is as a heavy, prompt-requiring back-end inside a different,
+unlicensed pipeline; this is a distinct, standalone, lighter, cleanly
+licensed project, not the same finding restated.
+
+**Effort vs. payoff:** Medium-low effort to verify (two direct fetches,
+one failed notebook fetch not retried), genuinely new mechanism, real
+licence, real (if soft) mobile number — better-documented than most
+"ruled out, too heavy" entries this log has logged for bullet 3. But payoff
+is speculative until someone actually attempts the CoreML conversion and
+measures latency/accuracy against this project's own camouflage failure
+frames; until that happens this is a promising lead, not a validated fix.
+Recommended next step if anyone picks this up: a standalone feasibility
+spike — convert `efficienttam_s.pt`'s image encoder alone to CoreML and
+measure ANE latency, *before* investing in the memory module or any
+training-pipeline integration, since the encoder conversion alone will
+answer whether this is viable at all on the project's target hardware.
