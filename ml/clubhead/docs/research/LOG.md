@@ -4828,3 +4828,169 @@ spike — convert `efficienttam_s.pt`'s image encoder alone to CoreML and
 measure ANE latency, *before* investing in the memory module or any
 training-pipeline integration, since the encoder conversion alone will
 answer whether this is viable at all on the project's target hardware.
+
+---
+
+## 2026-11-23 (fourth run today) — SAM 2's video mask-propagation (Apache-2.0) as a drop-in upgrade candidate for this project's own already-planned `track_propagate.py` CSRT keyframe interpolation — tested directly against the design doc's own named weakness, not a generic "trackers exist" claim
+
+**Rotation context:** The first three runs today covered bullets 1/2
+(iPhoneBlur), 3 (OC-SORT), and 3 again (EfficientTAM, deliberately, to close
+a specific follow-up question OC-SORT left open). This run deliberately
+moved off bullet 3's generic "small/camouflaged object tracking" search
+space — which this log has now exhausted for the day — and instead went
+back to this project's *own* documents: `docs/superpowers/specs/
+2026-05-21-clubhead-detector-v2-design.md`, Section 5/7/11, which this log's
+2026-11-22 (first run) entry had already read once (to rule out
+`golftracker`) but not fully mined. That spec names `track_propagate.py` —
+an OpenCV CSRT tracker that interpolates human-labeled keyframes across a
+swing — as "the biggest single multiplier" in the data engine, and then
+names its own failure mode in Section 11: **"CSRT drift on the fast
+downswing. Tracker propagation is weakest exactly where the clubhead moves
+fastest; that region will still need dense human attention."** That sentence
+is a precise, first-party description of exactly the two conditions this
+project's briefing cares about — the fast downswing is where motion blur is
+heaviest and where camouflage failures concentrate (dark club through dark
+clothing/foliage, mid-swing) — so this run searched for a better
+keyframe-propagation mechanism to test against that specific, named gap,
+rather than another generic tracker for the shipped model.
+
+**What it is:** `facebookresearch/sam2` ("Segment Anything 2," Meta FAIR).
+Its video predictor API: prompt once with a box or point on an object in one
+frame (`predictor.add_new_points_or_box(state, <prompts>)`), then call
+`predictor.propagate_in_video(state)` to get a segmentation mask for that
+object on every subsequent frame. Mechanically this is a direct substitute
+for CSRT's role in `track_propagate.py` — both take sparse human input and
+propagate it across a swing — but the propagation mechanism is completely
+different. CSRT is a classical discriminative-correlation-filter tracker: it
+matches a hand-crafted appearance template frame-to-frame, which is exactly
+the kind of signal that degrades under motion blur (the template smears) and
+under camouflage (low contrast against background, the same appearance
+signal the detector itself is failing on). SAM 2 instead attends to a
+learned memory of the object's appearance across the whole propagated
+sequence, which is architecturally a different bet on surviving appearance
+degradation — though, as the caveats below make clear, that bet has not
+been measured here.
+
+**URL:** https://github.com/facebookresearch/sam2
+
+**Licence — verified directly against the repo file, not a search
+summary:** Fetched `raw.githubusercontent.com/facebookresearch/sam2/main/LICENSE`
+directly. It is the full **Apache License, Version 2.0** (header: "Apache
+License, Version 2.0, January 2004"). Section 2 grants every contributor's
+"perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+copyright license" to reproduce, prepare derivative works of, publicly
+display, publicly perform, sublicense, and distribute the work; Section 4
+permits redistribution with or without modification subject to carrying the
+license and attribution notices. The text never uses the word "commercial"
+because Apache-2.0 doesn't need to — there is no field-of-use or
+non-commercial restriction anywhere in it. **Commercial use is permitted.**
+Also fetched the README's own license section directly: "The SAM 2 model
+checkpoints, SAM 2 demo code (front-end and back-end), and SAM 2 training
+code are licensed under" Apache 2.0; only the demo's bundled fonts (Inter,
+Noto Color Emoji) fall under a separate SIL Open Font License, which is
+irrelevant to this project's use (no demo UI needed).
+
+**Downloadable today:** Yes — `git clone` + `pip install -e .` (no PyPI
+package; Python 3.10+, PyTorch 2.5.1+ per the README). Checkpoints for four
+sizes (Tiny 38.9M through Large 224.4M) are pulled via a download script or
+direct links; benchmarked speeds (A100, torch 2.5.1/cuda 12.4) run 39.5–91.2
+FPS depending on size — all of this is a one-time offline labeling-pipeline
+cost, not an on-device requirement, so even the Large checkpoint at ~40 FPS
+is far faster than needed to batch-propagate keyframes across a swing
+clip.
+
+**Which failure mode this addresses:** Both, but indirectly — this is a
+data-engine/labeling-throughput proposal, not a runtime or architecture
+fix, so it does not change the shipped model's behavior on camouflage or
+blur frames directly. What it targets is the *bottleneck* that currently
+caps how much correctly-boxed training data this project can afford to
+label in exactly the two scarce regimes the briefing names: genuinely
+blurred clubheads (median box elongation only 1.60) and camouflage-prone
+frames (dark-on-dark, cluttered backgrounds). Both concentrate in the same
+place — the fast downswing — which is precisely where the project's own
+design doc says its labeling multiplier currently fails and falls back to
+slow, dense, manual correction. A propagation tool that survives that
+window better would let the team label more of exactly the hardest, most
+valuable, currently under-represented frames, for the same human effort.
+
+**Why this is not a repeat of today's other two tracker entries:** The
+2026-11-23 EfficientTAM entry (third run) evaluates a SAM2-family model as
+*on-device runtime* camouflage gap-bridging inside the shipped iOS app — it
+is explicitly blocked on CoreML conversion and ANE latency, neither of
+which has been attempted. This entry is a completely different application:
+an *offline* swap inside `track_propagate.py`, a script that already runs
+on a developer workstation and never ships. SAM 2's GPU weight, lack of a
+CoreML export, and lack of an on-device latency number are irrelevant here
+— only propagation accuracy on a workstation matters, which inverts every
+blocking caveat in the EfficientTAM entry. It is also not a repeat of the
+2026-11-06/2026-11-12 "SAM2 is too heavy for this project's deployment
+target" conclusion (reiterated in the 2026-11-12 VCOD entry) — those
+entries were evaluating SAM2 as part of the *shipped detection pipeline*;
+"too heavy to run on an iPhone 60 times a second" and "too heavy to run
+once per labeled swing clip on a laptop" are different claims, and this log
+had not previously separated them.
+
+**Honest gaps — this is a feasibility spike proposal, not a validated
+result:**
+1. **Not measured against this project's own footage.** Nobody has run SAM
+   2 on this project's actual fast-downswing clips and compared drift
+   against the existing CSRT output. The claim that memory-based mask
+   tracking should survive blur/camouflage better than a correlation filter
+   is a reasonable inference from the two mechanisms' designs, not a
+   confirmed result — log this as "worth trying first," not "adopt."
+2. **Mask vs. box, specifically on blurred frames.** SAM 2 propagates a
+   *mask*; converting to the axis-aligned box this project's format needs
+   is trivial (bounding box of the mask). But the labeling spec's rule is
+   to box the clubhead's *entire visible motion-blur streak*, and a
+   segmentation model's target is the physical object's pixels — on a
+   heavily blurred frame its mask may hug the sharper "core" of the
+   smeared region rather than the full streak the spec wants boxed,
+   producing boxes that are too tight exactly on the frames this project
+   most needs wide, correctly-elongated boxes for. This needs a specific
+   spot-check on blurred frames, not a blanket trust of the propagated
+   mask.
+3. **MPS is the project's actual platform, and SAM 2's own README flags it
+   as unreliable.** The design spec states training "runs locally on MPS"
+   (Apple Silicon) — not CUDA. SAM 2's README states, on this point
+   specifically: "Support for MPS devices is preliminary. SAM 2 is trained
+   with CUDA and might give numerically different outputs and sometimes
+   degraded performance on MPS." The CUDA-only post-processing kernel is
+   optional and can be skipped, but the base MPS path itself is the
+   officially-flagged-as-rough one, on the same hardware this project
+   already uses — a real practical risk, not a licensing or architecture
+   one, and not addressed by any workaround found this run.
+4. **No CoreML shortcut hiding here either.** Apple does publish CoreML
+   conversions of SAM 2 (`apple/coreml-sam2.1-tiny` etc. on Hugging Face),
+   but as of this run those support only single-image segmentation — video
+   mask propagation, the actual feature this entry proposes using, is not
+   yet available as a CoreML artifact. Irrelevant to this specific proposal
+   (plain PyTorch on a workstation is fine for an offline tool), noted only
+   so a future run doesn't mistake this for an on-device path.
+
+**Effort vs. payoff:** Low effort to test — `pip install`, no training,
+no licensing review needed beyond what's already done above, and a direct
+apples-to-apples comparison is possible immediately: run both CSRT and SAM
+2 keyframe-propagation on the same handful of existing fast-downswing clips
+already in this project's own labeled pool, and measure box drift against
+the existing human-corrected labels. That's an afternoon-scale spike, not a
+research project. Payoff, if the spike confirms the inference in point 1
+above, could be the most directly actionable finding in this log to date
+for the briefing's own stated priority (more diverse own footage,
+specifically the hard/fast/blurred/camouflage-adjacent frames) — because it
+slots into one already-existing file in an already-built pipeline, not a
+new tool, dataset, or training run. But until that spike runs, this is a
+promising, well-licensed, cheaply-testable candidate — not a confirmed
+win — and should be logged and tried as exactly that.
+
+**Verification performed:** Two direct raw-GitHub fetches (LICENSE,
+README) of the primary `facebookresearch/sam2` repo, not search-summary
+text. Read this project's own design spec directly (Section 5, 7, 11) to
+confirm the CSRT weakness is a real, first-party-documented claim and not
+an assumption, and to confirm the MPS detail (Section 7) before citing it
+as a caveat. Grepped this log for "SAM2," "CSRT," and "track_propagate" to
+confirm neither the tool, the comparison, nor this specific labeling-pipeline
+application had been logged before — only SAM2-as-shipped-runtime-tracker
+(EfficientTAM, 2026-11-23; WASB-SBDT/VCOD entries, 2026-11-04/06/12) and
+SAM2-as-synthetic-data-backend (Zhang/Lyu Eventstream entry, 2026-11-06)
+exist prior to this entry, both different applications from the one logged
+here.
