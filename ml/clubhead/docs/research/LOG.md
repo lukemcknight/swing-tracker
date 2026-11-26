@@ -5230,3 +5230,119 @@ Also directly from the paper's own stated limitations (per search-result summary
 **Why it matters for this model specifically:** Two things make this entry different from every other camouflage lead already logged. First, it is architecture-adjacent, not a separate model to ensemble or a different modality to bolt on (contrast with SAM2/3, Grounding DINO, depth cues, hand pose, optical flow — all logged as *additional* signals or models) — YCDa's claim is that the existing detector family gets better at the exact failure mode in question with a small, local change to its first layer. Second, the YOLO11s baseline numbers are the closest apples-to-apples architectural reference point this log has found for predicting whether a similar change would help this project's actual YOLO11n. That said, the AGPL licence means the code cannot be used as-is in this project's closed-source iOS app. The idea — decouple Y from CbCr at the stem and apply channel attention favoring luminance — is simple enough (a few conv/attention layers at the input stage) to reimplement from scratch without touching YCDa's code, and the paper's existence (even unread) is evidence the idea itself is sound and already validated against the right baseline family; reimplementation, not adoption, is the realistic path.
 
 **Effort vs. payoff:** Medium effort, real payoff, but for the *idea* only, not the artifact — the licence forecloses directly using YCDa's code or any model trained with it, so this project would need to reimplement the chrominance/luminance split and attention module from the README's description and reimplement training on its own clubhead data (COD10K-D-style camouflage benchmarks are not golf-specific, so no borrowed dataset applies here, only the mechanism and reference numbers are transferable). That is a from-scratch architecture-modification task comparable in scope to the already-logged YOLO11 P2-head gap (2026-11-20) — a real engineering lift, not a drop-in. The payoff case is stronger than most prior bullet-3 entries specifically because the baseline reference point (YOLO11s) is in-family, making this a reasonable next architectural experiment to prototype once the current data-engine priorities are addressed, not an immediate action item.
+
+---
+
+## 2026-11-26 (second run today) — SAMURAI: a training-free motion-aware memory add-on for SAM 2, published this year as a journal paper, that targets exactly the "appearance signal fails" and "fast motion" conditions this project's two failure modes share — but has no live/streaming support, so it's an offline data-engine candidate, not an on-device fix
+
+**Rotation context:** The first run today (YCDa) covered bullet 3 via a
+camouflage-specific architectural module. This run deliberately looked at
+bullet 3 again but through the temporal/multi-frame angle the briefing
+calls out as "of particular interest" (motion separating a moving clubhead
+from static foliage when appearance alone can't) — and specifically at
+whether anything new has built on the already-logged SAM2 thread
+(2026-11-06 VCOD, 2026-11-23 fourth run's `track_propagate.py` proposal,
+2026-11-24's SAM3 follow-up). Grepped this log for "SAMURAI," "Kalman,"
+and "motion-aware memory" first — no hits — so this is a genuinely new
+entry, not a repeat of the base-SAM2 or SAM3 findings already logged.
+
+**What it is:** `yangchris11/samurai` — "SAMURAI: Adapting Segment Anything
+Model for Zero-Shot Visual Tracking with Motion-Aware Memory" (Yang et al.,
+University of Washington). It wraps SAM 2's video predictor with a
+Kalman-filter-based motion score that is fused with SAM 2's own mask
+affinity score to decide which past frames to keep in memory and which
+candidate mask to select each frame — replacing SAM 2's plain FIFO
+frame-memory with one that also weighs where the object's motion predicts
+it should be. The official repo's own FAQ states the mechanism directly:
+"The Kalman filter is used to estimate the current and future state" of a
+moving object (fetched verbatim via `raw.githubusercontent.com`, not a
+search summary). The paper itself (secondary sources only — see licence
+note below) is described consistently across three independent summaries
+(an arXiv HTML mirror, a ResearchGate listing, and a news writeup) as
+targeting self-occlusion, abrupt/fast motion, and crowded scenes — cases
+where SAM 2 alone tends to drift onto an appearance-similar object because
+it over-trusts recent appearance rather than motion. It has just been
+accepted as a full journal paper (IEEE Transactions on Image Processing,
+2026, DOI `10.1109/tip.2026.3651835`), which is new since this log's last
+SAM2-family check.
+
+**URL:** https://github.com/yangchris11/samurai (code, fetched directly).
+Paper: https://arxiv.org/abs/2411.11922 — **could not be read directly**;
+`arxiv.org` and `huggingface.co` are both DNS-blocked from this session (the
+same standing network gap the 2026-11-26 first-run entry hit for
+`arxiv.org`, now also confirmed for `huggingface.co` and
+`ece.uw.edu`), so the abstract/numbers below rely on multiple independent
+secondary summaries agreeing with each other, not a primary read — flagged
+honestly, not papered over.
+
+**Licence — verified directly against the repo's own file:** Fetched
+`raw.githubusercontent.com/yangchris11/samurai/master/LICENSE` directly.
+First lines: "Apache License / Version 2.0, January 2004 /
+http://www.apache.org/licenses/" — the full Apache-2.0 text, no
+field-of-use or non-commercial restriction. **Commercial use is permitted**
+for SAMURAI's own code. It depends on SAM 2 checkpoints/weights, which this
+log's 2026-11-23 (fourth run) entry already verified directly as Apache-2.0
+as well — so the full dependency chain is clean, unlike the YCDa/Ultralytics
+AGPL chain logged earlier today.
+
+**Downloadable and runnable today:** Yes, with one real caveat. The code,
+README, and LICENSE are all live and fetched first-hand (not a dead repo
+or an empty checkpoint link, unlike today's first entry). It is
+training-free — the README's FAQ states: "Unlike real-life samurai, the
+proposed samurai do not require additional training" — and reuses stock
+SAM 2.1 weights directly. But the same FAQ also states, verbatim: **"Not
+yet. The existing code doesn't support live/streaming video as we inherit
+most of the codebase from the amazing SAM 2."** Installation is explicitly
+framed as "a GPU machine" (Python 3.10+, PyTorch 2.3.1+); no CoreML
+conversion, no on-device benchmark, and no real-time/FPS claim exists
+anywhere in the README.
+
+**Which failure mode this addresses:** Both, indirectly, via the same
+data-engine role the 2026-11-23 (fourth run) SAM2 entry already proposed
+for `track_propagate.py` — not a runtime fix for the shipped CoreML model.
+For camouflage: SAMURAI's whole premise is correcting SAM 2's bias toward
+trusting recent appearance when appearance is exactly the unreliable
+signal (dark clubhead vs. dark clothing/foliage) — it adds a second,
+independent cue (predicted motion) that doesn't degrade when color/texture
+does. For motion blur: the paper's benchmarks explicitly include
+fast-motion/abrupt-motion conditions (one secondary summary, not fully
+corroborated here, reports larger gains specifically on camera-motion and
+fast-motion attribute subsets of LaSOT-ext) — the same condition that
+produces blur in this project's own footage. If it tracks through a fast,
+blurred downswing more reliably than base SAM2/CSRT, it would let the
+labeling pipeline keyframe-propagate through exactly the frames this
+project is currently short on (genuinely blurred, correctly-elongated
+boxes), which is the same bottleneck the 2026-11-23 entry already
+identified.
+
+**Why this is additive, not a repeat:** The 2026-11-23 (fourth run) entry
+already proposed plain SAM2 mask-propagation for `track_propagate.py` and
+listed "not measured against this project's footage" as its top honest
+gap. SAMURAI is a strict superset of that same codebase (same
+license, same checkpoint, same offline/GPU-workstation framing) with one
+added, specifically motion-focused mechanism on top — it does not reopen
+or contradict that entry, it gives it a concretely better version to spike
+first. It is also not the already-logged DAM4SAM thread (that is a
+different, distractor-aware memory method cited by a benchmarking paper
+that surfaced alongside this search, not something this entry is claiming
+credit for — flagged here only so a future run doesn't conflate the two).
+
+**Honest gaps:** (1) The abstract and headline AUC numbers come from
+secondary sources, not a primary PDF read, because of the standing
+`arxiv.org`/`huggingface.co` network block — the mechanism and licence are
+primary-sourced, the magnitude of improvement is not. (2) No live/streaming
+support means this cannot assist the on-device app directly, only the
+offline labeling pipeline — same deployment ceiling already flagged for
+plain SAM2. (3) Nobody has run it on this project's own clips, same as the
+base SAM2 entry — this is "spike it next," not "adopt it."
+
+**Effort vs. payoff:** Low effort — it is a thin, training-free wrapper
+around a dependency (SAM2) this log already cleared for licence and
+installability; swapping it in for the already-proposed SAM2 spike is a
+same-afternoon change (different predictor class, same API shape), not a
+new integration. Payoff is plausibly higher than plain SAM2 for this
+project's specific bottleneck (fast, blurred downswing keyframe
+propagation) because the added mechanism is motion-focused rather than
+purely appearance-based — but until someone runs the comparison on actual
+project footage, this is a strictly-better-on-paper upgrade to an
+already-unvalidated proposal, not a second independent confirmation.
