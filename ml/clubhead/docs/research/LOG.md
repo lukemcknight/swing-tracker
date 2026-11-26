@@ -5433,3 +5433,108 @@ edge" per sequence) is a small, free piece of evidence for how a future
 internal labeling-QA pass could categorize this project's own failing
 frames by cause rather than lumping all misses together, independent of
 CAMotion's own unusable licence.
+
+---
+
+## 2026-11-26 (fourth run today) — A second, independent team (`garyyjin/golf-biomechanics-cv`) corroborates the exact slug, size (~11.5k images), and CC BY 4.0 licence of the Roboflow dataset this log flagged-but-couldn't-verify on 2026-11-05 — still unreachable, but no longer a single-source claim
+
+**Rotation context:** The first three runs today (YCDa, SAMURAI, CAMotion
+closure) all stayed on bullet 3. This run deliberately went back to
+bullet 1 (datasets, especially low-light/indoor/simulator/older-phone
+footage) — the bullet every prior run this month has had to abandon
+because `universe.roboflow.com`, `kaggle.com`, `huggingface.co`, and
+`zenodo.org` are DNS-blocked from this session (standing gap since
+2026-11-04, reconfirmed again this run for `universe.roboflow.com` and
+`app.roboflow.com` specifically). Rather than retry those same blocked
+hosts a further time, this run searched for *other* GitHub projects that
+cite the same underlying Roboflow dataset the 2026-11-05 SwingTrace entry
+already flagged — on the theory that a second, independent user of the
+same dataset is a source this session can actually reach and that can
+corroborate or add detail the first entry couldn't confirm.
+
+**What it is:** `garyyjin/golf-biomechanics-cv`, a separate, unrelated
+open-source golf-swing-analysis web app (FastAPI backend, React/TypeScript
+frontend; 88 commits). Its README (fetched directly) states it trains "a
+YOLOv8n clubhead detector... offline using `backend/training/
+train_clubhead.py` on the public Roboflow 'golf-club-tracking' dataset"
+— the same dataset, by name, that `nishsm/golf-club-tracking` (SwingTrace,
+logged 2026-11-05) credits as its own training source. This run also
+re-fetched `nishsm/golf-club-tracking`'s README directly to pin down the
+exact dataset identity: workspace `club-head-tracking`, project
+`golf-club-tracking`, full URL
+`https://universe.roboflow.com/club-head-tracking/golf-club-tracking`,
+stated licence CC BY 4.0 — the same facts the 2026-11-05 entry reported,
+now with the exact slug captured verbatim (the earlier entry named the
+workspace but not the full URL/slug). `garyyjin`'s README separately
+states the dataset is "about 11.5k labeled images," a size figure the
+2026-11-05 entry did not have at all (it could not reach the dataset page
+to check).
+
+**URL:** https://github.com/garyyjin/golf-biomechanics-cv (fetched
+directly). Underlying dataset:
+https://universe.roboflow.com/club-head-tracking/golf-club-tracking —
+**still unreachable** from this session; `universe.roboflow.com` and
+`app.roboflow.com` both failed DNS resolution again this run, so the
+~11.5k-image size and CC BY 4.0 licence are reported here as what two
+independent GitHub READMEs *claim*, not as independently confirmed from
+the dataset's own page.
+
+**Licence:** `garyyjin/golf-biomechanics-cv` itself has **no LICENSE file
+and no licence badge** (confirmed by checking the repo's file listing and
+sidebar directly) — its own code is not usable under any stated terms,
+default copyright applies, so this repo is not itself an asset. The
+dataset it (and SwingTrace) trains on is claimed CC BY 4.0 by both
+independent sources now, which would permit commercial use with
+attribution if the claim holds — but this remains a claim corroborated
+twice, not a licence read from the primary source, because Roboflow
+Universe cannot be reached from this session. Treat as **probable, not
+confirmed**.
+
+**Verification performed:** Fetched `garyyjin/golf-biomechanics-cv`'s
+README directly via WebFetch (not a search-snippet summary) and confirmed
+the YOLOv8n/Roboflow-dataset claim, the absence of a licence, and the
+~11.5k-image figure verbatim from the page. Re-fetched
+`nishsm/golf-club-tracking` directly (already logged 2026-11-05, re-checked
+rather than trusted from memory) and confirmed the exact dataset URL/slug
+and CC BY 4.0 claim word-for-word. Attempted `app.roboflow.com` and
+`universe.roboflow.com` directly this run — both still `getaddrinfo
+ENOTFOUND` — so the dataset's own page, image samples, and licence text
+remain unverified at the primary source for the third separate run in a
+row (2026-11-05, today's first-run rotation note, and this entry).
+
+**Which failure mode this addresses:** Both, provisionally. The dataset is
+club-head/shaft/hands detection on ordinary phone video (not specifically
+indoor/low-light/simulator footage per either README — no capture-condition
+breakdown is given by `garyyjin`, and the only capture-condition breakdown
+this log has for a Roboflow-"golf-club-tracking"-trained model is
+SwingTrace's own per-clip numbers, already logged 2026-11-05, showing indoor
+as the weakest setting). It is relevant to camouflage (same clubhead-vs-body
+detection task, same label granularity this project needs) and plausibly to
+blur (impact-window frames are the hardest for any phone-video clubhead
+set), but this run adds no new evidence about blur specifically — only size
+and licence corroboration.
+
+**Why this is additive, not a repeat:** The 2026-11-05 entry flagged this
+exact dataset as a lead worth checking "the moment that host is reachable"
+but had only one source's say-so. A second, completely independent team
+training the same model class (YOLOv8n vs. SwingTrace's YOLO11m) on the
+same dataset for the same task, citing the same CC BY 4.0 licence
+independently, is real corroborating evidence that (a) the dataset
+actually exists and is being used in practice, not just named in one
+README, (b) it is a meaningfully large asset (~11.5k images, not a toy
+set), and (c) two separate teams judged it permissively licensed enough to
+build on. None of that was in the log before this run.
+
+**Effort vs. payoff:** Low effort (two direct GitHub fetches, no new
+tooling). Payoff is real but bounded: this does not unblock the dataset
+itself — Roboflow Universe is still unreachable from this session, so
+nobody can download it, inspect actual images, or confirm the licence at
+the source from here. The payoff is raising this specific dataset's
+priority for the next run (or a human) that has unblocked Roboflow access,
+over the many single-source, never-corroborated Roboflow leads this log
+has had to leave unverified (`golf_lowlight`, `GolfSimulator/GolfClub`,
+and others named-but-unfetched across prior entries). Recommend: the next
+time anyone (a future run with different network access, or a human
+with a browser) can actually reach `universe.roboflow.com`, this specific
+dataset — `club-head-tracking/golf-club-tracking` — should be the first
+one checked, not a fresh unverified search result.
