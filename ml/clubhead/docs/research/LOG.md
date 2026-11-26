@@ -5346,3 +5346,90 @@ propagation) because the added mechanism is motion-focused rather than
 purely appearance-based — but until someone runs the comparison on actual
 project footage, this is a strictly-better-on-paper upgrade to an
 already-unvalidated proposal, not a second independent confirmation.
+
+---
+
+## 2026-11-26 (third run today) — CAMotion's licence and existence, left unverifiable on 2026-11-05, are now confirmed directly: academic-only, so it stays a dead end, but for a documented reason instead of an open question
+
+**Rotation context:** The first two runs today (YCDa, SAMURAI) both stayed
+on bullet 3 (camouflage architecture, then temporal/memory tracking). This
+run closes an open thread instead of opening a new one, which the
+briefing's "find one new, verified thing" standard still allows — the
+2026-11-05 (third run today) entry explicitly tried and **declined to log**
+"CAMotion" (arXiv 2604.08287) because its only known home,
+`camotion.focuslab.net.cn`, was DNS-blocked from this session and "its
+licence and even its continued existence as a downloadable artifact could
+not be verified." That gap is still open 21 days later. This run found the
+project's actual GitHub mirror and verified both questions directly,
+which is new, confirmed information this log did not have before — not a
+restatement of the 2026-11-05 non-entry.
+
+**What it is:** `Garyson1204/CAMotion` — "CAMotion: A High-Quality
+Benchmark for Camouflaged Moving Object Detection in the Wild" (Yao, Sun,
+Yu, Jiang, Ren, Cao; arXiv 2604.08287, April 2026; an IJCV version also
+appears to exist per a Springer DOI surfaced in search, `link.springer.com`
+unreachable from this session so not independently confirmed). It is a
+video benchmark of camouflaged *moving* animals, annotated per-sequence
+with challenge attributes including, by name, **occlusion, motion blur,
+uncertain edge, and shape complexity** — one of the only datasets this log
+has found that labels motion blur and camouflage as co-occurring
+conditions on the same footage, rather than treating them as two separate
+research literatures (which is how this log has had to treat them so
+far). Per search-result summaries of the paper (not independently
+re-verified this run): 359 training sequences / 23,253 frames and 115
+test sequences / 6,775 frames. The repo ships only evaluation code
+(`eval_image.py`, `eval_video.py`, `attributes_per_sequence.txt`) plus
+precomputed depth (Depth Anything V2) and optical-flow (GMFlow) side
+channels and checkpoints/predicted maps for 18 existing COD/VCOD methods
+— it is a benchmark for scoring other people's models, not a trainable
+detector or a from-scratch architecture of its own.
+
+**URL:** https://github.com/Garyson1204/CAMotion (fetched directly).
+Dataset/checkpoints: Google Drive and Baidu Netdisk links in the README
+(not individually followed — a Google Drive folder is not meaningfully
+more verifiable than confirming the README states it exists). Paper:
+https://arxiv.org/abs/2604.08287 — still unreadable from this session
+(`arxiv.org` still DNS-blocked, same standing gap as every prior entry).
+Project page `camotion.focuslab.net.cn` — still DNS-blocked, same as
+2026-11-05.
+
+**Licence — verified directly against the repo's own README, not a
+search summary:** fetched `github.com/Garyson1204/CAMotion` directly. The
+dataset section states, verbatim: *"The CAMotion dataset is released for
+academic research only."* and *"Commercial use is strictly prohibited
+without permission from the authors."* No separate `LICENSE` file is
+confirmed present or absent from the visible listing. **Commercial use is
+not permitted.** This resolves the 2026-11-05 open question — the dataset
+does still exist and is downloadable (Google Drive/Baidu links, not a
+dead or placeholder repo), the open question was only ever the licence,
+and the answer is a hard no, consistent with every other VCOD benchmark
+this log has checked (ZoomNeXt's MoCA-Mask-TR, YUV20K, GenCAMO-DB).
+
+**Which failure mode this addresses:** Both, in the sense that it is
+*evidence* the two failure modes co-occur and are being jointly studied
+elsewhere — not a fix for either. It does not address this project's
+golf-specific camouflage or blur directly: the subjects are wild animals
+(camouflaged by evolution against natural backgrounds), not a golf club
+against clothing or foliage, and the footage characteristics (shutter
+speed, subject speed, camera motion) are unconfirmed and not established
+as comparable to a golf swing.
+
+**Why this is additive, not a repeat:** The 2026-11-05 entry's own text
+is explicit that CAMotion was looked at and deliberately *not* logged
+pending verification. Logging it now, with the licence and existence
+questions answered from a primary source, is the correct way to close
+that thread per this log's own standard (do not pad, but do not leave a
+previously-raised, now-answered question silently unresolved either) —
+the same pattern as the 2026-11-06 WASB-SBDT entry, which explicitly
+"correct[ed] an unverified assumption this log was carrying."
+
+**Effort vs. payoff:** Low effort (one GitHub fetch closed a 21-day-old
+open question) and low payoff (the answer is a dead end, same as nearly
+every other academic VCOD benchmark already in this log) — but non-zero
+value: it stops a future run from re-attempting the same
+`camotion.focuslab.net.cn` DNS dead-end, and the attribute scheme
+(explicitly separating "motion blur" from "occlusion" and "uncertain
+edge" per sequence) is a small, free piece of evidence for how a future
+internal labeling-QA pass could categorize this project's own failing
+frames by cause rather than lumping all misses together, independent of
+CAMotion's own unusable licence.
