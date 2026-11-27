@@ -5623,3 +5623,116 @@ If this project ever builds a custom blur-robust head rather than waiting
 for a licensed one, this is the idea worth prototyping — but it requires
 reimplementation from the paper's description, not reuse of any shipped
 artifact.
+
+---
+
+## 2026-11-27 (second run today) — GolfPose's club keypoint names, left single-sourced and explicitly "unconfirmed" on 2026-11-19, are now confirmed directly from the repo's own dataset config: shaft, hosel, heel, toe_down, toe_up
+
+**Rotation context:** Bullet 4 (golf-specific pose or club tracking papers,
+benchmarks, or open-source implementations). Today's first run (above)
+covered bullet 2 (motion blur architecture), so this is not a consecutive
+repeat of the same bullet. Bullet 4 was last touched 2026-11-19 — the
+longest-stale bullet of the five at the time this run started.
+
+**What it is:** `MingHanLee/GolfPose` has been in this log since
+2026-11-07 (dataset EULA that permits commercial model training, access
+author-gated) and 2026-11-19 (confirmed the "+N" checkpoint suffix is
+club-specific, not generic body joints, via a WebSearch summary of
+unreachable paper text; that same search named the five keypoints as
+"shaft, hosel, heel, toe-down, and toe-up" but flagged the names as
+**single-sourced** — a second, independently-worded search did not
+reproduce them, and that entry logged them as "unconfirmed, not fact").
+This run closes that exact gap by reading the primary source directly
+instead of a search engine's summary of it: the repo ships
+`configs/mmpose/_base_/datasets/golfswing_club.py`, a standard MMPose
+`dataset_info` file, whose `keypoint_info` dict defines exactly 5 named
+keypoints, in index order: `shaft` (0), `hosel` (1), `heel` (2),
+`toe_down` (3), `toe_up` (4). This matches the 2026-11-19 entry's
+single-sourced names exactly, now confirmed from the file that actually
+defines them rather than from a search summary of a paper this session
+could never reach.
+
+**URL:** https://github.com/MingHanLee/GolfPose — specifically
+`configs/mmpose/_base_/datasets/golfswing_club.py` (fetched via
+`raw.githubusercontent.com/MingHanLee/GolfPose/main/configs/mmpose/_base_/datasets/golfswing_club.py`).
+Also re-confirmed, incidentally, that the repo is genuinely code (not just
+a dataset pointer) — `golfpose_3d.py`, `mmdet_test.py`, `mmpose_test.py`,
+and a `configs/` tree with separate `mmdet` (2-class `golfer`/`club`
+detector configs) and `mmpose` (per-part pose configs) subtrees — which
+the 2026-11-07 entry had already established but is reaffirmed here.
+
+**Licence:** Unchanged from 2026-11-07/2026-11-19 — the dataset's custom
+EULA permits commercial model training and prohibits redistributing or
+reselling the raw data; not re-verified byte-for-byte this run since
+nothing about the licence was in question. The `golfswing_club.py` config
+file itself is part of the GolfPose *code* release (same repo as the
+`golfpose_3d.py`/`mmdet_test.py` scripts already logged), not the gated
+dataset — reading a config file that defines label names is not "using
+the dataset," so no new licence question arises from this run's
+verification step.
+
+**Which failure mode this addresses:** Same as the original entries —
+primarily camouflage, weakly motion blur, via a kinematic (not
+appearance-based) prior. What's new here is concrete enough to actually
+evaluate against this project's own labeling spec: `hosel`, `heel`, and
+`toe_down`/`toe_up` are exactly the anatomical landmarks this project's own
+`docs/labeling-spec.md` already names as defining the clubhead's visible
+extent ("the blade/face plus the hosel," "toe, heel, sole, crown"). That
+is a closer structural match than the 2026-11-19 entry could responsibly
+claim while the names were unconfirmed — GolfPose's club keypoint schema
+is not just "some points near the club," it is parameterized around the
+same physical reference points this project's annotators are already
+trained to identify by eye. The `shaft` point (reported elsewhere in the
+repo as moving fastest, given higher loss weight) is the component most
+directly relevant to the motion-blur failure mode specifically: a model
+predicting "where the shaft point currently is" from body pose doesn't
+need the shaft to be sharp or even fully visible in-frame, which is the
+opposite of what a bounding-box regressor needs.
+
+**Why it matters for this model specifically:** This doesn't unlock
+anything new to use — the access gate (email the author, no guaranteed
+turnaround) and the heavy, non-CoreML-native MMDetection/MMPose/MixSTE
+stack are exactly as logged on 2026-11-07. What it changes is confidence:
+the 2026-11-19 entry explicitly declined to treat "near-bbox-equivalent
+club keypoints" as more than a hypothesis pending primary-source
+confirmation. That confirmation now exists, from the repo's own config
+rather than a search engine's paraphrase of an unreachable PDF. If a
+future run or a human ever acts on the 2026-11-07 "ensemble a second,
+differently-trained detector" or "use pose keypoints as a search-region
+prior" ideas, this removes the single biggest reason to hesitate — that
+the extra keypoints might turn out to be unrelated body joints.
+
+**Verification performed:** Fetched `github.com/MingHanLee/GolfPose`
+directly (repo root tree listing, README, LICENSE page) and then, having
+noticed the README's `golfpose_club_dekr.py`-style config paths, fetched
+`configs/mmpose/golfpose_club_dekr.py` directly — it does not define
+keypoint names itself, only `num_keypoints=5` and a
+`metainfo = dict(from_file=...)` pointer to
+`configs/mmpose/_base_/datasets/golfswing_club.py`. Fetched that file
+directly via `raw.githubusercontent.com` and had its `keypoint_info` dict
+read back twice, independently, by the fetch tool (once asked for a full
+verbatim quote, which it declined past a length limit; once asked
+specifically for just the `name` fields in index order) — both passes
+agree on the same five names in the same order. A direct `blob/main` fetch
+of the same file (as opposed to the `raw.githubusercontent.com` URL)
+returned HTTP 503 on one attempt and was not retried a third time, since
+the `raw.githubusercontent.com` fetch had already succeeded twice and
+`universe.roboflow.com` remained unreachable (`getaddrinfo ENOTFOUND`,
+re-checked once this run, consistent with every prior entry since
+2026-11-04) when tried separately for the still-unresolved
+`club-head-tracking`-slug Roboflow dataset lead from 2026-11-26 — not
+pursued further this run since that thread is a bullet-1 item already
+being tracked, and chasing it again on a DNS-blocked host would not have
+been a new finding.
+
+**Effort vs. payoff:** Low effort — two targeted raw-file fetches on top
+of a repo this log had already partially explored, no new tooling, no
+code run. Payoff is real but narrow: it upgrades an already-logged,
+already-plausible lead from "unconfirmed single-source claim" to
+"confirmed from the primary source," which matters for anyone deciding
+whether the 2026-11-07 email-the-author ask is worth the wait, but it does
+not by itself produce a usable artifact, unblock the access gate, or
+change the licence picture. Worth logging precisely because this log's
+own standing rule is not to carry an "unconfirmed, not fact" flag forward
+indefinitely when the primary source turns out to be cheaply reachable —
+this one was.
