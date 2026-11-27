@@ -5826,3 +5826,94 @@ sample images for indoor/low-light content before spending any real
 effort on it. Not worth repeating via WebSearch alone again soon — three
 queries already converged on the same ceiling of information this
 session's network policy allows.
+
+---
+
+## 2026-11-27 (fourth run today) — Open-weight, Apache-2.0 text/image-to-video generation (Wan2.2) checked as a way to manufacture indoor/low-light footage with zero licence risk — real and verified, but the two things it would need to do well (render a small object, under fast motion) are exactly the two things this class of model is documented to do worst
+
+**Rotation context:** Today's first three runs covered bullet 2 (JFD3,
+blur), bullet 4 (GolfPose keypoint names, golf-specific tracking), and
+bullet 1 (the `golf-driver-tracker` Roboflow lead, an existing third-party
+dataset). This run moved to bullet 5 (synthesize/augment training data)
+with a different mechanism than every prior bullet-5 entry: instead of
+compositing a real clubhead crop onto a real or generated background
+(LODE-style, BlenderProc, CamDiff, AnyDoor, Magic Scissors — all already
+logged), it checked whether a *whole-scene* open video-generation model
+could manufacture entire synthetic swing clips under controlled lighting
+conditions (specifically indoor/low-light, the gap this project has never
+measured) from scratch, with no real footage or third-party dataset
+involved at all.
+
+**What it is:** `Wan-Video/Wan2.2` — Alibaba's second-generation open
+video-generation model family (T2V-A14B text-to-video, I2V-A14B
+image-to-video, and the smaller TI2V-5B handling both; 480P/720P output,
+TI2V-5B at 720P/24fps). Text or image prompts can specify arbitrary scene
+conditions — "indoor golf simulator bay, dim overcast light," for
+example — which is the opposite constraint of every real dataset this log
+has found so far (each one is whatever lighting/location its original
+film crew happened to use).
+
+**URL:** https://github.com/Wan-Video/Wan2.2 (weights mirrored on Hugging
+Face / ModelScope under the `Wan-AI` org, not fetched this run — the
+GitHub repo's own README and code are the primary source checked)
+
+**Licence, verified by fetching the primary source directly (not a search
+summary):** Fetched `raw.githubusercontent.com/Wan-Video/Wan2.2/main/LICENSE.txt`
+directly — verbatim opening lines: *"Apache License / Version 2.0, January
+2004 / http://www.apache.org/licenses/"*. Also fetched the repo's
+`README.md` directly: its own License Agreement section states "The
+models in this repository are licensed under the Apache 2.0 License,"
+explicitly covering the model weights, not just the code, with no separate
+or stricter licence carved out for the weights. **Commercial use:
+permitted**, for both the code and the generated-video model itself — the
+cleanest licence outcome this log has found for any data-generation
+candidate to date (every compositing/inpainting tool checked so far —
+CamDiff, SDDF's SD 2.1 finetune — had an unresolved or non-commercial base-
+model licence; this one does not).
+
+**Which failure mode this addresses:** Primarily motion blur and the
+indoor/low-light measurement gap (bullet 1's real target), since the whole
+point is generating footage under conditions this project has never
+captured, let alone trained on. Secondarily camouflage, if prompted for
+cluttered-background/dark-clothing scenes — but see the caveat below,
+which applies more severely to a small fast object than to a scene's
+general lighting or background texture.
+
+**Why it's not a clean win — checked directly, not assumed:** Two
+compounding problems, one structural and one empirical:
+1. **No ground-truth box.** Unlike BlenderProc's rendered synthetic clubhead
+   (already logged 2026-11-17), a diffusion-generated video has no
+   underlying 3D scene or render pass to emit an exact bounding box from.
+   Every generated frame would still need the clubhead boxed by hand (or by
+   running the very detector this project is trying to improve, which begs
+   the question) — this does not reduce labeling cost, only diversifies
+   lighting conditions.
+2. **The model's documented weak points are exactly this project's two
+   failure modes.** A search for video-diffusion failure modes specific to
+   fast motion and small/fine detail turned up converging (if scattered,
+   not one single named benchmark) evidence: an older video-prediction study
+   names fast movement as one of the most common failure cases, reporting it
+   typically *deforms the moving object*; a 2025 frame-interpolation paper
+   reports blurring/degradation specifically "when dealing with rapid
+   changes in fine details"; a late-2025 motion-quality paper notes its own
+   optical-flow-based metric "becomes unreliable for extremely small
+   motions." A golf clubhead at impact is simultaneously the smallest object
+   in frame and the fastest-moving one — the load-bearing case for both of
+   this project's failure modes is the specific case general-purpose video
+   generation is reported to render worst (deformed, flickering, or
+   incoherent), which risks teaching the detector a visually wrong
+   representation of the target rather than a genuinely new one.
+
+**Effort vs. payoff:** Medium effort to even pilot (multi-GB model weights,
+a GPU runtime this sandbox does not have, so any trial is a separate
+infrastructure effort outside this repo entirely) for a payoff that is
+genuinely speculative given point 2 above — the opposite risk profile from
+most of this log's dead ends, which fail on licence or availability before
+reaching a quality question at all. If anyone does pilot it, the right
+first step is a cheap gating check — generate a handful of indoor-lit
+swing clips and look at whether the clubhead renders as a coherent object
+at all during the fast part of the swing — before investing in any
+labeling or training pipeline around it. Not recommended as a priority
+over the already-logged, ground-truth-preserving synthesis routes
+(BlenderProc rendering, real-frame-averaging from this project's own
+footage), which don't share this failure mode.
