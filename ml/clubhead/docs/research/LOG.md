@@ -5538,3 +5538,88 @@ time anyone (a future run with different network access, or a human
 with a browser) can actually reach `universe.roboflow.com`, this specific
 dataset — `club-head-tracking/golf-club-tracking` — should be the first
 one checked, not a fresh unverified search result.
+
+---
+
+## 2026-11-27 — JFD3: an AAAI 2026 dual-branch "feature restoration" detector built specifically for blur-degraded fast small objects, checked directly — real, brand-new architecture, but no licence, infrared-only, and its own code is explicitly incomplete
+
+**What it is:** `IVPLaboratory/JFD3` on GitHub, the official (partial) code
+release for "Blur-Robust Detection via Feature Restoration" (Xiaolin Wang et
+al., Xidian University / Huazhong University of Science and Technology,
+AAAI 2026). The paper's framing is close to this project's own motion-blur
+problem statement: motion blur from fast sensor/object movement collapses
+target-background contrast, and the authors argue prior work treats
+deblurring as a *visual-quality* preprocessing step that discards the
+features a detector actually needs. JFD3's fix is a dual-branch,
+shared-weight design — a clear-image branch supervises a lightweight
+feature-restoration network inside a parallel blurred-image branch, plus a
+frequency-structure-guidance module that injects structure priors into the
+shallow detection layers, trained with a self-supervised feature-consistency
+loss between the two branches. It is built on the DEIM (Apache-2.0)
+DETR-training codebase, not YOLO.
+
+**URL:** https://github.com/IVPLaboratory/JFD3
+
+**Licence:** The repo ships **no LICENSE file and no licence badge or
+statement anywhere on the page** — confirmed by fetching the repo page and
+its raw README directly. Default copyright applies: no rights are granted,
+commercial use is **not permitted**. (The DEIM base framework it's built on
+is genuinely Apache-2.0 — confirmed by fetching `ShihuaHuang95/DEIM`
+directly — but that covers DEIM's own training scaffold, not JFD3's own
+contributed restoration/guidance modules, which carry no licence at all.)
+
+**Which failure mode this addresses:** Motion blur, directly and
+specifically — this is the clearest architectural match this log has found
+yet to "detect a fast, blurred, low-contrast small object by restoring
+detection-relevant features rather than deblurring the image for human
+viewing," which is exactly this project's blur gap (near-square labelled
+boxes because blur isn't really being produced or exploited as a signal
+yet).
+
+**Why it doesn't help this model today:**
+1. **No licence** — same hard blocker as the already-logged YOLOMG and
+   YCDa entries; the architecture idea is readable, the code is not usable.
+2. **Code is admittedly incomplete** — the README states in its own words
+   that "the complete code is currently being compiled," confirmed by
+   fetching the raw README directly rather than trusting the repo
+   description. Only the core-contribution modules (`engine/`,
+   `train_pair.py`) are present; there's no confirmation it runs end to end.
+3. **Infrared-only** — the paper, model, and its companion IRBlurUAV
+   benchmark (30k simulated + 4,118 real images) are built and evaluated
+   exclusively on thermal/IR UAV footage, not RGB. The dual-branch
+   restoration mechanism is sensor-agnostic in principle, but nothing in
+   the repo or paper claims or tests RGB transfer.
+4. **Dataset isn't actually fetchable from here** — IRBlurUAV is hosted on
+   Baidu Netdisk (password-gated) with the Google Drive mirror explicitly
+   marked "TODO." Even setting aside the IR-vs-RGB mismatch, this session
+   cannot download it to inspect it.
+
+**Verification performed:** Fetched the GitHub repo page directly (commit
+count, file listing, stars/forks, acknowledgement of the DEIM base) and
+the raw `README.md` directly (license section, code-completeness statement,
+dataset hosting, paper citation) — not from a search snippet. Separately
+fetched `ShihuaHuang95/DEIM` directly to confirm its Apache-2.0 licence
+covers only the base framework, not JFD3's own code. Attempted to find and
+read the underlying arXiv paper to check for a stated dataset/code licence
+there instead of the GitHub README; `arxiv.org`, `ar5iv.labs.arxiv.org`,
+`alphaxiv.org`, `huggingface.co`, and `api.semanticscholar.org` are all
+unreachable from this session (`getaddrinfo ENOTFOUND`) — consistent with
+every prior entry in this log that has tried to reach a paper host
+directly, so the architecture description above is taken from the GitHub
+README's own summary of the paper, not the primary paper text.
+
+**Effort vs. payoff:** Low-to-moderate effort (three direct fetches, one
+dead-end chain of five unreachable paper hosts). Payoff is mostly negative
+confirmation: a second recent (2026), well-credentialed academic blur
+detector — after YOLOMG, RFR, STF, DFRCP — that turns out unusable for the
+same structural reasons (no licence, incomplete release) rather than a new
+reason. The one genuinely new piece of information is architectural, not
+acquirable: "supervise a blurred-image feature branch with a clear-image
+branch via a shared-weight, self-supervised consistency loss" is a distinct
+and buildable-from-scratch idea this log hadn't captured before (previous
+blur-architecture entries used frame-differencing, recurrent refinement, or
+rotational-blur-confined augmentation, not clear/blur branch distillation).
+If this project ever builds a custom blur-robust head rather than waiting
+for a licensed one, this is the idea worth prototyping — but it requires
+reimplementation from the paper's description, not reuse of any shipped
+artifact.
