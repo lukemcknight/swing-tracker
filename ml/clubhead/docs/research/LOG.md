@@ -5736,3 +5736,93 @@ change the licence picture. Worth logging precisely because this log's
 own standing rule is not to carry an "unconfirmed, not fact" flag forward
 indefinitely when the primary source turns out to be cheaply reachable —
 this one was.
+
+---
+
+## 2026-11-27 (third run today) — A new Roboflow Universe lead, `salo-levy-nlqrn/golf-driver-tracker`, labels exactly the three classes this project cares about (ball, club-handle, club-head) and comes from a Roboflow staff account — but licence and content are still unconfirmed, and nothing suggests it covers the indoor/low-light gap
+
+**Rotation context:** Bullet 1 (datasets, especially low-light/indoor/
+simulator/older-phone footage). Today's first two runs covered bullet 2
+(JFD3) and bullet 4 (GolfPose), so bullet 1 — the least-recently-landed-on
+bullet across this whole log, per its own repeated "still DNS-blocked,
+nothing new" entries (2026-11-14, 2026-11-20, 2026-11-25 all record the
+same dead end) — was tried again this run, deliberately searching for a
+*different* slug than the `club-head-tracking` one this log has been
+tracking since 2026-11-05/2026-11-26.
+
+**What it is:** `golf-driver-tracker` by Roboflow Universe user
+`salo-levy-nlqrn`, a 3-class object-detection dataset: **golf ball, golf
+club-handle, golf club-head**. This is the first dataset lead in this log
+whose class list is this close to the project's own detector taxonomy —
+every prior logged dataset (GolfDB, ClubheadDB, CaddieSet, GolfPose) was
+either unlabeled-for-this-purpose, a different task (swing-phase
+sequencing, pose keypoints), or NC-licensed. Cross-checked across three
+independently-worded WebSearch queries, which agreed on: the project name
+and slug, the exact 3-class list, the author (Salo Levy, whose LinkedIn
+profile lists "Computer Vision @ Roboflow" — i.e. this is plausibly a
+Roboflow staff-curated demo dataset, not a random community upload), and
+a BibTeX citation block titled "Golf Driver Tracker Dataset." Image-count
+signals were **inconsistent** across searches (one reported "2.65k
+images · 1 model," another reported "~1.5k views, 61 downloads" with no
+image count) — flagged as a discrepancy, not resolved.
+
+**URL:** https://universe.roboflow.com/salo-levy-nlqrn/golf-driver-tracker
+
+**Licence:** **Not confirmed.** One search summary asserted CC BY 4.0 by
+analogy to sibling listings in the same result set, then explicitly
+retracted that in a follow-up search ("I couldn't confirm it... check the
+project's license field at the page itself"). No query surfaced the
+license field actually on this specific page. `universe.roboflow.com` is
+unreachable from this session (`getaddrinfo ENOTFOUND`, re-checked this
+run, same standing gap as every prior bullet-1 entry since 2026-11-04) so
+the page itself cannot be read to settle it. Per this log's own rule, an
+unreachable listing is not something to recommend acting on — this is
+logged as a flagged lead only, exactly the posture the 2026-11-05 entry
+took for the other Roboflow slug before it was later corroborated on
+2026-11-26. **Commercial use: unknown, not permitted to assume.**
+
+**Which failure mode this addresses:** Potentially both, but unconfirmed
+either way — a dataset this log hasn't been able to inspect can't be
+credited with covering camouflage or blur specifically. The description
+text surfaced in search ("golf swing analysis for coaches and broadcast
+visualization of professional swings") is a concrete negative signal: it
+reads as outdoor broadcast footage, the same bias this project's own
+`test_set_sources.md` and the task brief's own caveat already flag as
+structurally blind to indoor/low-light blur. Nothing found this run
+suggests this dataset contains simulator-bay, indoor, or older-phone
+footage.
+
+**Why it matters for this model specifically:** Mixed. The 3-class match
+(ball/handle/head) is the closest label-schema fit to this project's own
+`clubhead` class this log has found in any dataset search — if it is
+CC-licensed and downloadable, even outdoor-only footage with the right
+label taxonomy would be more directly reusable than GolfDB or any
+prior-logged lead. But two of the three preconditions for that
+(confirmed licence, confirmed content/representativeness) are unmet, and
+the third (does it even touch the indoor/blur gap this project most
+needs) looks structurally unlikely from the description alone. This is a
+lead to chase with a tool that *can* reach `roboflow.com` — not something
+to build around today.
+
+**Verification performed:** Three independently-worded WebSearch queries
+(general dataset search, licence-focused search, `site:` search)
+cross-corroborated the project's existence, slug, author, and class list.
+Attempted direct fetch of `universe.roboflow.com/salo-levy-nlqrn/golf-driver-tracker`
+and `api.roboflow.com/salo-levy-nlqrn/golf-driver-tracker` — both failed
+DNS resolution from this session, consistent with every roboflow.com-family
+host this log has tried since 2026-11-04. Searched for a GitHub mirror,
+a second independent citing source, or any corroborating blog/repo
+reference (the bar this log applied before logging the 2026-11-26
+`club-head-tracking` entry) — found none; this lead is **single-sourced**
+in the sense that every hit traces back to the same Roboflow page, even
+though multiple separately-phrased queries surfaced it consistently.
+
+**Effort vs. payoff:** Low effort (WebSearch only, no new tooling).
+Payoff is modest and conditional: this is worth a five-minute check the
+next time any session or human has a tool that can actually reach
+`roboflow.com` (a non-sandboxed browser, a Roboflow API key, or simply a
+different network policy), to resolve the licence and inspect a few
+sample images for indoor/low-light content before spending any real
+effort on it. Not worth repeating via WebSearch alone again soon — three
+queries already converged on the same ceiling of information this
+session's network policy allows.
