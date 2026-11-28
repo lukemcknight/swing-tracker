@@ -5917,3 +5917,76 @@ labeling or training pipeline around it. Not recommended as a priority
 over the already-logged, ground-truth-preserving synthesis routes
 (BlenderProc rendering, real-frame-averaging from this project's own
 footage), which don't share this failure mode.
+
+---
+
+## 2026-11-28 — DREB-Net: a dual-stream restoration+detection fusion network for blurred small-object (UAV/VisDrone) detection, checked directly — real code, trains on synthetically-blurred small objects, but unlicensed (default all-rights-reserved)
+
+**What it is.** A real, downloadable implementation of "DREB-Net: Dual-stream
+Restoration Embedding Blur-feature Fusion Network for High-mobility UAV
+Object Detection" (arXiv 2410.17822, Oct 2024). I could not fetch
+arxiv.org from this sandbox (DNS blocked by the network policy — same
+restriction this log has hit before, confirmed again just now, not
+assumed), so the paper's own quantitative AP numbers are unverified by me.
+The GitHub repo, however, is live and I read it directly: it is a two-branch
+network — a detection branch plus a U-Net-style "Blurry image Restoration
+Auxiliary Branch" that does frequency-domain-assisted implicit deblurring
+during training, with the two branches' features fused rather than run as a
+separate deblur-then-detect pipeline. It evaluates on a **"Blurred
+VisDrone-2019-DET"** set — VisDrone is a small-object aerial-imagery
+benchmark, and the repo ships its own `tools/gen_motion_blur/blur_image.py`
+script to synthetically blur that dataset for training/eval, rather than
+relying on real captured blur.
+
+**URL:**
+- Paper: https://arxiv.org/abs/2410.17822 (unverified directly, DNS-blocked)
+- Code (verified live, 1 commit, real files — `lib/`, `tools/`, `main.py`,
+  `demo.py`, `test.py`, `requirements.txt`, `figure/results.png`):
+  https://github.com/EEIC-Lab/DREB-Net
+
+**Licence:** **No LICENSE file exists in the repo, and the README contains
+no license statement anywhere.** I checked the file listing and fetched the
+README directly to confirm this (not inferred from a badge). Under default
+copyright, unlicensed code on GitHub is "all rights reserved" — it is
+**not cleared for any use, commercial or otherwise**, without contacting
+the authors (EEIC-Lab) for explicit permission. Treat as blocked, same
+category as several prior entries in this log (JFD3, YOLOMG-code,
+DFRCP, CamDiff) that had working code behind a licence wall.
+
+**Which failure mode: motion blur.** (Does not touch camouflage — VisDrone's
+blur is synthetic motion blur on small aerial objects, not low-contrast/
+occlusion.)
+
+**Why it matters for this model specifically:** this is a closer domain
+match than most blur-robust architectures already in this log. VisDrone
+objects are small-in-frame like our clubhead (not COCO-scale), and the
+paper's own framing — "high-mobility" objects that blur because *they* move
+fast within a comparatively static scene, not because the whole camera
+pans — is exactly our clubhead-at-impact case, not a generic camera-shake
+case. The fused restoration+detection design is also a concrete alternative
+to the deblur-then-detect pipelines already logged (RT-Focuser, DeblurGANv2
+via SHOP): it folds deblurring into the detector's own feature space instead
+of adding a separate preprocessing stage, which matters for an on-device
+CoreML budget where every extra model is a latency cost. Separately and
+independent of the architecture's licence block, `blur_image.py` is one
+more existing, inspectable *synthetic motion-blur generation* reference
+implementation to compare against the Albumentations/BlenderProc/
+frame-averaging approaches already logged — I did not verify its own
+licence terms (it ships inside the same unlicensed repo), so it carries the
+same blocker, not a clean one.
+
+**Effort vs. payoff.**
+- Essentially zero effort available right now: the licence blocker is a hard
+  stop on using this code or its blur-generation script as-is. The only
+  low-effort action is emailing the authors to ask for a licence grant or
+  confirmation of intended open use — cheap to try, uncertain to land.
+- If a licence were obtained, re-implementing just the restoration-branch
+  *idea* (a small auxiliary deblur decoder fused into YOLO11n's backbone
+  features, trained with the detection loss) is a medium-effort architecture
+  experiment, not a drop-in dependency — same tier of effort as the
+  already-logged STF and DFRCP architecture ideas.
+- Payoff is plausible but unproven for this project: the domain match
+  (small, fast-moving object blur) is real, but I have no verified
+  quantitative evidence — arxiv being blocked means I'm going on the
+  architecture description alone, not measured numbers. This is a licence
+  dead end to log and move past, not a near-term fix.
