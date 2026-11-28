@@ -157,3 +157,89 @@ the model is trained to see more of. They could be combined.
   high-elongation subset of labels) rather than a fix — it does not reduce
   the need for real low-shutter/indoor footage, and it does nothing for the
   camouflage failure mode.
+
+---
+
+## 2026-11-28 — Channel-stacked multi-frame input for YOLO (temporal cue for camouflage)
+
+**What it is:** *Lightweight Multi-Frame Integration for Robust YOLO Object
+Detection in Videos* (Quan, Kiefer, Messmer, Zell — University of Tübingen,
+ECMR 2025). Instead of detecting on a single frame, stack `n` consecutive
+frames along the channel axis (3×n input channels) and feed them through a
+YOLO backbone whose **only** architecture changes are the first conv (now
+3n→C instead of 3→C, with weights initialized by tiling the single-frame
+pretrained weights n times, scaled by 1/n) and the conv immediately after
+it. The neck and head are untouched. Training supervises **only the loss on
+the most recent frame's labels** in each stack — the earlier frames are
+unlabeled temporal context, so no new per-frame annotation is needed beyond
+what a single-frame dataset already has. An ablation ("Late Fusion") uses a
+grouped first conv (one group per frame) instead of early channel
+concatenation; the repo states Early Fusion wins and that gains were
+largest specifically for the **tiny** model variant.
+
+**URLs:**
+- Paper (arxiv.org is DNS-blocked by this session's network policy — could
+  not fetch directly, confirmed not assumed; a mirror exists but was not
+  fetched for the same reason): https://arxiv.org/abs/2506.20550 /
+  https://papers.cool/arxiv/2506.20550
+- Code (author's own repo, fetched and read directly):
+  https://github.com/yitong-quan/yolov7-multi-frame
+
+**Licence — verified, and it's a real constraint:** the repo is
+**GPL-3.0** (`LICENSE.md` at the repo root, per GitHub's own license
+detection on the repo page). GPL-3.0 permits commercial use of the software
+itself, but its copyleft terms mean any work that is a derivative of this
+*code* and that we distribute (e.g. inside the iOS app) would need to be
+released under GPL-3.0 too — not viable for a closed-source commercial app.
+**Do not vendor or adapt this repo's code directly into the training
+pipeline or app.** The underlying *idea* — stack frames on the channel
+dimension, tile the first-conv weights, supervise only the latest frame — is
+a simple, precisely-described technique with no non-obvious implementation
+detail; it can be reimplemented cleanly from scratch on our own Ultralytics
+YOLO11n codebase without reusing any of their GPL code, which sidesteps the
+licensing problem entirely. (I did not find a non-GPL implementation of this
+specific technique.)
+
+**Which failure mode: primarily camouflage**, secondarily motion blur.
+Camouflage failures in this model are frames with **zero candidate
+detections even at confidence 0.05** on visually sharp, well-lit frames —
+i.e. the problem is not image quality, it's that a single frame of a dark
+clubhead against dark clothing/foliage gives the detector no appearance
+signal to separate figure from background at all. A moving clubhead against
+static clutter is trivially separable by *motion* even when per-frame
+appearance is near-identical — which is exactly the cue this method adds,
+for a near-zero compute cost (two conv layers change; the rest of the nano
+backbone and all post-processing are untouched). It plausibly helps motion
+blur too, since a few frames of context can disambiguate a blurred head
+from noise, but that's a secondary, more speculative benefit — the repo's
+own framing and headline claim is about blur/occlusion robustness in
+general video, not camouflage specifically, so this inference is mine, not
+the authors'.
+
+**Why it matters for this model specifically:** it needs no new labeled
+frames (only the existing single-frame labels are used, on the most recent
+frame in each stack), which matters because our labeled data is scarce and
+third-party-heavy. It's cheap enough to plausibly survive CoreML export and
+on-device nano-model latency budgets (unlike optical flow or a video
+transformer), since only the stem changes. The real cost is **not** in the
+model — it's that the iOS capture pipeline would need to keep and feed a
+short rolling buffer of the last `n` camera frames into the model instead of
+a single frame, which is nontrivial on-device engineering (buffer
+management, frame-rate/latency accounting) separate from the ML work.
+
+**Effort vs. payoff:**
+- Medium effort: reimplement (clean-room, not from their GPL code) the
+  channel-stack + tiled-first-conv-init pattern on YOLO11n/Ultralytics;
+  retrain; no new labeling needed. A faster, narrower first test: run this
+  only as an *offline* experiment (stack frames from existing clips, no iOS
+  changes yet) measuring recall specifically on known camouflage-failure
+  frames from the 3-clip outdoor test set, before committing to any
+  on-device buffer-feeding engineering.
+- Payoff is plausible but **not quantitatively verified for this domain**:
+  the author's own repo page states only qualitative claims (Early Fusion
+  beats grouped conv, gains largest for the tiny variant) with no mAP
+  numbers visible to me, and their stated use case (MOT20Det, pedestrian/
+  vehicle tracking in surveillance video) is a different object scale and
+  background-clutter regime than a clubhead against dark clothing. Worth a
+  scoped offline experiment before any iOS pipeline investment; not a
+  confirmed fix.
